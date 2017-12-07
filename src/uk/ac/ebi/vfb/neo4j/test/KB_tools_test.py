@@ -4,7 +4,7 @@ Created on Mar 8, 2017
 @author: davidos
 '''
 import unittest
-from ..KB_tools import kb_owl_edge_writer, node_importer, gen_id
+from ..KB_tools import kb_owl_edge_writer, node_importer, gen_id, iri_generator
 from ...curie_tools import map_iri
 from uk.ac.ebi.vfb.neo4j.neo4j_tools import results_2_dict_list
 from pathlib import Path
@@ -89,11 +89,7 @@ class TestNodeImporter(unittest.TestCase):
         result = self.ni.nc.commit_list(["MATCH (p:Class) WHERE p.iri = 'http://purl.obolibrary.org/obo/fbbt/vfb/VFB_10000005' RETURN p.label as label" ])
         dc = results_2_dict_list(result)
         assert dc[0]['label'] == 'cluster'
-    
-    def test_default_id_gen(self):
-        self.ni.set_default_iri_gen_config()
-        i = self.ni.iri_gen(1)
-        assert i['short_form'] == 'VFB_00000002'
+
     
     def tearDown(self):
         self.ni.nc.commit_list(statements = ["MATCH (n) " \
@@ -111,6 +107,16 @@ class TestGenId(unittest.TestCase):
     def test_gen_id(self):
         r = gen_id(idp = 'HSNT', ID = 101, length = 8, id_name = self.id_name)
         assert r['short_form'] == 'HSNT_00000104'
+        
+class TestIriGenerator(unittest.TestCase):
+    
+    def setUp(self):
+        self.ig = iri_generator('http://localhost:7474', 'neo4j', 'neo4j')
+
+    def test_default_id_gen(self):
+        self.ig.set_default_config()
+        i = self.ig.generate(1)
+        assert i['short_form'] == 'VFB_00000002'
 
 if __name__ == "__main__":
     unittest.main()

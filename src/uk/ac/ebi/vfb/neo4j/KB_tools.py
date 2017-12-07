@@ -24,8 +24,13 @@ from ..curie_tools import map_iri
 # TODO: Add lookup for attributes -> Properties.  Ideally this would be with a specific cypher label for APs.
 # May want to follow a prefixed pattern to indicate OWL compatible APs.
 
+
+    
+
 def gen_id(idp, ID, length, id_name):
-    """ARG1: idp (string), 
+    """
+    Generates an ID of form <idp>_<padded_accession>
+    ARG1: idp (string), 
     ARG 2 starting ID number (int), 
     ARG3, length of numeric portion ID, 
     ARG4 an id:name hash"""
@@ -39,6 +44,40 @@ def gen_id(idp, ID, length, id_name):
         ID += 1
         k = gen_key(ID, length)
     return {'short_form' : k, 'acc_int' : ID} # useful to return ID to use for next round.
+
+class iri_generator():
+    
+    def __init__(self, endpoint, usr, pwd):
+        self.nc = neo4j_connect(endpoint, usr, pwd)
+        
+    def configure(self, idp, acc_length, base):
+        self.acc_length = acc_length
+        self.idp = idp
+        self.id_name = {}
+        self.base = base
+        self.statements.append("MATCH (i:Individual) WHERE i.short_form =~ '%s_[0-9]{%d}' " \
+                               "RETURN i.short_form as short_form, i.label as label" % (idp, acc_length)) # Note POSIX regex rqd       
+        r = self.commit()
+        if r:
+            results = results_2_dict_list(r)
+            for res in results:
+                self.id_name[res['short_form']] = res['label']
+            return True
+        else:
+            warnings.warn("No ids match the pattern %s_%s" % (idp, 'n'*acc_length))
+            return False
+            
+
+    def set_default_config(self):
+        self.configure(idp = 'VFB', acc_length = 8, base = map_iri('vfb'))
+        
+    def generate(self, start):
+        ID = gen_id(idp = self.idp, ID = start, length = self.acc_length, id_name = self.id_name)
+        short_form = ID['short_form']
+        iri =  self.base + short_form
+        return { 'iri': iri, 'short_form': short_form}
+    
+    
 
 class kb_writer (object):
       
@@ -200,33 +239,6 @@ class node_importer(kb_writer):
     e.g. from ontologies, FlyBase, CATMAID.
     Constructor: owl_import_updater(endpoint, usr, pwd)
     """
-    
-    def configure_iri_gen(self, idp, acc_length, base):
-        self.acc_length = acc_length
-        self.idp = idp
-        self.id_name = {}
-        self.base = base
-        self.statements.append("MATCH (i:Individual) WHERE i.short_form =~ '%s_[0-9]{%d}' " \
-                               "RETURN i.short_form as short_form, i.label as label" % (idp, acc_length)) # Note POSIX regex rqd       
-        r = self.commit()
-        if r:
-            results = results_2_dict_list(r)
-            for res in results:
-                self.id_name[res['short_form']] = res['label']
-            return True
-        else:
-            warnings.warn("No ids match the pattern %s_%s" % (idp, 'n'*acc_length))
-            return False
-            
-
-    def set_default_iri_gen_config(self):
-        self.configure_iri_gen(idp = 'VFB', acc_length = 8, base = map_iri('vfb'))
-        
-    def iri_gen(self, start):
-        ID = gen_id(idp = self.idp, ID = start, length = self.acc_length, id_name = self.id_name)
-        short_form = ID['short_form']
-        iri =  self.base + short_form
-        return { 'iri': iri, 'short_form': short_form}
         
     def add_constraints(self, uniqs= {}, indexes = {} ):
         """Specify addition uniqs and indexes via dicts.
@@ -368,11 +380,20 @@ class node_importer(kb_writer):
         return
     
 class KB_pattern_writer(object):
+    """A wrapper class for adding subgraphs following some pre-specified
+    schema pattern.
+    """
     
     def __init__(self, endpoint, usr, pwd):
         self.ew = kb_owl_edge_writer(endpoint, usr, pwd)
-        self.ni = node_importer(endpoint, usr, pwd)
-        
+        self.ni = node_importer(endpoint, usr, pwd)    
+        self.anat_iri_gen = iri_generator(endpoint, usr, pwd)
+        self.anat_iri_gen.set_default_iri_gen_config()
+        self.channel_iri_gen = iri_generator(endpoint, usr, pwd)
+        self.channel_iri_gen.configure_iri_gen(idp = 'VFBc', 
+                                                acc_length = 8, 
+                                                base = map_iri('vfb'))
+       
     def add_anatomy_image_set(self, 
                                   image_type, 
                                   label, 
@@ -388,35 +409,42 @@ class KB_pattern_writer(object):
         Optionally specify additional attributes for the anatomical 
         individual as a dict."""
         
-        # TBD Should this really all run on IRIs?
+        # TBD: Should this really all run on IRIs?
         
-        anat_iri = self.iri_gen(start)['iri']
+        ### IRI gen is an issue because node_importer assumes a single
+        #### ID scheme, but we need different schemes for anatomy and 
+        #### channel
+        anat_iri = self.anat_iri_gen.generate(start)['iri']
+        channel_iri = self.channel_iri_gen.generate(start)['iri']        
         attributes['label'] = label
-        a = self.ni.add_node(labels = ['Individual'], 
+        self.ni.add_node(labels = ['Individual'], 
                           IRI = anat_iri,
                           attribute_dict = attributes)
-        channel_iri = self.iri_gen(start)['iri']
-        i = self.ni.add_node(labels = ['Individual'], 
+        self.ni.add_node(labels = ['Individual'], 
                           IRI = channel_iri,
                           attribute_dict= { 'label' : label + '_c' } )
         self.ni.commit()
-        # Add a query to look up template channel
+        # Add a query to look up template channel, assuming template anat ind spec
         q = "MATCH (c:Individual)-[:Related { short_form = 'depicts' }]" \
             "->(t:Individual { iri : '%s' ) RETURN c.iri" % template
         x = results_2_dict_list(self.ni.nc.commit_list([q]))
         template = x['c.iri']
-        image_typing_relation = ''
+        
+        # Some relation IRIs:
+        
+        image_typing_relation = ''  # oddity of schema.
         depicts = ''
         in_reg_with = ''
-        ew.add_anon_type_ax(s = anat_iri, 
+        
+        self.ew.add_anon_type_ax(s = channel_iri, 
                             r = image_typing_relation,
                             o = anatomical_type)
         if anatomical_type:
-            ew.add_named_type_ax(s = anat_iri, o = anatomical_type)
-        ew.add_fact(s = channel_iri, r = depicts , o = anat_iri)
-        ew.add_fact(s = channel_iri , r = in_reg_with, o = template ) 
+            self.sew.add_named_type_ax(s = anat_iri, o = anatomical_type)
+        # Add facts    
+        self.ew.add_fact(s = channel_iri, r = depicts , o = anat_iri)
+        self.ew.add_fact(s = channel_iri , r = in_reg_with, o = template) 
 
-        
 
 
 # Specs for a fb_feature_update
