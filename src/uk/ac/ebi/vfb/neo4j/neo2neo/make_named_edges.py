@@ -79,7 +79,7 @@ def make_name_edges(typ, delete_old=True, test_mode = False):
     labels = r[0]['data'][0]['row'][0]
     for label in labels:
         rel = re.sub(' ', '_', label) # In case any labels have spaces
-        statements.append("MATCH (n)-[r:%s {label:'%s'}]->(m) MERGE (n)-[r2:%s]->(m) SET r2=r,r2.label=type(r) %s%s" % (typ, label, rel, delete, test))    
+        statements.append("MATCH (n)-[r:%s {label:'%s'}]->(m) MERGE (n)-[r2:%s]->(m) SET r2=r,r2.type=type(r) %s%s" % (typ, label, rel, delete, test))    
     print("processing %s %s statements" % (len(statements), typ))    
     nc.commit_list_in_chunks(statements, verbose = True, chunk_length = 10000)
     
