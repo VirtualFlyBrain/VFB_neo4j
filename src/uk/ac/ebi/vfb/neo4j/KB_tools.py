@@ -70,7 +70,6 @@ class kb_writer (object):
                                       verbose=verbose,
                                       chunk_length=chunk_length)
         self.statements = []
-        return self.output
 
     def commit(self, verbose=False, chunk_length=5000):
         return self._commit(verbose, chunk_length)
@@ -181,18 +180,22 @@ class kb_owl_edge_writer(kb_writer):
         if match_on not in ['iri', 'label', 'short_form']:
             raise Exception("Illegal match property '%s'. " \
                             "Allowed match properties are 'iri', 'label', 'short_form'" % match_on)
-        out = "MATCH (s{stype} {{ {match_on}:'{s}' }} ), (rn:Property {{ {match_on}: '{r}' }}), " \
-              "(o{otype} {{ {match_on}:'{o}' }} ) ".format(**locals())
-        out += "MERGE (s)-[re%s { %s: '%s'}]->(o) " % (rtype, match_on, r)
+
+        out = "OPTIONAL MATCH (s{stype} {{ {match_on}:'{s}' }} ) " \
+              "OPTIONAL MATCH (rn:Property {{ {match_on}: '{r}' }}) " \
+              "OPTIONAL MATCH (o{otype} {{ {match_on}:'{o}' }} ) ".format(**locals())
+        out += "FOREACH (a IN CASE WHEN s IS NOT NULL THEN [s] ELSE [] END | " \
+               "FOREACH (b IN CASE WHEN o IS NOT NULL THEN [o] ELSE [] END | " \
+               "FOREACH (c IN CASE WHEN rn IS NOT NULL THEN [rn] ELSE [] END | "
+        out += "MERGE (a)-[re%s { %s: c.%s }]->(b) " % (rtype, match_on, match_on)  # Might need work?
         out += self._set_attributes_from_dict('re', edge_annotations)
         if not match_on == 'label':
-            out += "SET re.label = rn.label "
+            out += "SET re.label = c.label "
         if not match_on == 'short_form':
-            out += "SET re.short_form = rn.short_form "
+            out += "SET re.short_form = c.short_form "
         if not match_on == 'iri':
-            out += "SET re.iri = rn.iri "
-        out += "RETURN '%s', '%s', '%s' " % (s,r,o) # returning input for ref in debugging
-        # If the match fails, no rows are returned, but s,r,o are column h
+            out += "SET re.iri = c.iri"
+        out += "))) RETURN { `%s`: count(s), `%s`: count(rn), `%s`: count(o) } as match_count" % (s, r, o)
         self.statements.append(out)
 
     def _add_related_edge(self, s, r, o, stype, otype, edge_annotations={}, match_on="iri"):
@@ -232,11 +235,14 @@ class kb_owl_edge_writer(kb_writer):
     
         
     def add_named_type_ax(self, s,o, match_on = "iri"):
-        self.statements.append(
-                               "MATCH (s:Individual {{ {match_on}: '{s}' }} ), (o:Class {{ {match_on}: '{o}' }} ) " \
-                               "MERGE (s)-[:INSTANCEOF]-(o) " \
-                               "RETURN '{s}', '{o}'".format(**locals()))
-                
+        out = "OPTIONAL MATCH (s:Individual {{ {match_on}:'{s}' }} ) " \
+              "OPTIONAL MATCH (o:Class {{ {match_on}:'{o}' }} ) ".format(**locals())
+        out += "FOREACH (a IN CASE WHEN s IS NOT NULL THEN [s] ELSE [] END | " \
+               "FOREACH (b IN CASE WHEN o IS NOT NULL THEN [o] ELSE [] END | " \
+               "MERGE (a)-[:INSTANCEOF]->(b) "
+        out += ")) RETURN { `%s`: count(s), `%s`: count(o) } as match_count" % (s, o)
+        self.statements.append(out)
+
     def add_anon_subClassOf_ax(self, s,r,o, edge_annotations = {}, match_on = "iri"):
         ### Should probably only support adding individual:individual edges in KB...
         self._add_related_edge(s, r, o, stype = ":Class", otype = ":Class",
@@ -259,11 +265,13 @@ class kb_owl_edge_writer(kb_writer):
         """Tests lists of return values from RESTFUL API for edge creation
          by checking "relationships_created": as a boolean, generates warning
         """
-       
-        missed_edges = [x['columns'] for x in self.output if not x['data']]
+        #TODO - update to latest
+        dc = results_2_dict_list(self.output)
+        missed_edges = [x['match_count'] for x in dc if x and (0 in x['match_count'].values())]
         if missed_edges:
             for e in missed_edges:
-                warnings.warn("Edge not added. Something doesn't match here: %s" % str(e))
+                warnings.warn("No match found for %s in %s" % (str([k for k,v in e.items() if not v]),
+                                                               str(e)))
             return False
         else:
             return True
