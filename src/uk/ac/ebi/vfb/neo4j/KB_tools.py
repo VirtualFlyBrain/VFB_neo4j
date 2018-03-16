@@ -432,7 +432,9 @@ class KB_pattern_writer(object):
     
     def __init__(self, endpoint, usr, pwd):
         self.ew = kb_owl_edge_writer(endpoint, usr, pwd)
-        self.ni = node_importer(endpoint, usr, pwd)    
+        self.ni = node_importer(endpoint, usr, pwd)
+        self.iri_gen = iri_generator(endpoint, usr, pwd)
+        # Hmmm - these look like they're needed for anat image set only.
         self.anat_iri_gen = iri_generator(endpoint, usr, pwd)
         self.anat_iri_gen.set_default_config()
         self.channel_iri_gen = iri_generator(endpoint, usr, pwd)
@@ -561,14 +563,26 @@ class KB_pattern_writer(object):
                          match_on='short_form')
         return {'channel': channel_id, 'anatomy': anat_id }
 
-    def add_dataSet(self, name, license, pub='',
+    def add_dataSet(self, name, license, short_form, pub='',
                     description='', dataset_spec_text='', site=''):
 
+        """Add a new dataset to the DB:
+        required ARGS:
+            nme = Descriptive name for dataset
+            short_form = readable short_form for dataset
+            license = short_form for license
+        optional KWARGS
+            pub = (optional) short_form (FBrf) for pub describing dataset.
+            description = Some text describing the dagtaset
+            dataset_spec_text = Some text to be added to the description of individuals in the dataset
+            site = short_form identifier for site.
+        """
+
         self.ni.add_node(labels=['Individual', 'DataSet'],
-                         IRI=map_iri('data') + name,
+                         IRI=map_iri('data') + short_form,
                          attribute_dict={
                              'label': name,
-                             'short_form': name,
+                             'short_form': short_form,
                              'description': description,
                              'dataset_spec_text': dataset_spec_text})
         self.ni.commit()
