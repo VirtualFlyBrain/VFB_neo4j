@@ -31,7 +31,6 @@ def get_sf(iri):
     """Get a short form from an iri."""
     return re.split('[#/]', iri)[-1]
 
-
 def gen_id(idp, ID, length, id_name):
     """
     Generates an ID of form <idp>_<padded_accession>
@@ -131,7 +130,6 @@ class iri_generator(kb_writer):
         else:
             warnings.warn("No existing ids match the pattern %s_%s" % (idp, 'n'*acc_length))
             return False
-            
 
     def set_default_config(self):
         self.configure(idp = 'VFB', acc_length = 8, base = map_iri('vfb'))
@@ -139,8 +137,7 @@ class iri_generator(kb_writer):
     def set_channel_config(self):
         self.configure(idp='VFBc', acc_length = 8, base = map_iri('vfb'))
 
-        
-    def generate(self, start, label = ''):
+    def generate(self, start, label=''):
         ID = gen_id(idp = self.idp, ID = start, length = self.acc_length, id_name = self.id_name)
         short_form = ID['short_form']
         iri =  self.base + short_form
@@ -176,7 +173,9 @@ class kb_owl_edge_writer(kb_writer):
         else: 
             return False
 
-    def _add_triple(self, s, r, o, rtype, stype, otype, edge_annotations = {}, match_on = "iri"):
+    def _add_triple(self, s, r, o, rtype, stype, otype, edge_annotations=None, match_on = "iri"):
+        if edge_annotations is None:
+            edge_annotations = {}
         if match_on not in ['iri', 'label', 'short_form']:
             raise Exception("Illegal match property '%s'. " \
                             "Allowed match properties are 'iri', 'label', 'short_form'" % match_on)
@@ -198,19 +197,23 @@ class kb_owl_edge_writer(kb_writer):
         out += "))) RETURN { `%s`: count(s), `%s`: count(rn), `%s`: count(o) } as match_count" % (s, r, o)
         self.statements.append(out)
 
-    def _add_related_edge(self, s, r, o, stype, otype, edge_annotations={}, match_on="iri"):
+    def _add_related_edge(self, s, r, o, stype, otype, edge_annotations=None, match_on="iri"):
         # running edge check for each edge addn - safe by slooow.
+        if edge_annotations is None:
+            edge_annotations = {}
         rtype = ':Related'
         self._add_triple(s, r, o, rtype, stype, otype, edge_annotations, match_on)
 
-    def add_annotation_axiom(self, s, r, o, edge_annotations = {}, match_on = "iri"):
+    def add_annotation_axiom(self, s, r, o, edge_annotations = None, match_on = "iri"):
         """Used to link an OWL entity to an Individual via an annotation axiom."""
+        if edge_annotations is None:
+            edge_annotations = {}
         rtype = ':Annotation'
         stype = ''
         otype = '' # This should really be an individual, but some changes to DB are needed first.
         self._add_triple(s, r, o, rtype, stype, otype, edge_annotations, match_on)
 
-    def add_fact(self, s, r, o, edge_annotations = {}, match_on = "iri"):
+    def add_fact(self, s, r, o, edge_annotations = None, match_on = "iri"):
 
         """Add OWL fact to statement queue.
         s=subject individual iri, 
@@ -218,17 +221,19 @@ class kb_owl_edge_writer(kb_writer):
         o = object individual iri.
         Optionally add edge annotations specified as key value 
         pairs in dict."""
+        if edge_annotations is None: edge_annotations = {}
         self._add_related_edge(s, r, o, stype = ":Individual", otype = ":Individual",
                                edge_annotations = edge_annotations, 
                                match_on = match_on)
                 
-    def add_anon_type_ax(self, s, r, o, edge_annotations = {}, match_on = "iri"):
+    def add_anon_type_ax(self, s, r, o, edge_annotations = None, match_on = "iri"):
         """Add anonymous OWL Type statement queue.
         s= subject individual iri, 
         r= relation (ObjectProperty) iri,
         o = object Class iri.
         Optionally add edge annotations specified as key value 
         pairs in dict."""
+        if edge_annotations is None: edge_annotations = {}
         self._add_related_edge(s, r, o, stype = ":Individual", otype = ":Class",
                                edge_annotations = edge_annotations, 
                                match_on = match_on)
@@ -243,8 +248,9 @@ class kb_owl_edge_writer(kb_writer):
         out += ")) RETURN { `%s`: count(s), `%s`: count(o) } as match_count" % (s, o)
         self.statements.append(out)
 
-    def add_anon_subClassOf_ax(self, s,r,o, edge_annotations = {}, match_on = "iri"):
+    def add_anon_subClassOf_ax(self, s,r,o, edge_annotations = None, match_on = "iri"):
         ### Should probably only support adding individual:individual edges in KB...
+        if edge_annotations is None: edge_annotations = {}
         self._add_related_edge(s, r, o, stype = ":Class", otype = ":Class",
                                edge_annotations = edge_annotations, 
                                match_on = match_on)
@@ -282,9 +288,11 @@ class node_importer(kb_writer):
     Constructor: owl_import_updater(endpoint, usr, pwd)
     """
         
-    def add_constraints(self, uniqs= {}, indexes = {} ):
+    def add_constraints(self, uniqs=None, indexes=None):
         """Specify addition uniqs and indexes via dicts.
         { label : [attributes] } """
+        if uniqs is None: uniqs = {}
+        if indexes is None: indexes = {}
         for k,v in uniqs.items():
             for a in v:
                 self.statements.append("CREATE CONSTRAINT ON (n:%s) ASSERT n.%s IS UNIQUE" % (k,a))
@@ -302,12 +310,13 @@ class node_importer(kb_writer):
         self.add_constraints(uniqs, indexes)
         self.commit()
             
-    def add_node(self, labels, IRI, attribute_dict = {}):
+    def add_node(self, labels, IRI, attribute_dict=None):
         """Adds or updates a node.
         Node uniqueness specified by IRI + labels.
         Derives short_form using has or / as delimiter
         Adds/Updates attributes to those specified in the attribute dict
         """
+        if attribute_dict is None: attribute_dict = {}
         short_form = re.split('[#/]', IRI)[-1]
         statement = "MERGE (n:%s { iri: '%s' }) set n.short_form = '%s'" % ((':'.join(labels)),
                                                      IRI, short_form)
