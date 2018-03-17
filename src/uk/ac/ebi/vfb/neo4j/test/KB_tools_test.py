@@ -4,14 +4,11 @@ Created on Mar 8, 2017
 @author: davidos
 '''
 import unittest
-
 import os
-import warnings
 
 from ..KB_tools import kb_owl_edge_writer, node_importer, gen_id, iri_generator, KB_pattern_writer
 from ...curie_tools import map_iri
-from uk.ac.ebi.vfb.neo4j.neo4j_tools import results_2_dict_list, neo4j_connect
-from pathlib import Path
+from ..neo4j_tools import results_2_dict_list, neo4j_connect
 import re
 
 def get_file_path(qualified_path):
@@ -49,7 +46,7 @@ class TestEdgeWriter(unittest.TestCase):
             "MERGE (r1:Property { iri : 'http://fu.bar/loves', label : 'loves' }) "
             "MERGE (i2:Individual { iri: 'Freddy' }) ")
         s.append("MERGE (i1:Individual { iri : 'Aya' }) "
-            "MERGE (r1:Property { iri : 'daughter_of' }) " 
+            "MERGE (r1:Property { label : 'daughter_of', iri : 'http://fu.bar/dof' }) " 
             "MERGE (i2:Individual { iri: 'David' }) ")
         s.append("MERGE (s:Class { iri: 'Person' } ) ")
         s.append("MERGE (s:Class { iri: 'Toy' } ) ")
@@ -58,18 +55,42 @@ class TestEdgeWriter(unittest.TestCase):
 
     def test_add_fact(self):
 
-        self.edge_writer.add_fact(s = 'Aya', r = 'http://fu.bar/loves', 
-                                  o = 'Freddy', 
-                                  edge_annotations = { 'fu' : "ba'r", 
+        self.edge_writer.add_fact(s='Aya',
+                                  r='http://fu.bar/loves',
+                                  o='Freddy',
+                                  match_on='iri',
+                                  edge_annotations = {'fu': "ba'r",
                                                       'bin': ['bash', "ba'sh"],
-                                                      'i' : 1,                                                                                          
-                                                      'x' : True })
-        assert self.edge_writer.check_proprties() == True
-        self.edge_writer.commit() 
-        assert self.edge_writer.test_edge_addition() == True  
-        self.edge_writer.add_fact(s = 'Aya', r = 'loved', o = 'Freddy', edge_annotations = {} )
+                                                      'i': 1,
+                                                      'x': True})
+        self.edge_writer.add_fact(s='Aya',
+                                  r='loved',
+                                  o='Freddy',
+                                  match_on='iri'
+                                  )
+
+        self.edge_writer.add_fact(s='Aya',
+                                  r='http://fu.bar/dof',
+                                  o='David',
+                                  match_on='iri',
+                                  safe_label_edge=True
+                                  )
+
         self.edge_writer.commit()
-        assert self.edge_writer.test_edge_addition() is False
+        # Checking loves edge
+        q = self.edge_writer.nc.commit_list(["MATCH ()-[r { iri : 'http://fu.bar/loves' }]->() return r"])
+        r = results_2_dict_list(q)
+        # Check new edge made + Property node label copied to new edge
+        assert r[0]['r']['label'] == 'loves'
+        # Check addition edge attribute
+        assert r[0]['r']['x'] is True
+
+        q = self.edge_writer.nc.commit_list(["MATCH ()-[r { iri : 'loved' }]->() return r"])
+        r = results_2_dict_list(q)
+        assert r == []
+        q = self.edge_writer.nc.commit_list(["MATCH ()-[r:daughter_of]->() return r"])
+        r = results_2_dict_list(q)
+        assert r[0]['r']['label'] == 'daughter_of'
 
         
         # Add test of added content?
