@@ -167,14 +167,6 @@ class kb_owl_edge_writer(kb_writer):
         self.triples = {} # Dict of lists of args to a triples method, keyed on op.
         self.hard_fail = hard_fail
 
-
-    #TODO - refactor for speed:
-
-    # On commit (i.e. in batch)
-    # Run batch lookup for properties first => additional data + check for existence
-    # MATCH only on S & O.
-    # Merge pulls from property data model.
-
     def check_properties(self):
         """Check whether properties used in triples have a corresponding Property node.
         Lookup is via property specified in match_on arg in an add_triple method."""
@@ -234,6 +226,8 @@ class kb_owl_edge_writer(kb_writer):
 
     def _construct_triples(self):
         flat_list_triples = [item for sublist in self.triples.values() for item in sublist]
+
+
         for t in flat_list_triples:
             rel_map = self.properties[t['r']]
             if t['safe_label_edge']:
@@ -248,15 +242,17 @@ class kb_owl_edge_writer(kb_writer):
             if t['safe_label_edge']:
                 out += "MERGE (a)-[re:%s]->(b) SET re.type = '%s'" % (rel, t['rtype'])  # Might need work?
             else:
-                out += "MERGE (a)-[re%s { %s: '%s' }]->(b) " % (t['rtype'],
+                out += "MERGE (a)-[re:%s { %s: '%s' }]->(b) " % (t['rtype'],
                                                                 t['match_on'],
                                                                 rel)
             out += self._set_attributes_from_dict('re', t['edge_annotations'])
-            if rel_map['label'] and (not t['match_on'] == 'label'):
+
+            # For each of label, iri, short_form; Check if available; Check if
+            if rel_map['label'] and ((not t['match_on'] == 'label') or t['safe_label_edge']):
                 out += "SET re.label = '%s' " % rel_map['label']
-            if rel_map['short_form'] and (not t['match_on'] == 'short_form'):
+            if rel_map['short_form'] and ((not t['match_on'] == 'short_form' ) or t['safe_label_edge']):
                 out += "SET re.short_form = '%s' " % rel_map['short_form']
-            if rel_map['iri'] and (not t['match_on'] == 'iri'):
+            if rel_map['iri'] and ((not t['match_on'] == 'iri') or t['safe_label_edge']):
                 out += "SET re.iri = '%s' " % rel_map['iri']
             out += ")) RETURN { `%s`: count(s), `%s`: count(o) } as match_count" % (t['s'], t['o'])
             self.statements.append(out)
@@ -266,7 +262,7 @@ class kb_owl_edge_writer(kb_writer):
                           edge_annotations=None, match_on="iri", safe_label_edge=False):
         if edge_annotations is None:
             edge_annotations = {}
-        rtype = ':Related'
+        rtype = 'Related'
         self._add_triple(s, r, o, rtype, stype, otype,
                          edge_annotations, match_on, safe_label_edge=safe_label_edge)
 
@@ -281,7 +277,7 @@ class kb_owl_edge_writer(kb_writer):
        """
         if edge_annotations is None:
             edge_annotations = {}
-        rtype = ':Annotation'
+        rtype = 'Annotation'
         stype = ''
         otype = '' # This should really be an individual, but some changes to DB are needed first.
         self._add_triple(s, r, o, rtype, stype, otype,
@@ -304,7 +300,7 @@ class kb_owl_edge_writer(kb_writer):
                                match_on=match_on,
                                safe_label_edge=safe_label_edge)
                 
-    def add_anon_type_ax(self, s, r, o, edge_annotations = None,
+    def add_anon_type_ax(self, s, r, o, edge_annotations=None,
                          match_on="iri", safe_label_edge=False):
         """Add OWL anonymous type axiom to statement stack.
         s = property identifying subject individual ,
@@ -315,7 +311,7 @@ class kb_owl_edge_writer(kb_writer):
         Optionally specify edge type as safe_label (default = False => edge type: Related)
        """
         if edge_annotations is None: edge_annotations = {}
-        self._add_related_edge(s, r, o, stype = ":Individual", otype = ":Class",
+        self._add_related_edge(s, r, o, stype=":Individual", otype=":Class",
                                edge_annotations = edge_annotations, 
                                match_on = match_on,
                                safe_label_edge=safe_label_edge)
@@ -338,8 +334,8 @@ class kb_owl_edge_writer(kb_writer):
         out += ")) RETURN { `%s`: count(s), `%s`: count(o) } as match_count" % (s, o)
         self.statements.append(out)
 
-    def add_anon_subClassOf_ax(self, s,r,o, edge_annotations = None,
-                               match_on = "iri", safe_label_edge=False):
+    def add_anon_subClassOf_ax(self, s, r, o, edge_annotations=None,
+                               match_on="iri", safe_label_edge=False):
         """Add OWL anonymous subClassOf axiom to statement stack.
         s = property identifying subject Class ,
         r = property identifying relation (ObjectProperty) ,
@@ -601,10 +597,10 @@ class KB_pattern_writer(object):
                               anatomical_type='',
                               index=False,
                               center=(),
-                              anatomy_attributes={},
-                              dbxrefs={},
-                              image_filename = '',
-                              match_on = 'short_form'
+                              anatomy_attributes=None,
+                              dbxrefs=None,
+                              image_filename='',
+                              match_on='short_form'
                               ):
         """Adds typed inds for an anatomical individual and channel, 
         linked to each other and to the specified template.
@@ -617,7 +613,8 @@ class KB_pattern_writer(object):
         ### TODO: Extend to include site and accession for dbxrefs.
         
         # TBD: Should this really all run on IRIs?  No
-
+        if anatomy_attributes is None: anatomy_attributes = {}
+        if dbxrefs is None: dbxrefs = {}
 
         anat_id = self.anat_iri_gen.generate(start)
 

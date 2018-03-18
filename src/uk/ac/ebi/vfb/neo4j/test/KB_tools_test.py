@@ -42,36 +42,42 @@ class TestEdgeWriter(unittest.TestCase):
     def setUp(self):
         self.edge_writer = kb_owl_edge_writer('http://localhost:7474', 'neo4j', 'neo4j')
         s = []
-        s.append("MERGE (i1:Individual { iri : 'Aya' }) "
-            "MERGE (r1:Property { iri : 'http://fu.bar/loves', label : 'loves' }) "
-            "MERGE (i2:Individual { iri: 'Freddy' }) ")
+        s.append(
+            "MERGE (i1:Individual { "
+            "iri : 'http://fu.bar/Aya', label: 'Aya', short_form: 'Aya' }) "
+            "MERGE (r1:Property { "
+            "iri : 'http://fu.bar/loves', label : 'loves', short_form: 'loves'}) "
+            "MERGE (i2:Individual { iri: 'http://fu.bar/Freddy' }) ")
         s.append("MERGE (i1:Individual { iri : 'Aya' }) "
             "MERGE (r1:Property { label : 'daughter_of', iri : 'http://fu.bar/dof' }) " 
-            "MERGE (i2:Individual { iri: 'David' }) ")
-        s.append("MERGE (s:Class { iri: 'Person' } ) ")
-        s.append("MERGE (s:Class { iri: 'Toy' } ) ")
+            "MERGE (i2:Individual { iri: 'http://fu.bar/David', label: 'David' }) ")
+        s.append("MERGE (s:Class { iri: 'http://fu.bar/Person', label: 'Person' } ) ")
+        s.append("MERGE (s:Class { iri: 'http://fu.bar/awrg', label: 'ice cream' } ) "
+                 "MERGE (p:Property { iri: 'http://bar.fu/hsdf', label: 'has license'}) "
+                 "MERGE (l:Individual { label: 'Drivers license asdfadf', iri: 'http:a.b.c/asdfr'})")
         self.edge_writer.nc.commit_list(s)
         pass
 
     def test_add_fact(self):
+        # Should probably split these up...
 
-        self.edge_writer.add_fact(s='Aya',
+        self.edge_writer.add_fact(s='http://fu.bar/Aya',
                                   r='http://fu.bar/loves',
-                                  o='Freddy',
+                                  o='http://fu.bar/Freddy',
                                   match_on='iri',
                                   edge_annotations = {'fu': "ba'r",
                                                       'bin': ['bash', "ba'sh"],
                                                       'i': 1,
                                                       'x': True})
-        self.edge_writer.add_fact(s='Aya',
-                                  r='loved',
-                                  o='Freddy',
+        self.edge_writer.add_fact(s='http://fu.bar/Aya',
+                                  r='http://fu.bar/loved',
+                                  o='http://fu.bar/Freddy',
                                   match_on='iri'
                                   )
 
-        self.edge_writer.add_fact(s='Aya',
+        self.edge_writer.add_fact(s='http://fu.bar/Aya',
                                   r='http://fu.bar/dof',
-                                  o='David',
+                                  o='http://fu.bar/David',
                                   match_on='iri',
                                   safe_label_edge=True
                                   )
@@ -82,7 +88,7 @@ class TestEdgeWriter(unittest.TestCase):
         r = results_2_dict_list(q)
         # Check new edge made + Property node label copied to new edge
         assert r[0]['r']['label'] == 'loves'
-        # Check addition edge attribute
+        # Check addition edge attribute from dict
         assert r[0]['r']['x'] is True
 
         q = self.edge_writer.nc.commit_list(["MATCH ()-[r { iri : 'loved' }]->() return r"])
@@ -92,22 +98,41 @@ class TestEdgeWriter(unittest.TestCase):
         r = results_2_dict_list(q)
         assert r[0]['r']['label'] == 'daughter_of'
 
-        
-        # Add test of added content?
-
 
     
     def test_add_named_type_ax(self):
-        self.edge_writer.add_named_type_ax(s = 'Aya', o = 'Person')
+        self.edge_writer.add_named_type_ax(s='Aya',
+                                           o='Person',
+                                           match_on='label')
         self.edge_writer.commit()
         assert self.edge_writer.test_edge_addition() == True        
-        r1 = self.edge_writer.nc.commit_list(["MATCH (i1:Individual { iri : 'Aya' })-" 
+        q = self.edge_writer.nc.commit_list(["MATCH (i1:Individual { label : 'Aya' })-" 
                                               "[r]->" 
-                                              "(i2:Class { iri: 'Person' } ) RETURN type(r) AS r"])
-        assert r1[0]['data'][0]['row'][0] == 'INSTANCEOF'
+                                              "(i2:Class { label: 'Person' } ) "
+                                             "RETURN type(r) AS pred"])
+        r = results_2_dict_list(q)
+        assert r[0]['pred'] == 'INSTANCEOF'
+
+    def test_add_anon_type_ax(self):
+        self.edge_writer.add_anon_type_ax(s='Aya',
+                                          r='loves',
+                                          o='ice cream',
+                                          match_on='label')
+        self.edge_writer.commit()
+        # TODO Add teste here for edge addition + s&o types.
+
+
+    def test_add_annotation_axiom(self):
+        self.edge_writer.add_annotation_axiom(s='David',
+                                              r='has license',
+                                              o='Drivers license asdfadf',
+                                              match_on='label',
+                                              safe_label_edge=True)
+        self.edge_writer.commit()
+        # TODO Add test here for has_license edge type.
+
         
     def tearDown(self):
-         # TODO - add some deletions here
          s = ["MATCH (n) DETACH DELETE n"]
          self.edge_writer.nc.commit_list(s)
          pass
@@ -139,7 +164,7 @@ class TestNodeImporter(unittest.TestCase):
     def tearDown(self):
          self.ni.nc.commit_list(statements=["MATCH (n) "
                                             "DETACH DELETE n"])
-        
+
 class TestGenId(unittest.TestCase):
     
     def setUp(self):
