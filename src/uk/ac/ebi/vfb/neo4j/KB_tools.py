@@ -169,7 +169,8 @@ class kb_owl_edge_writer(kb_writer):
 
     def check_properties(self):
         """Check whether properties used in triples have a corresponding Property node.
-        Lookup is via property specified in match_on arg in an add_triple method."""
+        Lookup is via property specified in match_on arg in an add_triple method.
+        Purge triples using properties not found in the DB from the stack."""
 
         statements = []
         for k,v in self.properties.items():
@@ -202,7 +203,7 @@ class kb_owl_edge_writer(kb_writer):
                     self._report_missing_property(d['key'])
 
     def _report_missing_property(self, prop):
-        """Remove triples using prop and warn."""
+        """Remove triples using specified prop and warn."""
         for t in self.triples.pop(prop):
             warnings.warn("Unknown property %s: Can't add triple %s, %s, %s." % (prop,
                                                                               t['o'],
@@ -211,6 +212,9 @@ class kb_owl_edge_writer(kb_writer):
 
     def _add_triple(self, s, r, o, rtype, stype, otype,
                     edge_annotations=None, match_on="iri", safe_label_edge=False):
+        # Private method to set up data structures required for checking properties
+        # prior to constructing cypher specifying triples for addition.
+
         if edge_annotations is None:
             edge_annotations = {}
         if match_on not in ['iri', 'label', 'short_form']:
@@ -225,9 +229,9 @@ class kb_owl_edge_writer(kb_writer):
             self.properties[r] = {'match_on': match_on}
 
     def _construct_triples(self):
+        # Private method to construct triples once properties have been checked.
+
         flat_list_triples = [item for sublist in self.triples.values() for item in sublist]
-
-
         for t in flat_list_triples:
             rel_map = self.properties[t['r']]
             if t['safe_label_edge']:
@@ -247,7 +251,9 @@ class kb_owl_edge_writer(kb_writer):
                                                                 rel)
             out += self._set_attributes_from_dict('re', t['edge_annotations'])
 
-            # For each of label, iri, short_form; Check if available; Check if
+            # For each of label, iri, short_form; Check if available; Check if used in match
+            # (and therefore in edge merge) or if edge is typed as safe label.
+            # This is needed as cypher doesn't like property used in merge is also set in same statement.
             if rel_map['label'] and ((not t['match_on'] == 'label') or t['safe_label_edge']):
                 out += "SET re.label = '%s' " % rel_map['label']
             if rel_map['short_form'] and ((not t['match_on'] == 'short_form' ) or t['safe_label_edge']):
@@ -618,7 +624,7 @@ class KB_pattern_writer(object):
 
         anat_id['label'] = label
         channel_id = self.channel_iri_gen.generate(start)
-        channel_id['label']  = label + '_c'
+        channel_id['label'] = label + '_c'
 
         anatomy_attributes['label'] = label
 
