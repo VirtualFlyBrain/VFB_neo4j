@@ -566,7 +566,7 @@ class KB_pattern_writer(object):
                                        acc_length=8,
                                        base=map_iri('vfb'))
 
-        #  Adding a dict of common classes and properties
+        #  Adding a dict of common classes and properties. (Should really just use KB lookup...)
 
         self.relation_lookup = {
             'depicts': 'http://xmlns.com/foaf/0.1/depicts',
@@ -579,8 +579,8 @@ class KB_pattern_writer(object):
         self.class_lookup = {
             'computer graphic': 'http://purl.obolibrary.org/obo/FBbi_00000224',
             'channel': 'http://purl.obolibrary.org/obo/fbbt/vfb/VFBext_0000014',
-            'confocal microscopy' : 'http://purl.obolibrary.org/obo/FBbi_00000251',
-            'SB-SEM' : 'http://purl.obolibrary.org/obo/FBbi_00000585'
+            'confocal microscopy': 'http://purl.obolibrary.org/obo/FBbi_00000251',
+            'SB-SEM': 'http://purl.obolibrary.org/obo/FBbi_00000585'
             }
 
     def commit(self, ni_chunk_length=5000, ew_chunk_length=2000, verbose=False):
@@ -610,9 +610,7 @@ class KB_pattern_writer(object):
         start: Start of range for generation of new accessions
         dbxrefs: dict of DB:accession pairs
         anatomy_attribute = {}"""
-        ### TODO: Extend to include site and accession for dbxrefs.
-        
-        # TBD: Should this really all run on IRIs?  No
+
         if anatomy_attributes is None: anatomy_attributes = {}
         if dbxrefs is None: dbxrefs = {}
 
@@ -632,7 +630,8 @@ class KB_pattern_writer(object):
         self.ew.add_annotation_axiom(s=anat_id[match_on],
                                      r='source',
                                      o=dataset,
-                                     match_on=match_on)
+                                     match_on=match_on,
+                                     safe_label_edge=True)
 
         if dbxrefs:
             for db, acc in dbxrefs.items():
@@ -640,7 +639,8 @@ class KB_pattern_writer(object):
                                              r='hasDbXref',
                                              o=db,
                                              match_on='short_form',
-                                             edge_annotations={'accession': acc}
+                                             edge_annotations={'accession': acc},
+                                             safe_label_edge=True
                                              )
 
         self.ni.add_node(labels=['Individual'],
@@ -685,7 +685,8 @@ class KB_pattern_writer(object):
                          r=get_sf(self.relation_lookup['in register with']),
                          o=template,
                          edge_annotations=edge_annotations,
-                         match_on='short_form')
+                         match_on='short_form',
+                         safe_label_edge=True)
         return {'channel': channel_id, 'anatomy': anat_id }
 
     def add_dataSet(self, name, license, short_form, pub='',
@@ -714,17 +715,20 @@ class KB_pattern_writer(object):
         self.ew.add_annotation_axiom(s=name,
                                      r='license',
                                      o=license,
-                                     match_on='short_form')
+                                     match_on='short_form',
+                                     safe_label_edge=True)
         if site:
             self.ew.add_annotation_axiom(s=name,
                                          r='hasDbXref',
                                          o=site,
-                                         match_on='short_form')
+                                         match_on='short_form',
+                                         safe_label_edge=True)
         if pub:
             self.ew.add_annotation_axiom(s=name,
                                          r='references',
                                          o=pub,
-                                         match_on='short_form')
+                                         match_on='short_form',
+                                         safe_label_edge=True)
 
 
 

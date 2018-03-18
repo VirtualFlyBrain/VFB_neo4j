@@ -105,7 +105,6 @@ class TestEdgeWriter(unittest.TestCase):
                                            o='Person',
                                            match_on='label')
         self.edge_writer.commit()
-        assert self.edge_writer.test_edge_addition() == True        
         q = self.edge_writer.nc.commit_list(["MATCH (i1:Individual { label : 'Aya' })-" 
                                               "[r]->" 
                                               "(i2:Class { label: 'Person' } ) "
@@ -119,6 +118,16 @@ class TestEdgeWriter(unittest.TestCase):
                                           o='ice cream',
                                           match_on='label')
         self.edge_writer.commit()
+        q = self.edge_writer.nc.commit_list(["MATCH (x:Class)<-[r:loves]-(y:Individual) "
+                                             "return type(r) AS rt, x.label AS what, "
+                                             "r.label AS rel, y.label AS who"])
+        r = results_2_dict_list(q)
+        if r:
+            assert r[0]['what'] == 'ice cream'
+            assert r[0]['type'] == 'Related'
+            assert r[0]['rel'] == 'loves'
+            assert r[0]['who'] == 'Aya'
+
         # TODO Add teste here for edge addition + s&o types.
 
 
@@ -130,6 +139,15 @@ class TestEdgeWriter(unittest.TestCase):
                                               safe_label_edge=True)
         self.edge_writer.commit()
         # TODO Add test here for has_license edge type.
+        q = self.edge_writer.nc.commit_list(["MATCH (x)-[r:has_license]->(y) "
+                                             "RETURN type(r) AS rel, r.type AS rtype, "
+                                             "x.label AS who"])
+        r = results_2_dict_list(q)
+        if r:
+            assert r[0]['rtype'] == 'Annotation'
+            assert r[0]['rel'] == 'has_license'
+            assert r[0]['who'] == 'David'
+
 
         
     def tearDown(self):
@@ -209,13 +227,9 @@ class TestKBPatternWriter(unittest.TestCase):
 
         self.nc.commit_list(statements)
         statements = []
-
         statements.append("MERGE (p:Class { short_form: 'lobulobus', label: 'lobulobus' })")
-
         statements.append("MERGE (p:Individual:Template { short_form: 'template_of_dave', label: 'template_of_dave' })")
-
         statements.append("MERGE (s:Site:Individual { short_form : 'fu' }) ")
-
         statements.append("MERGE (ds:DataSet:Individual { short_form : 'dosumis2020' }) ")
 
 
@@ -232,6 +246,8 @@ class TestKBPatternWriter(unittest.TestCase):
             start=100
         )
         self.kpw.commit()
+
+        ## TODO: Add test using code in neo2neo.kb_tests - needs a little refactoring to make callable.
 
     def tearDown(self):
         return
