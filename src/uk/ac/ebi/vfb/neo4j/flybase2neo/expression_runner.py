@@ -19,6 +19,8 @@ fm = FeatureMover(endpoint, usr, pwd, temp_csv_filepath)
 def exp_gen(): return # code for generating and wiring up expression patterns
 
 def add_pubs(): return
+
+
 # Query feature_expression => pub feature and fbex
 feps = fm.query_fb("SELECT pub.uniquename as fbrf, "
                    "f.uniquename as fbid, e.uniquename as fbex "
@@ -31,6 +33,23 @@ gene_products = [f['fbid'] for f in feps]
 pubs = [f['fbrf'] for f in feps]
 taps = [f['fbex'] for f in feps]
 
+# Sketch
+# Aim: transform pub:feature:FBex to pub:ep:FBex WHERE ep is expressed as munged gene/ti/tp ID
+# Links could be kept in Python, but could stil be efficient with Cypher *if* done as batch
+# For every GP
+# Follow path from GP -> gene (direct) or GP->allele->ti/tp
+# For each in this list:
+# Generate expression pattern node + classification & expresses link.
+
+# ID generation:
+## FBgn1234567 -> VFBexp_FBgn1234567
+## For Anat + stage range nodes - use UUID, or mung FBBt & FBdv Ids, e.g. VFBexp_FBbt_1234567_FBdv_1234567_FBdv_7654321 ?!
+## Better than UUIDs as should be quite stable.  Stability allows merge on ID.
+## Or could make a hash using combo of IDs.
+
+
+
+
 # TODO - check paths through feature_relations table
 fm.add_features(gene_products)
 fm.addTypes2Neo(gene_products)
@@ -40,8 +59,9 @@ transgenes = fm.gp2Transgene(gene_products)
 fm.add_feature_relations(genes)
 fm.add_feature_relations(transgenes)
 
-# Construct gene expression pattern
-# Construc transgene expression pattern
+# Construct gene expression pattern nodes
+# Construc transgene expression pattern modes
+exp_gen()  # Takes a mapping of gene expression pattern to feature product nodes
 
 add_pubs(pubs)
 

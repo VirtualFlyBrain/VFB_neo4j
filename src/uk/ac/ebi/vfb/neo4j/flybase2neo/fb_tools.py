@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 import psycopg2
-from uk.ac.ebi.vfb.neo4j.neo4j_tools import neo4j_connect, chunks
-#from ..vfb_neo_tools import VFBCypherGen
-import re
+from ..KB_tools import KB_pattern_writer
 import pandas as pd
 
 '''
@@ -54,7 +52,10 @@ class FB2Neo(object):
 
     def _init(self, endpoint, usr, pwd):
         self.conn = get_fb_conn()
-        self.nc = neo4j_connect(endpoint, usr, pwd)
+        pattern_writer = KB_pattern_writer(endpoint, usr, pwd)
+        self.ew = pattern_writer.ew
+        self.ni = pattern_writer.ni
+        self.nc = pattern_writer.ni.nc
 
     def query_fb(self, query):
         """Runs a query of public Flybase, 
@@ -64,11 +65,6 @@ class FB2Neo(object):
         dc = dict_cursor(cursor)
         cursor.close()
         return dc
-        
-    def commit(self):
-        #probably better to call this FB commit?
-        # Ermm - actually - waht is this for?
-        self.conn.commit()
 
     def commit_via_csv(self, statement, dict_list):
         df = pd.DataFrame.from_records(dict_list)
@@ -77,7 +73,6 @@ class FB2Neo(object):
                            statement=statement,
                            sep="\t")
         # add something to delete csv here.
-
 
         
     def close(self):

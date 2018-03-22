@@ -1,4 +1,7 @@
 from .fb_tools import FB2Neo
+from ...curie_tools import map_iri
+
+import uuid
 
 def clean_sgml_tags(sgml_string):
     sgml_string = re.sub('<up>', '[', sgml_string)
@@ -23,6 +26,9 @@ def map_feature_type(fbid, ftype):
         return mapping[ftype]
     else:
         return 'SO_0000110' # Sequence feature
+
+def gen_ep_iri(fbid):
+    return { 'iri' : map_feature_type('vfb') + 'VFBexp_' + 'fbid', 'short_form': 'VFBexp_' + fbid }
 
 
 class FeatureMover(FB2Neo):
@@ -190,9 +196,35 @@ class FeatureMover(FB2Neo):
         for t in triples:
             statements.append(
                 "MATCH (s:Feature { short_form: '%s'}), (o:Feature { short_form: '%s'}) " \
-                "MERGE (s)-[r:%s]->(o)" % (t[0], t[2], t[1])
+                "MERGE (s)-[r:%s]->(o)" % (t[0], t[2], t[1])  # Should be using KB_tools (?)
             )
         self.nc.commit_list_in_chunks(statements)
 
-    def generate_expression_pattern(self):
+    def generate_expression_patterns(self, fbids):
+        ns_lookup = self.name_synonym_lookup(fbids)
+        for fbid in fbids:
+            # Generate iri  - use something derived from FB id as will be 1:1.
+            # Use: VFBexp_FBxxnnnnnnn
+            ad = {}
+            ad['iri'] = gen_ep_iri(fbid)
+            # Generate label = 'label . expression pattern'
+            ad['label'] = ns_lookup[fbid]['label'] + ' expression pattern'
+            ad['synonyms'] = [x + ' expression pattern' for x in ns_lookup[fbid]['synonyms']]
+            # Add node
+            self.ni.add_node(labels='Class:',
+                             attribute_dict=ad)
+            self.ew.add_named_subClassOf_ax(s=ad['iri'],
+                                            o='',
+                                            match_on='iri')
+            self.ew.add_anon_subClassOf_ax(s='',
+                                           r='',
+                                           o='',
+                                           match_on='iri')
+        self.ni.commit()
+        self.ew.commit()
+
+        # Add edges - subClassOf expression pattern; expresses fu (we know fu from the feature list.
+
+        # return iris of expression pattern nodes for further use.  Need link back to original feature ID linked to expression
         return
+
