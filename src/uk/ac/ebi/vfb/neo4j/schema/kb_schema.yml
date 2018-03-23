@@ -1,0 +1,28 @@
+testsets:
+  - description: "Datasets"
+    objects: "MATCH (ds:DataSet) RETURN ds.label as label"
+    query_return: " WHERE ds.label = '%s' RETURN COUNT (DISTINCT i) as ind_count, COLLECT(i.short_form) as ind_list"
+    vars:
+      base_match: "MATCH (ds:DataSet)<-[:has_source]-(i:Individual)"
+      extension: "<-[:Related { short_form: 'depicts' }]-(j:Individual)"
+    tests:
+        - description: All anatomical individuals in dataset have matching channel individuals.
+          baseline: "base_match"
+          test: ""
+          test_base: "base_match|extension"
+        - description: All anatomical individuals in dataset have matching registered channel individuals.
+          baseline: "base_match"
+          test: "-[{ iri: 'http://purl.obolibrary.org/obo/RO_0002026' }]->(k:Individual)"
+          test_base: "base_match|extension"
+        - description: All anatomical individuals in dataset have matching channel individuals with imaging method.
+          baseline: "base_match"
+          test: "-[:Related { label: 'is_specified_output_of'} ]->(:Class)"
+          test_base: "base_match|extension"
+        - description: All anatomical individuals in dataset have matching channel, typed individuals.
+          baseline: "base_match"
+          test: "-[:INSTANCEOF]->(c:Class { label: 'channel'})"
+          test_base: "base_match|extension"
+        - description: All anatomical individuals in dataset are typed.
+          baseline: "base_match"
+          test: "-[:INSTANCEOF]->(c:Class)"
+          test_base: "base_match"
