@@ -86,7 +86,7 @@ class ExpressionWriter(FB2Neo):
 
         FBex_lookup = {}
         old_key = ''
-
+        stage, anatomy, cellular, assay = ''
         for d in exp:
             key = d['fbex']
             if not (key == old_key):
@@ -149,14 +149,14 @@ class ExpressionWriter(FB2Neo):
         iri = map_iri('vfb')
         short_form = '' # Generic generator?
         label = '%s from %s to %s' % ('', '', '')
-        stages = expand_stage_range(self.nc, start, end)
+        stages = (self.nc, start, end)
         self.ni.add_node()
         self.ew.add_named_subClassOf_ax()
         for s in stages:
             self.ew.add_anon_subClassOf_ax(s=short_form,
-                                           r='',
+                                           r='',  # exists_during
                                            o=s,
-                                           match_on=short_form)# Need method for adding anon subclassof!
+                                           match_on=short_form)
 
         return {'iri': iri, 'short_form': short_form, 'label': label}
 

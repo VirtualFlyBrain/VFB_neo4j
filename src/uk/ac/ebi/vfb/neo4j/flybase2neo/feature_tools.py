@@ -27,9 +27,6 @@ def map_feature_type(fbid, ftype):
     else:
         return 'SO_0000110' # Sequence feature
 
-def gen_ep_iri(fbid):
-    return { 'iri' : map_feature_type('vfb') + 'VFBexp_' + 'fbid', 'short_form': 'VFBexp_' + fbid }
-
 
 class FeatureMover(FB2Neo):
 
@@ -201,30 +198,38 @@ class FeatureMover(FB2Neo):
         self.nc.commit_list_in_chunks(statements)
 
     def generate_expression_patterns(self, fbids):
+
+
+        # Keeping this function scope local
+        def gen_ep_iri(fbid):
+            return {'iri': map_feature_type('vfb') + 'VFBexp_' + 'fbid',
+                    'short_form': 'VFBexp_' + fbid}
+
         ns_lookup = self.name_synonym_lookup(fbids)
         for fbid in fbids:
             # Generate iri  - use something derived from FB id as will be 1:1.
             # Use: VFBexp_FBxxnnnnnnn
             ad = {}
-            ad['iri'] = gen_ep_iri(fbid)
+            ep =  gen_ep_iri(fbid)
             # Generate label = 'label . expression pattern'
             ad['label'] = ns_lookup[fbid]['label'] + ' expression pattern'
+            ad['short_form'] = ep['short_form']
             ad['synonyms'] = [x + ' expression pattern' for x in ns_lookup[fbid]['synonyms']]
             # Add node
             self.ni.add_node(labels='Class:',
+                             IRI=ep['iri'],
                              attribute_dict=ad)
-            self.ew.add_named_subClassOf_ax(s=ad['iri'],
-                                            o='',
-                                            match_on='iri')
-            self.ew.add_anon_subClassOf_ax(s='',
-                                           r='',
-                                           o='',
-                                           match_on='iri')
+
+            self.ew.add_named_subClassOf_ax(s=ep['short_form'],
+                                            o='CARO_0030002',  # expression pattern
+                                            match_on='short_form')
+            self.ew.add_anon_subClassOf_ax(s=ep['short_form'],
+                                           r='RO_0002292',  # expresses
+                                           o=fbid,
+                                           match_on='short_form')
         self.ni.commit()
         self.ew.commit()
-
         # Add edges - subClassOf expression pattern; expresses fu (we know fu from the feature list.
-
         # return iris of expression pattern nodes for further use.  Need link back to original feature ID linked to expression
         return
 
