@@ -5,13 +5,10 @@ Created on Mar 23, 2018
 '''
 
 import yaml
-import sys
 import warnings
 import json
 import flatdict
-import os
-print(os.getcwd())
-from neo4j_tools import neo4j_connect,  results_2_dict_list
+from ..neo4j_tools import neo4j_connect,  results_2_dict_list
 
 def query(query):
     q = nc.commit_list([query])
