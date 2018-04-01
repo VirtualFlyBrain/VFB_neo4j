@@ -1,6 +1,8 @@
 from .fb_tools import FB2Neo
 from ...curie_tools import map_iri
-
+import re
+import warnings
+import collections
 import uuid
 
 def clean_sgml_tags(sgml_string):
@@ -28,10 +30,25 @@ def map_feature_type(fbid, ftype):
         return 'SO_0000110' # Sequence feature
 
 
+# Using named tuples to standardise immutable objects for holding data.
+
+Feature = collections.namedtuple('Feature', ['symbol',
+                                             'fbid',
+                                             'synonyms',  # list of synonyms
+                                             'iri'
+                                             ])
+
+Duple = collections.namedtuple('ftype', ['s', 'o'])
+Triple = collections.namedtuple('ftype', ['s', 'r', 'o'])
+
 class FeatureMover(FB2Neo):
 
     def name_synonym_lookup(self, fbids):
-        """Makes unicode name primary.  Makes everything else a synonym"""
+        """Takes a list of fbids, returns a dictionary of Feature objects, keyed on fbid.
+        Note - makes unicode name primary.  Makes everything else a synonym"""
+        if not fbids:
+            warnings.warn("Empty fbid list provided to name_synonym_lookup")
+            return False
         # stypes: symbol nickname synonym fullname
         query = "SELECT f.uniquename as fbid, s.name as ascii_name, " \
                 "stype.name AS stype, " \
@@ -42,18 +59,20 @@ class FeatureMover(FB2Neo):
                 "JOIN cvterm stype on (s.type_id=stype.cvterm_id) " \
                 "WHERE f.uniquename IN ('%s')"
         dc = self.query_fb(query % "','".join(fbids))
-        results = []
+        results = {}
         old_key = ''
         out = {}
         for d in dc:
             key = d['fbid']
             if not (key == old_key):
-                if out: results.append(out)
+                if out:
+                    results[old_key] = Feature(**out)
                 out = {}
-                out['fbid'] = d['fbid']
+                out['fbid'] = key
+                out['iri'] = map_iri('FlyBase') + key
                 out['synonyms'] = set()
             if d['stype'] == 'symbol' and d['is_current']:
-                out['label'] = clean_sgml_tags(d['unicode_name'])
+                out['symbol'] = clean_sgml_tags(d['unicode_name'])
             else:
                 out['synonyms'].add(clean_sgml_tags(d['ascii_name']))
                 out['synonyms'].add(clean_sgml_tags(d['unicode_name']))
@@ -62,14 +81,15 @@ class FeatureMover(FB2Neo):
 
     def add_features(self, fbids):
         """Takes a list of fbids, generates a csv and uses this to merge feature nodes,
-        adding a unicode label and a list of synonyms"""
-        names = self.name_synonym_lookup(fbids)
-        proc_names = [{'fbid': r['fbid'], 'label': r['label'],
-                       'synonyms': '|'.join(r['synonyms'])}
-                      for r in names]  # bit ugly...
+        adding a unicode label and a list of synonyms.  Returns a dictionary of Feature objects, keyed on fbid"""
+        feats = self.name_synonym_lookup(fbids)
+        proc_names = [f._asdict() for f in feats]
+        for d in proc_names:
+            d['synonyms'] = '|'.join(d['synonyms'])
         statement = "MERGE (n:Feature { short_form : line.fbid } ) " \
-                    "SET n.label = line.label , n.synonyms = split(line.synonyms, '|')"  # Need to set iri
+                    "SET n.label = line.symbol , n.synonyms = split(line.synonyms, '|')"  # Need to set iri
         self.commit_via_csv(statement, proc_names)
+        return feats
 
     # Typing
 
@@ -197,39 +217,38 @@ class FeatureMover(FB2Neo):
             )
         self.nc.commit_list_in_chunks(statements)
 
-    def generate_expression_patterns(self, fbids):
+    def generate_expression_patterns(self, features):
 
-
+        out = {}
         # Keeping this function scope local
-        def gen_ep_iri(fbid):
-            return {'iri': map_feature_type('vfb') + 'VFBexp_' + 'fbid',
-                    'short_form': 'VFBexp_' + fbid}
+        def gen_ep_feat(feat):
+            return Feature(iri= map_iri('vfb') + 'VFBexp_' + feat.fbid,
+                           fbid= 'VFBexp_' + feat.fbid,
+                           symbol = feat.symbol + ' expression pattern',
+                           synonyms = [x + ' expression pattern' for x in feat.synonyms])
 
-        ns_lookup = self.name_synonym_lookup(fbids)
-        for fbid in fbids:
+        for feat in features.values():
             # Generate iri  - use something derived from FB id as will be 1:1.
             # Use: VFBexp_FBxxnnnnnnn
-            ad = {}
-            ep =  gen_ep_iri(fbid)
+            ep = gen_ep_feat(feat)
+            ad = {'label': ep.symbol, 'short_form': ep.fbid, 'synonyms': ep.synonyms}
             # Generate label = 'label . expression pattern'
-            ad['label'] = ns_lookup[fbid]['label'] + ' expression pattern'
-            ad['short_form'] = ep['short_form']
-            ad['synonyms'] = [x + ' expression pattern' for x in ns_lookup[fbid]['synonyms']]
             # Add node
             self.ni.add_node(labels='Class:',
-                             IRI=ep['iri'],
+                             IRI=ep.iri,
                              attribute_dict=ad)
 
-            self.ew.add_named_subClassOf_ax(s=ep['short_form'],
+            self.ew.add_named_subClassOf_ax(s=ep.fbid,
                                             o='CARO_0030002',  # expression pattern
                                             match_on='short_form')
-            self.ew.add_anon_subClassOf_ax(s=ep['short_form'],
+            self.ew.add_anon_subClassOf_ax(s=ep.fbid,
                                            r='RO_0002292',  # expresses
-                                           o=fbid,
+                                           o=feat.fbid,
                                            match_on='short_form')
+            out[ep.fbid] = ep
         self.ni.commit()
         self.ew.commit()
         # Add edges - subClassOf expression pattern; expresses fu (we know fu from the feature list.
         # return iris of expression pattern nodes for further use.  Need link back to original feature ID linked to expression
-        return
+        return out
 
