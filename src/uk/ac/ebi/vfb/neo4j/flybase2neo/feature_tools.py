@@ -69,7 +69,7 @@ class FeatureMover(FB2Neo):
                     results[old_key] = Feature(**out)
                 out = {}
                 out['fbid'] = key
-                out['iri'] = map_iri('FlyBase') + key
+                out['iri'] = map_iri('fb') + key
                 out['synonyms'] = set()
             if d['stype'] == 'symbol' and d['is_current']:
                 out['symbol'] = clean_sgml_tags(d['unicode_name'])
@@ -82,13 +82,17 @@ class FeatureMover(FB2Neo):
     def add_features(self, fbids):
         """Takes a list of fbids, generates a csv and uses this to merge feature nodes,
         adding a unicode label and a list of synonyms.  Returns a dictionary of Feature objects, keyed on fbid"""
+        if not fbids:
+            warnings.warn("No fbids provided.")
+            return False
         feats = self.name_synonym_lookup(fbids)
-        proc_names = [f._asdict() for f in feats]
+        proc_names = [f._asdict() for f in feats.values()]
         for d in proc_names:
             d['synonyms'] = '|'.join(d['synonyms'])
-        statement = "MERGE (n:Feature { short_form : line.fbid } ) " \
+        statement = "MERGE (n:Feature:Class { short_form : line.fbid } ) " \
                     "SET n.label = line.symbol , n.synonyms = split(line.synonyms, '|')"  # Need to set iri
         self.commit_via_csv(statement, proc_names)
+        self.addTypes2Neo(fbids)
         return feats
 
     # Typing
@@ -120,14 +124,14 @@ class FeatureMover(FB2Neo):
 
         feature_classifications = [{'child': t[0], 'parent': t[1]} for t in types]
         statement = "MATCH (p:Class { short_form: line.parent })" \
-                    ",(c:Feature { short_form: line.child }) " \
+                    ",(c:Class { short_form: line.child }) " \
                     "MERGE (p)<-[:SUBCLASSOF]-(c)"
-        self.commit_via_csv(statement, feature_classifications)
+        self.commit_via_csv(statement, feature_classifications)  # This is currently failing, but I have no idea why.  disadvantage csv
 
     def abberationType(self, abbs):
         """abbs = a list of abberation fbids
         Returns a list of (fbid, type) tuples where type is a SO ID"""
-        # Super slow and broken!
+        # Super slow and broken! May not be worth the extra work to fix...
         results = []
         abbs_proc = []  # For tracking processed abbs
         query = "SELECT f.uniquename AS fbid, db.name AS db," \
@@ -170,8 +174,8 @@ class FeatureMover(FB2Neo):
                          "JOIN feature o ON fr.object_id=o.feature_id " \
                          "WHERE s.uniquename IN ('%s') " \
                          "AND r.name = '%s' " \
-                         "AND o.uniquename like '%s'"
-        query = query_template % ("','".join(subject_ids), chado_rel, o_idp + '%')
+                         "AND o.uniquename ~ '%s.+'"
+        query = query_template % ("','".join(subject_ids), chado_rel, o_idp)
         dc = self.query_fb(query)
         results = []
         for d in dc:
@@ -184,22 +188,23 @@ class FeatureMover(FB2Neo):
         return self._get_objs(subject_ids, chado_rel='alleleof', out_rel='is_allele_of', o_idp='FBgn')
 
     # gp - transgene R associated_with Type object by uniquename FBgn
-    def gp2Transgene(self, subject_ids):
+    def gp2allele(self, subject_ids):
         """Takes a list of gene product IDs, returns a list of triples as python tuples:
          (gene_product rel transgene) where rel is appropriate for addition to prod."""
-        return self._get_objs(subject_ids, chado_rel='associated_with', out_rel='fu', o_idp='FBti|FBtp')
+        return self._get_objs(subject_ids, chado_rel='associated_with', out_rel='product_of', o_idp='FBal')
 
     # gp - gene associated_with Type object by uniquename FBgn
     def gp2Gene(self, subject_ids):
         """Takes a list of gene product IDs, returns a list of triples as python tuples:
          (gene_product rel gene) where rel is appropriate for addition to prod."""
-        return self._get_objs(subject_ids, chado_rel='associated_with', out_rel='expressed_by', o_idp='FBgn')
+        return self._get_objs(subject_ids, chado_rel='associated_with', out_rel='product_of', o_idp='FBgn')
 
     # transgene - allele  R associated_with Type object by uniquename FBal
-    def transgene2allele(self, subject_ids):
+    def allele2transgene(self, subject_ids):
         """Takes a list of transgene IDs, returns a list of triples as python tuples:
          (transgene rel allele) where rel is appropriate for addition to prod."""
-        return self._get_objs(subject_ids, chado_rel='associated_with', out_rel='fu', o_idp='FBal')
+        return self._get_objs(subject_ids, chado_rel='associated_with', out_rel='fu', o_idp='(FBti|FBtp)')
+
 
     def add_feature_relations(self, triples, assume_subject=True):
         if not assume_subject:
@@ -218,23 +223,25 @@ class FeatureMover(FB2Neo):
         self.nc.commit_list_in_chunks(statements)
 
     def generate_expression_patterns(self, features):
+        if not features:
+            return False
 
         out = {}
         # Keeping this function scope local
         def gen_ep_feat(feat):
-            return Feature(iri= map_iri('vfb') + 'VFBexp_' + feat.fbid,
-                           fbid= 'VFBexp_' + feat.fbid,
-                           symbol = feat.symbol + ' expression pattern',
-                           synonyms = [x + ' expression pattern' for x in feat.synonyms])
+            return Feature(iri=map_iri('vfb') + 'VFBexp_' + feat.fbid,
+                           fbid='VFBexp_' + feat.fbid,
+                           symbol=feat.symbol + ' expression pattern',
+                           synonyms=[x + ' expression pattern' for x in feat.synonyms])
 
         for feat in features.values():
             # Generate iri  - use something derived from FB id as will be 1:1.
             # Use: VFBexp_FBxxnnnnnnn
             ep = gen_ep_feat(feat)
-            ad = {'label': ep.symbol, 'short_form': ep.fbid, 'synonyms': ep.synonyms}
+            ad = {'label': ep.symbol, 'synonyms': ep.synonyms}
             # Generate label = 'label . expression pattern'
             # Add node
-            self.ni.add_node(labels='Class:',
+            self.ni.add_node(labels=['Class'],
                              IRI=ep.iri,
                              attribute_dict=ad)
 
@@ -245,7 +252,7 @@ class FeatureMover(FB2Neo):
                                            r='RO_0002292',  # expresses
                                            o=feat.fbid,
                                            match_on='short_form')
-            out[ep.fbid] = ep
+
         self.ni.commit()
         self.ew.commit()
         # Add edges - subClassOf expression pattern; expresses fu (we know fu from the feature list.

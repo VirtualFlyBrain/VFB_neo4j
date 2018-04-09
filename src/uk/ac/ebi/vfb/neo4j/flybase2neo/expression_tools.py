@@ -17,7 +17,11 @@ def expand_stage_range(nc, start, end):
 
 class ExpressionWriter(FB2Neo):
 
-    def get_all_expression(self, limit=False):
+    def __init__(self, endpoint, usr, pwd):
+        self._init(endpoint, usr, pwd)
+        self.FBex_lookup = []
+
+    def get_expression(self, limit=False, FBex_list=False):
         query = 'SELECT c.name as cvt, db.name as cvt_db, dbx.accession as cvt_acc, ec.rank as ec_rank, ' \
                 't1.name as ec_type, ectp.value as ectp_value, ' \
                 't2.name as ectp_name, ectp.rank as ectp_rank, ' \
@@ -29,10 +33,15 @@ class ExpressionWriter(FB2Neo):
                 'JOIN dbxref dbx ON (dbx.dbxref_id = c.dbxref_id) ' \
                 'JOIN db ON (dbx.db_id=db.db_id) ' \
                 'JOIN cvterm t1 on ec.cvterm_type_id=t1.cvterm_id  ' \
-                'LEFT OUTER JOIN cvterm t2 on ectp.type_id=t2.cvterm_id order by e.uniquename'
+                'LEFT OUTER JOIN cvterm t2 on ectp.type_id=t2.cvterm_id'
+
+        if FBex_list:
+            query += " WHERE e.uniquename in ('%s')" % "','".join(FBex_list)
+
+        query += ' ORDER BY e.uniquename'
 
         if limit:
-            query += " limit %d" % limit
+            query += " LIMIT %d" % limit
 
 
 #         cvt         |      cvt_db      |                cvt_acc                 | ec_rank | ec_type | ectp_value | ectp_name | ectp_rank |    fbex
@@ -86,7 +95,7 @@ class ExpressionWriter(FB2Neo):
 
         FBex_lookup = {}
         old_key = ''
-        stage, anatomy, cellular, assay = ''
+        stage, anatomy, cellular, assay = '','','',''
         for d in exp:
             key = d['fbex']
             if not (key == old_key):
@@ -108,6 +117,8 @@ class ExpressionWriter(FB2Neo):
             if d['ec_type'] == 'assay':
                 proc_row(d, assay)
             old_key = key
+
+        self.FBex_lookup = FBex_lookup
 
 
 
@@ -154,13 +165,23 @@ class ExpressionWriter(FB2Neo):
         self.ew.add_named_subClassOf_ax()
         for s in stages:
             self.ew.add_anon_subClassOf_ax(s=short_form,
-                                           r='',  # exists_during
+                                           r='RO_0002093',  # exists_during
                                            o=s,
                                            match_on=short_form)
 
         return {'iri': iri, 'short_form': short_form, 'label': label}
 
 
+    def link_ep2anat(self, a, ep, ad):
+        # We need an if clause in here.  Easier to do this with manual addition
+        ep_match = "MATCH (ep:Class { short_form: '%s'}), " % ep
+        gross_anatomy_match = "(c { short_form: '%s' }) where not('Cell' in labels(c)) " \
+                              "MERGE (ep)-[r:overlaps { short_form: '', type: 'Related']->(c) " \
+                              "SET properties(r) += %s" % (a, str(ad))
+        cell_match_merge = "(c:Class { short_form: '%s' }) where 'Cell' in labels(c) " \
+                           "MERGE (ep)-[r:has_part { short_form: '', type: 'Related']->(c) " \
+                           "SET properties(r) += %s" % (a, str(ad))
+        self.nc.commit_list([ep_match + gross_anatomy_match, ep_match + cell_match_merge])
 
     def write_fbexp(self, fbex_list):
         for fbex in fbex_list:
@@ -170,7 +191,8 @@ class ExpressionWriter(FB2Neo):
 
 
 
-    def write_expression(self, pub, expression_pattern, FBex):
+    def write_expression(self, pub, fbid, fbex):
+
 
 
         # Phase 1 Generate intermediate (stage restricted) anatomy nodes
@@ -184,17 +206,21 @@ class ExpressionWriter(FB2Neo):
 
         ### Schema for EP
         # https://github.com/VirtualFlyBrain/VFB_neo4j/issues/2
-        # (as:Class:Anatomy { "label" :  'lateral horn  - from S-x to S-y', short_form : 'FBex...', assay: ''})
+        # (as:Class:Anatomy { "label" :  'lateral horn  - from S-x to S-y'})
         # (as)-[SubClassOf]->(:Anatomy { label:  'lateral horn', short_form: "FBbt_...." })
-        # (as)-[during]->(sr:stage { label: 'stage x to y'} )
+        # (as)-[exists_during]->(sr:stage { label: 'stage x to y'} )
         # (sr)-[start]->(:stage { label: 'stage x', short_form: 'FBdv_12345678' }
         # (sr)-[end]->(:stage { label: 'stage y', short_form: 'FBdv_22345678' }
+        # (ep)-[:overlaps/has_part { assay: '' ; FBex: '' }]->(as) # Could turn this into an OBAN assoc.
+
+        # How to check classification => has_part vs overlaps? Could potentially be a case clause in Cypher.
+        # On cell label.  But this means we can't use the usual edge addition method.
+        # Instead of doing this in the Cypher, we could use a label match.  This would require a soft fail
+        # and ignoring warnings about match failure.
+
+        # Or - could leave out for now and worry about it once in OWL.
 
 
 
 
         return
-
-
-ep = ExpressionWriter('http://localhost:7474', 'neo4j', 'neo4j')
-ep.get_all_expression(limit=1000)
