@@ -59,6 +59,12 @@ label_types = {
    'Glial_cell': 'glial cell',
    'Expression_pattern': 'expression_pattern',
    'Ganglion': 'ganglion'
+   'Cholinergic': 'cholinergic neuron',
+   'Glutamatergic': 'glutamatergic neuron',
+   'GABAergic': 'GABAergic neuron',
+   'Octopaminergic': 'octopaminergic neuron',
+   'Dopaminergic': 'dopaminergic neuron',
+   'Serotonergic': 'serotonergic neuron',
    }
 
 label_additions = []
