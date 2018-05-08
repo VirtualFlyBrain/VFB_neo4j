@@ -736,6 +736,82 @@ class KB_pattern_writer(object):
                                          match_on='short_form',
                                          safe_label_edge=True)
 
+   def add_OBAN_assoc(self, s, r, o, source=None, pubs=None, evidence=None):
+
+        """s = subject short_form
+           r = relation short_form
+           o = object short_form
+           source = DB source. e.g. FlyBase
+           pubs = list of pubs (FBrf or DOI) as strings
+           evidence = list of evidence types (short_form strings)"""
+
+        # requires
+        # - OBAN to be loaded. - Done.
+        # - FlyBase evidence to be loaded - we can gradually map this over to something more standard/structured.
+
+        # Create assoc node with UUID.  Not good for re-use, but that seems OK].
+
+        self.ew.add_fact(s, r, o)  # s,r,o triple
+
+        assoc_sf = 'VFBinternal_' + str(uuid.UUID())
+        assoc_iri = map_iri('VFB') + assoc_sf
+
+        self.ni.add_node(labels="Individual",
+                         IRI=assoc_iri)
+
+        self.ew.add_named_type_ax(s=assoc_sf,
+                                  o='association',
+                                  match_on='short_form')  # assoc to type
+
+        self.ew.add_annotation_axiom(s=assoc_sf,
+                                     r='association_has_subject',
+                                     o=s,
+                                     match_on='short_form')  # assoc to subject
+
+        self.ew.add_annotation_axiom(s=assoc_sf,
+                                     r='association_has_predicate',
+                                     o=r,
+                                     match_on='short_form')  # assoc to predicate
+
+        self.ew.add_annotation_axiom(s=assoc_sf,
+                                     r='association_has_object',
+                                     o=o,
+                                     match_on='short_form')  # assoc to object
+
+        prov_sf = 'VFBinternal_' + str(uuid.UUID())
+        prov_iri = map_iri('VFB') + prov_sf
+
+        self.ni.add_node(labels="Individual",
+                         IRI=prov_iri)
+
+        self.ew.add_named_type_ax(s=assoc_sf,
+                                  o='provenance',
+                                  match_on='short_form')  # assoc to type
+
+        self.ew.add_fact(s=assoc_sf,
+                         r='has_provenance',
+                         o=prov_sf,
+                         match_on='short_form')  # assoc to prov
+
+        if source:
+            self.ew.add_annotation_axiom(s=prov_sf,
+                                         r='source',
+                                         o=source,
+                                         match_on='short_form')  # link to pub
+
+        if pubs:
+            for pub in pubs:
+                self.ew.add_annotation_axiom(s=prov_sf,
+                                             r='references',
+                                             o='pub',
+                                             match_on='short_form')  # link to pub
+        if evidence:
+            for e in evidence:
+                self.ew.add_annotation_axiom(s=prov_sf,
+                                             r='RO_0002558',
+                                             o=e,
+                                             match_on='short_form')  # link to evidence
+
 
 
 
