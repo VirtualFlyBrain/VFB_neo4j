@@ -53,7 +53,7 @@ def compare(dataset, description, query1, query2, verbose = False):
         return False
 
 
-datasets = nc.commit_list(["MATCH (ds:DataSet) RETURN ds.label"])
+datasets = nc.commit_list(["MATCH (ds:DataSet) WHERE ds.schema = 'image' RETURN ds.label"])
 dc = results_2_dict_list(datasets)
 
 return_state = True
