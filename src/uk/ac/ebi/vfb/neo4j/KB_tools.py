@@ -3,6 +3,7 @@ Created on Mar 6, 2017
 
 @author: davidos
 '''
+import uuid
 import warnings
 import re
 import json
@@ -717,7 +718,6 @@ class KB_pattern_writer(object):
                              'short_form': short_form,
                              'description': description,
                              'dataset_spec_text': dataset_spec_text})
-        self.ni.commit()
         self.ew.add_annotation_axiom(s=name,
                                      r='license',
                                      o=license,
@@ -736,7 +736,7 @@ class KB_pattern_writer(object):
                                          match_on='short_form',
                                          safe_label_edge=True)
 
-   def add_OBAN_assoc(self, s, r, o, source=None, pubs=None, evidence=None):
+    def add_OBAN_assoc(self, s, r, o, source=None, pubs=None, evidence=None):
 
         """s = subject short_form
            r = relation short_form
@@ -756,7 +756,7 @@ class KB_pattern_writer(object):
         assoc_sf = 'VFBinternal_' + str(uuid.UUID())
         assoc_iri = map_iri('VFB') + assoc_sf
 
-        self.ni.add_node(labels="Individual",
+        self.ni.add_node(labels=["Individual"],
                          IRI=assoc_iri)
 
         self.ew.add_named_type_ax(s=assoc_sf,
@@ -781,7 +781,7 @@ class KB_pattern_writer(object):
         prov_sf = 'VFBinternal_' + str(uuid.UUID())
         prov_iri = map_iri('VFB') + prov_sf
 
-        self.ni.add_node(labels="Individual",
+        self.ni.add_node(labels=["Individual"],
                          IRI=prov_iri)
 
         self.ew.add_named_type_ax(s=assoc_sf,
@@ -811,10 +811,6 @@ class KB_pattern_writer(object):
                                              r='RO_0002558',
                                              o=e,
                                              match_on='short_form')  # link to evidence
-
-
-
-
 
 # Specs for a fb_feature_update
 ## Pull current feature nodes from DB
