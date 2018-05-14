@@ -409,7 +409,7 @@ class node_importer(kb_writer):
     e.g. from ontologies, FlyBase, CATMAID.
     Constructor: owl_import_updater(endpoint, usr, pwd)
     """
-        
+
     def add_constraints(self, uniqs=None, indexes=None):
         """Specify addition uniqs and indexes via dicts.
         { label : [attributes] } """
@@ -492,6 +492,7 @@ class node_importer(kb_writer):
             ## Update nodes.
             self.add_node(labels, IRI, attribute_dict)
         self.check_for_obsolete_nodes_in_use()
+        self.add_missing_labels()
         return True
 
     def check_for_obsolete_nodes_in_use(self):
@@ -555,7 +556,17 @@ class node_importer(kb_writer):
     def migrate_features_to_new_ids(self, d):
         """STUB"""
         return
-    
+
+    def add_missing_labels(self):
+        self.nc.commit_list(["MATCH (n:Property) WHERE (not exists(n.label)) "
+                             "AND (n.is_obsolete = false) AND "
+                             "(exists(n.short_form)) SET n.label = n.short_form",
+                             "MATCH (n:Class) WHERE (not exists(n.label)) "
+                             "AND (n.is_obsolete = false) AND "
+                             "(exists(n.short_form)) SET n.label = n.short_form"
+                             ])
+
+
 class KB_pattern_writer(object):
     """A wrapper class for adding subgraphs following some pre-specified
     schema pattern.
@@ -736,7 +747,7 @@ class KB_pattern_writer(object):
                                          match_on='short_form',
                                          safe_label_edge=True)
 
-    def add_OBAN_assoc(self, s, r, o, source=None, pubs=None, evidence=None):
+    def add_OBAN_assoc(self, s, r, o, source=None, pubs=None, evidence=None, match_on='short_form'):
 
         """s = subject short_form
            r = relation short_form
