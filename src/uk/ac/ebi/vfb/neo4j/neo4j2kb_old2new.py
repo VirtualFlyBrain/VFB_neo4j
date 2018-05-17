@@ -1,7 +1,7 @@
 '''
-Created on Mar 6, 2017
+Created on May 15, 2018
 
-@author: davidos
+@author: matentzn
 '''
 from warnings import warn
 import re

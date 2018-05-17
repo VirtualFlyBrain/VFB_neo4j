@@ -3,7 +3,7 @@ Created on May 15, 2018
 
 @author: matentzn
 '''
-import warnings as warn
+import sys
 from uk.ac.ebi.vfb.neo4j.KB_tools import kb_owl_edge_writer
 from uk.ac.ebi.vfb.neo4j.neo4j_tools import results_2_dict_list
 #from ..curie_tools import map_iri
@@ -138,7 +138,7 @@ def all_relationship_types_must_have_corresponding_property_node(nc):
             print('PASSED: all_relationship_types_must_have_corresponding_property_node[x]')
 
 
-edge_writer = kb_owl_edge_writer('http://localhost:7474', 'neo4j', 'neo')
+edge_writer = kb_owl_edge_writer(sys.argv[1], sys.argv[2], sys.argv[3])
 nc = edge_writer.nc
 
 print('Collecting original database state indicators')
