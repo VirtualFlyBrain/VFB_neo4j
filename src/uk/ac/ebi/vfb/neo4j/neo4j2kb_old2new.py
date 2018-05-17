@@ -13,7 +13,7 @@ from uk.ac.ebi.vfb.neo4j.neo4j_tools import results_2_dict_list
 #from ..curie_tools import map_iri
 
 edge_writer = kb_owl_edge_writer(sys.argv[1], sys.argv[2], sys.argv[3])
-dsig = pd.read_csv('uk/ac/ebi/vfb/neo4j/data_sig_vfb.csv')
+dsig = pd.read_csv(sys.argv[4])
 nc = edge_writer.nc
 
 # TODO MAPPING:
