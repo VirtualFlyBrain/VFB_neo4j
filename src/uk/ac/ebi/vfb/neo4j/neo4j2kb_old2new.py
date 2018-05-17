@@ -6,12 +6,13 @@ Created on Mar 6, 2017
 from warnings import warn
 import re
 import pandas as pd
+import sys
 
 from uk.ac.ebi.vfb.neo4j.KB_tools import kb_owl_edge_writer
 from uk.ac.ebi.vfb.neo4j.neo4j_tools import results_2_dict_list
 #from ..curie_tools import map_iri
 
-edge_writer = kb_owl_edge_writer('http://localhost:7474', 'neo4j', 'neo')
+edge_writer = kb_owl_edge_writer(sys.argv[1], sys.argv[2], sys.argv[3])
 dsig = pd.read_csv('uk/ac/ebi/vfb/neo4j/data_sig_vfb.csv')
 nc = edge_writer.nc
 
@@ -59,8 +60,10 @@ def transform_properties_and_relations_set_types_qsl(nc):
             q_adjust_property = 'MATCH (p:Property {iri:\''+iri+'\'}) SET p:'+cl+' SET p.qsl = \''+qsl+'\''    
             q_rewrite_edges = 'MATCH (n)-[r {iri:\''+iri+'\'}]->(m) CREATE (n)-[r2:'+qsl+']->(m) SET r2 = r WITH r DELETE r'    
             query(q_adjust_property,edge_writer.nc)
-            if ct < 60000:
+            if ct < 100000:
                 query(q_rewrite_edges,edge_writer.nc)
+            else:
+                print("ERROR: EDGE RENAME SKIPPED, UNCOMMENT!")
                 
         else:
             print('ERROR: '+iri+' not defined in dataset, but has relations')
