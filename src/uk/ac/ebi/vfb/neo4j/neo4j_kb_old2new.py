@@ -37,27 +37,8 @@ def query(query,nc):
         return False
     else:
         return dc
-
-def transform_entities_set_types_qsl(nc):
-    q_match_properties = 'MATCH (n) RETURN n'
-    r = query(q_match_properties,nc)
     
-    for n in r:
-        iri = n['n']['iri']
-        print(iri)
-        qsl = dsig[['entity','qsl']].query('entity == @iri')['qsl']
-        cl = dsig[['entity','etype']].query('entity == @iri')['etype']
-    
-        qsl = qsl.iloc[0] 
-        cl = cl.iloc[0]
-        
-        if 'Named' in cl:
-            cl = re.sub("Named", "", cl)
-        
-        q_adjust_property = 'MATCH (n {iri:\''+iri+'\'}) SET n:'+cl+' SET n:Entity SET n.qsl = \''+qsl+'\''    
-        query(q_adjust_property,edge_writer.nc)
-    
-def transform_relations_qsl(nc):
+def transform_properties_and_relations_set_types_qsl(nc):
     q_match_properties = 'MATCH (n:Property) RETURN n'
     r = query(q_match_properties,nc)
     
@@ -66,18 +47,26 @@ def transform_relations_qsl(nc):
         print(iri)
         q_count = 'MATCH (n)-[r {iri:\''+iri+'\'}]->(m) RETURN count(r) as ct'
         ct = query(q_count,nc)[0]['ct']
+        #print('Number of relations: '+str(ct))
         
+    
         qsl = dsig[['entity','qsl']].query('entity == @iri')['qsl']
-        if qsl.count()>0:
+        cl = dsig[['entity','etype']].query('entity == @iri')['etype']
+        if qsl.count()>0 and cl.count()>0:
             qsl = qsl.iloc[0] 
+            cl = cl.iloc[0]
+            if 'Named' in cl:
+                cl = re.sub("Named", "", cl)
+            q_adjust_property = 'MATCH (p:Property {iri:\''+iri+'\'}) SET p:'+cl+' SET p.qsl = \''+qsl+'\''    
             q_rewrite_edges = 'MATCH (n)-[r {iri:\''+iri+'\'}]->(m) CREATE (n)-[r2:'+qsl+']->(m) SET r2 = r WITH r DELETE r'    
+            query(q_adjust_property,edge_writer.nc)
             if ct < 100000:
                 query(q_rewrite_edges,edge_writer.nc)
             else:
                 print("ERROR: EDGE RENAME SKIPPED, UNCOMMENT!")
                 
         else:
-            print('ERROR: '+iri+' not found in labelling dataset, but has relations')
+            print('ERROR: '+iri+' not defined in dataset, but has relations')
         
             
 
@@ -98,12 +87,11 @@ ct_property = query(q_node_count % ':Property',nc)[0]['ct']
 ct_individual = query(q_node_count % ':Individual',nc)[0]['ct']
 ct_undefined = query('MATCH (n) WHERE NOT n:Class AND NOT n:Individual AND NOT n:Property RETURN count(n) as ct',nc)[0]['ct']
 
+print('Make all entities of type :Entity')
+query('MATCH (n) SET n:Entity',nc)
 
-print('TRansforming nodes..')
-transform_entities_set_types_qsl(nc)
-
-print('Transforming relations: Correct edge typing, set qsl')
-transform_relations_qsl(nc)
+print('Transforming properties and relations: Correct edge typing, set qsl, change edges to qsls')
+transform_properties_and_relations_set_types_qsl(nc)
 
 print('Making sure that all annotation properties are represented as arrays on nodes rather than string values. Note that this query will fail hard if the property in question is already an array')
 transform_annotation_properties_on_nodes_to_array(nc)
