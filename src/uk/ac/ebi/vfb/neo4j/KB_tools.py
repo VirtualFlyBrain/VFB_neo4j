@@ -762,10 +762,10 @@ class KB_pattern_writer(object):
 
         # Create assoc node with UUID.  Not good for re-use, but that seems OK].
 
-        self.ew.add_fact(s, r, o)  # s,r,o triple
+        self.ew.add_fact(s, r, o, match_on=match_on)  # s,r,o triple
 
-        assoc_sf = 'VFBinternal_' + str(uuid.UUID())
-        assoc_iri = map_iri('VFB') + assoc_sf
+        assoc_sf = 'VFBinternal_' + str(uuid.uuid4())
+        assoc_iri = map_iri('vfb') + assoc_sf
 
         self.ni.add_node(labels=["Individual"],
                          IRI=assoc_iri)
@@ -789,15 +789,15 @@ class KB_pattern_writer(object):
                                      o=o,
                                      match_on='short_form')  # assoc to object
 
-        prov_sf = 'VFBinternal_' + str(uuid.UUID())
-        prov_iri = map_iri('VFB') + prov_sf
+        prov_sf = 'VFBinternal_' + str(uuid.uuid4())
+        prov_iri = map_iri('vfb') + prov_sf
 
         self.ni.add_node(labels=["Individual"],
                          IRI=prov_iri)
 
-        self.ew.add_named_type_ax(s=assoc_sf,
+        self.ew.add_named_type_ax(s=prov_sf,
                                   o='provenance',
-                                  match_on='short_form')  # assoc to type
+                                  match_on='short_form')  # prov to type
 
         self.ew.add_fact(s=assoc_sf,
                          r='has_provenance',
@@ -814,7 +814,7 @@ class KB_pattern_writer(object):
             for pub in pubs:
                 self.ew.add_annotation_axiom(s=prov_sf,
                                              r='references',
-                                             o='pub',
+                                             o=pub,
                                              match_on='short_form')  # link to pub
         if evidence:
             for e in evidence:
