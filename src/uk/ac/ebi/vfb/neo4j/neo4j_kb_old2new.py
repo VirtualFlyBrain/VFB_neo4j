@@ -12,8 +12,18 @@ from uk.ac.ebi.vfb.neo4j.KB_tools import kb_owl_edge_writer
 from uk.ac.ebi.vfb.neo4j.neo4j_tools import results_2_dict_list
 #from ..curie_tools import map_iri
 
-edge_writer = kb_owl_edge_writer(sys.argv[1], sys.argv[2], sys.argv[3])
-dsig = pd.read_csv(sys.argv[4])
+kb=sys.argv[1]
+user=sys.argv[2]
+password=sys.argv[3]
+entity_map=sys.argv[4]
+
+#kb='http://localhost:7474'
+#user='neo4j'
+#password='neo4j'
+#entity_map='/ws/VFB_neo4j/src/uk/ac/ebi/vfb/neo4j/namespace_prefix_map.csv'
+
+edge_writer = kb_owl_edge_writer(kb, user, password)
+dsig = pd.read_csv(entity_map)
 nc = edge_writer.nc
 
 # TODO MAPPING:
@@ -89,6 +99,9 @@ ct_undefined = query('MATCH (n) WHERE NOT n:Class AND NOT n:Individual AND NOT n
 
 print('Make all entities of type :Entity')
 query('MATCH (n) SET n:Entity',nc)
+
+print('Make all INSTANCEOF relations Type')
+query('MATCH (n)-[r:INSTANCEOF]->(m) CREATE (n)-[r2:Type]->(m) SET r2 = r WITH r DELETE r', nc)   
 
 print('Transforming properties and relations: Correct edge typing, set qsl, change edges to qsls')
 transform_properties_and_relations_set_types_qsl(nc)
