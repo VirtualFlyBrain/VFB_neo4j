@@ -239,6 +239,7 @@ class FeatureMover(FB2Neo):
             # Use: VFBexp_FBxxnnnnnnn
             ep = gen_ep_feat(feat)
             ad = {'label': ep.symbol, 'synonyms': ep.synonyms}
+            out[feat.fbid] = ep.fbid
             # Generate label = 'label . expression pattern'
             # Add node
             self.ni.add_node(labels=['Class'],

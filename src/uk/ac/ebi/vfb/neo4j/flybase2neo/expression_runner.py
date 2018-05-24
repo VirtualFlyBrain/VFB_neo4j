@@ -2,6 +2,8 @@ from .feature_tools import FeatureMover
 from .expression_tools import ExpressionWriter
 from ..neo4j_tools import chunks
 import sys
+import pandas as pd
+
 import warnings
 
 # General strategy:
@@ -46,37 +48,39 @@ feps_chunked = chunks(feps, 500)
 # directly into triple-store integration via dipper.
 
 for fep_c in feps_chunked:
-    #roll lookup.
-    lookup = {}
-    for x in fep_c:
-        if x['fbid'] in lookup.keys():
-            lookup[x['fbid']].append(x)
-        else:
-            lookup[x['fbid']] = [x]
+#   lookup = pd.DataFrame(columns=['gp', 'al', 'tg', 'ep'])
+#    for x in fep_c:
+#        if x['fbid'] in lookup.keys():
+#            lookup[x['fbid']].append(x)
+#        else:
+#            lookup[x['fbid']] = [x]
 
     gene_product_ids = [f['fbid'] for f in fep_c]
     pubs = [f['fbrf'] for f in fep_c]
     taps = [f['fbex'] for f in fep_c]
 
+    #add_pubs(pubs)
+
+
     #Gene expression
-    gp2g = fm.gp2Gene(gene_product_ids)
-    gp_lookup = {g[0]: g[2] for g in gp2g}  # Is 1:1 assumption safe?
-    expressed_gene_ids = [g[2] for g in gp2g]  # Would be nicer with named tuple
-    expressed_genes = fm.add_features(expressed_gene_ids)
-    g2ep = fm.generate_expression_patterns(expressed_genes)
+    #gp2g = fm.gp2Gene(gene_product_ids)
+    #gp_lookup = {g[0]: g[2] for g in gp2g}  # Is 1:1 assumption safe?
+    #expressed_gene_ids = [g[2] for g in gp2g]  # Would be nicer with named tuple
+    #expressed_genes = fm.add_features(expressed_gene_ids)
+    #g2ep = fm.generate_expression_patterns(expressed_genes)
 
     # transgene expression
     gp2al = fm.gp2allele(gene_product_ids)
     tg_allele_ids = [g[2] for g in gp2al]
-    al2gp_lookup = {g[2]: g[0] for g in gp2al}  # Is 1:1 assumption safe?
-
+    gp2al_lookup = {g[0]: g[2] for g in gp2al}
     al2tg = fm.allele2transgene(tg_allele_ids)
+    al2tg_lookup = {g[0]: g[2] for g in al2tg}
     tg_ids = [g[2] for g in al2tg]
-    gp_lookup.update({al2gp_lookup[g[0]]: g[2] for g in al2tg})
+    #gp_lookup.update({al2gp_lookup[g[0]]: g[2] for g in al2tg})
 
 #    tg_lookup = {g[0]: g[2] for g in gp2tg}
     expressed_transgenes = fm.add_features(tg_ids)
-    tg2ep = fm.generate_expression_patterns(expressed_transgenes)
+    tg2ep_lookup = fm.generate_expression_patterns(expressed_transgenes)
 
     # Link alleles to genes
 
@@ -92,19 +96,17 @@ for fep_c in feps_chunked:
 
     # better to have function do batch?
     for fe in fep_c:
-        exp_write.write_expression(fep_c['pub'],
-                                   gp_lookup[fep_c['fbid'],
-                                   fep_c['fbex']]) # P
+        # Ughhh.  this is nuts.  Just track it all with a dict of case classes!
+        if fe['fbid'] in gp2al_lookup.keys():
+            al = gp2al_lookup[fe['fbid']]
+            if al in al2tg_lookup.keys():
+                tg = al2tg_lookup[al]
+                if tg in tg2ep_lookup.keys():
+                    ep = tg2ep_lookup[tg]
+                    exp_write.write_expression(pub=fe['fbrf'], ep=ep, fbex=fe['fbex'])#
 
-    # Add pubs
-    add_pubs(pubs)
-    # Shouldn't this store FBex somewhere?  If so, where?  Use OBAN?
-    #exp_write.write_fbexp(taps)  # better to wire up to features at same time?
+    exp_write.commit()
 
-    # Hookup FBex to features, pubs etc.
-
-
-# Better to do in batch as with everything else?
 
 
 

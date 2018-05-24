@@ -1,7 +1,7 @@
 from .fb_tools import FB2Neo
 from ...curie_tools import map_iri
 from ..KB_tools import get_sf
-from uuid import UUID
+import uuid
 from warnings import warn
 
 def expand_stage_range(nc, start, end):
@@ -130,26 +130,26 @@ class ExpressionWriter(FB2Neo):
         stage = ''
         start_stage = ''
         end_stage = ''
-        qualifiers = tap['anatomy']['qualifiers'].extend(tap['stage']['qualifiers'])
-        if (len(tap['anatomy']) == 1):
-            anat_genus = tap['anatomy'][0]['term']
-        elif (len(tap['anatomy']) == 2):
-            anat_diff = [t for t in tap['anatomy'] if t['operater'] == 'OF'][0]
+        if (len(tap['anatomy']['terms']) == 1):
+            anat_genus = tap['anatomy']['terms'][0]['term']
+        elif (len(tap['anatomy']['terms']) == 2):
+            d = [t['term'] for t in tap['anatomy']['terms'] if t['operator'] == 'OF']
+            if d: anat_diff = d[0]
             if anat_diff:
-                anat_genus = [t for t in tap['anatomy'] if not t['operater'] == 'OF'][0]
+                anat_genus = [t['term'] for t in tap['anatomy']['terms'] if not t['operator'] == 'OF'][0]
             else:
                 warn("Don't know how to parse %s" % str(tap))
                 return False
         else:
             warn("Don't know how to parse %s" % str(tap))
             return False
-        if (len(tap['stage']) == 1):
-            stage = tap['anatomy'][0]['term']
-        elif (len(tap['stage']) == 2):
-            start_stage = [t for t in tap['stage'] if t['operater'] == 'FROM'][0]
-            end_stage = [t for t in tap['stage'] if t['operater'] == 'TO'][0]
+        if (len(tap['stage']['terms']) == 1):
+            stage = tap['anatomy']['terms'][0]['term']
+        elif (len(tap['stage']['terms']) == 2):
+            start_stage = [t['term'] for t in tap['stage']['terms'] if t['operator'] == 'FROM']
+            end_stage = [t['term'] for t in tap['stage']['terms'] if t['operator'] == 'TO']
 
-        iri = map_iri('vfb') + "VFB_internal" + str(UUID.uuid4())
+        iri = map_iri('vfb') + "VFB_internal" + str(uuid.uuid4())
         short_form = get_sf(iri)
         self.ni.add_node(['Individual'], iri)  # No label
         self.ew.add_named_type_ax(s=short_form, o=anat_genus, match_on='short_form')
@@ -165,29 +165,36 @@ class ExpressionWriter(FB2Neo):
 #        leaving out expansion for now
 #        stages = expand_stage_range(self.nc, start_stage, end_stage)
 
-        return {'iri': iri, 'short_form': short_form}
+        return {'iri': iri, 'short_form': short_form, 'atype': anat_genus}
 
 
-    def link_ep2anat(self, a, ep, ad):
-        # We need an if clause in here.  Easier to do this with manual addition
-        ep_match = "MATCH (ep:Class { short_form: '%s'}), " % ep
-        gross_anatomy_match = "(c { short_form: '%s' }) where not('Cell' in labels(c)) " \
-                              "MERGE (ep)-[r:overlaps { short_form: '', type: 'Related']->(c) " \
-                              "SET properties(r) += %s" % (a, str(ad))
-        cell_match_merge = "(c:Class { short_form: '%s' }) where 'Cell' in labels(c) " \
-                           "MERGE (ep)-[r:has_part { short_form: '', type: 'Related']->(c) " \
-                           "SET properties(r) += %s" % (a, str(ad))
-        self.statements.extend([ep_match + gross_anatomy_match, ep_match + cell_match_merge])
+    def link_ep2anat(self, a, ep, ad, atype):
+        # Need batch checking anatomy labels?
+        # Giving up on usual pattern for addition...
+
+        # Does this really give desired conditionality - need to test.
+        edge_prop_clauses = [self.ew._add_textual_attribute('r', k, v) for k,v in ad.items]
+        ep_match = "(ep:Class { short_form: '%s'}), (t:Class { short_form: '%s'})" % (ep, atype)
+        gross_anatomy_match = ", (a:Individual { short_form: '%s' }) where not('Cell' in labels(t)) " \
+                              "MERGE (ep)-[r:overlaps { short_form: 'RO_', type: 'Related'}]->(a) " % a
 
 
+        cell_match_merge = ", (a:Individual { short_form: '%s' }) where 'Cell' in labels(t) " \
+                           "MERGE (ep)-[r:has_part { short_form: 'BFO_0000051', type: 'Related'}]->(a) " % a
+        self.statements.extend([ep_match + gross_anatomy_match + ' '.join(edge_prop_clauses),
+                                ep_match + cell_match_merge + ' '.join(edge_prop_clauses)])
 
-    def write_expression(self, pub, ep, fbex, assay):
+
+    def write_expression(self, pub, ep, fbex):
 
         ## This should all switch to OBAN
 
         a = self.roll_anat_ind(self.FBex_lookup[fbex])
-        ad = {'pub': pub, 'assay': assay}  # quick and dirty job right now.  Need to switch to OBAN when safe to do so.
-        self.link_ep2anat(a=a, ep=ep, ad=ad)
+        if a:
+            assays = self.FBex_lookup[fbex]['assay']['terms']
+            ad = {'pub': pub } # quick and dirty job right now.  Need to switch to OBAN when safe to do so.
+            if assays: ad['assay'] = assays[0]['term']
+            self.link_ep2anat(a=a['short_form'], ep=ep, ad=ad, atype=a['atype'])
 
 
         # MVP:
