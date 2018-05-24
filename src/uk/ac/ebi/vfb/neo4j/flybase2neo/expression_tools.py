@@ -1,5 +1,8 @@
-from uk.ac.ebi.vfb.neo4j.flybase2neo.fb_tools import FB2Neo
-from uk.ac.ebi.vfb.curie_tools import map_iri
+from .fb_tools import FB2Neo
+from ...curie_tools import map_iri
+from ..KB_tools import get_sf
+from uuid import UUID
+from warnings import warn
 
 def expand_stage_range(nc, start, end):
     """nc = neo4j_connect object
@@ -20,8 +23,14 @@ class ExpressionWriter(FB2Neo):
     def __init__(self, endpoint, usr, pwd):
         self._init(endpoint, usr, pwd)
         self.FBex_lookup = []
+        self.statements = []
 
-    def get_expression(self, limit=False, FBex_list=False):
+    def get_expression(self, limit=0, FBex_list=None):
+        """Given a list of FBex IDs, generates a lookup for TAP statements, keyed on FBex.
+        Lookup structure:
+        Primary keys: stage, anatomy, cellular, assay
+        Under each primary key: { qualifiers: [<short_form>,...], terms: { term: '<short_form>', operator: '<short_form>' }
+        """
         query = 'SELECT c.name as cvt, db.name as cvt_db, dbx.accession as cvt_acc, ec.rank as ec_rank, ' \
                 't1.name as ec_type, ectp.value as ectp_value, ' \
                 't2.name as ectp_name, ectp.rank as ectp_rank, ' \
@@ -35,6 +44,7 @@ class ExpressionWriter(FB2Neo):
                 'JOIN cvterm t1 on ec.cvterm_type_id=t1.cvterm_id  ' \
                 'LEFT OUTER JOIN cvterm t2 on ectp.type_id=t2.cvterm_id'
 
+        if FBex_list is None: FBex_list = []
         if FBex_list:
             query += " WHERE e.uniquename in ('%s')" % "','".join(FBex_list)
 
@@ -46,10 +56,6 @@ class ExpressionWriter(FB2Neo):
 
 #         cvt         |      cvt_db      |                cvt_acc                 | ec_rank | ec_type | ectp_value | ectp_name | ectp_rank |    fbex
 # --------------------+------------------+----------------------------------------+---------+---------+------------+-----------+-----------+-------------
-#  embryonic stage 4  | FBdv             | 00005306                               |       0 | stage   |            |           |           | FBex0000001
-#  immunolocalization | FlyBase_internal | experimental assays:immunolocalization |       0 | assay   |            |           |           | FBex0000001
-#  organism           | FBbt             | 00000001                               |       0 | anatomy |            |           |           | FBex0000001
-#  70-100% egg length | FBcv             | 0000132                                |       1 | anatomy |            | qualifier |         0 | FBex0000001
 #  embryonic stage 4  | FBdv             | 00005306                               |       0 | stage   |            |           |           | FBex0000002
 #  immunolocalization | FlyBase_internal | experimental assays:immunolocalization |       0 | assay   |            |           |           | FBex0000002
 #  organism           | FBbt             | 00000001                               |       0 | anatomy |            |           |           | FBex0000002
@@ -76,12 +82,6 @@ class ExpressionWriter(FB2Neo):
 
         exp = self.query_fb(query)
 
-        # make dict keyed on FBex : TAP-like structure
-
-        # Note sure about this structure any more.
-
-        # Structure: { FBex : { start : '', end: '', anatomy: { '' , qualifier) , assay' 'qualifier' }  # Do we need rank?
-
 
         def proc_row(ed, out):
             short_form = ed['cvt_db'] + '_' + ed['cvt_acc']
@@ -95,7 +95,7 @@ class ExpressionWriter(FB2Neo):
 
         FBex_lookup = {}
         old_key = ''
-        stage, anatomy, cellular, assay = '','','',''
+        stage, anatomy, cellular, assay = '', '', '', ''
         for d in exp:
             key = d['fbex']
             if not (key == old_key):
@@ -119,57 +119,53 @@ class ExpressionWriter(FB2Neo):
             old_key = key
 
         self.FBex_lookup = FBex_lookup
+        return FBex_lookup # Could ditch this.
 
 
 
+    def roll_anat_ind(self, tap):
+        """Rolls an anatomy node from an FBex"""
+        anat_genus = ''
+        anat_diff = ''
+        stage = ''
+        start_stage = ''
+        end_stage = ''
+        qualifiers = tap['anatomy']['qualifiers'].extend(tap['stage']['qualifiers'])
+        if (len(tap['anatomy']) == 1):
+            anat_genus = tap['anatomy'][0]['term']
+        elif (len(tap['anatomy']) == 2):
+            anat_diff = [t for t in tap['anatomy'] if t['operater'] == 'OF'][0]
+            if anat_diff:
+                anat_genus = [t for t in tap['anatomy'] if not t['operater'] == 'OF'][0]
+            else:
+                warn("Don't know how to parse %s" % str(tap))
+                return False
+        else:
+            warn("Don't know how to parse %s" % str(tap))
+            return False
+        if (len(tap['stage']) == 1):
+            stage = tap['anatomy'][0]['term']
+        elif (len(tap['stage']) == 2):
+            start_stage = [t for t in tap['stage'] if t['operater'] == 'FROM'][0]
+            end_stage = [t for t in tap['stage'] if t['operater'] == 'TO'][0]
 
-        # for d in exp:
-        #
-        #     qualif
-        #     typ = d['ec_type']
-        #     FBex_lookup[k]
-        #
-        #         FBex_lookup[d['fbex']][d['ec_type']][d['ectp_value']] = {}
-        #         FBex_lookup[d['fbex']][d['ec_type']][d['ectp_value']].update(
-        #                 {"short_form": d['cvt_db'] + '_' + d['cvt_acc'],
-        #                  "label": d['cvt'], 'rank1': d['ec_rank'],
-        #                  'rank2': d['ectp_rank']})
-        #     elif 'anatomy' in d['ec_type']:
-        #         if d['ectp_name'] ==  'qualifier' :
-        #             FBex_lookup[d['fbex']][d['ec_type']][d['ectp_name']] = {}
-        #             FBex_lookup[d['fbex']][d['ec_type']].update(
-        #                         {'short_form': d['cvt_db'] + '_' + d['cvt_acc'],
-        #                          'label': d['cvt'],
-        #                          'rank1': d['ec_rank'],
-        #                          'rank2': d['ectp_rank']})
-        #         else:
-        #             FBex_lookup[d['fbex']][d['ec_type']].update(
-        #                         {'short_form': d['cvt_db'] + '_' + d['cvt_acc'],
-        #                          'label': d['cvt'],
-        #                          'rank1': d['ec_rank']})
-        #     elif 'assay' in d['ec_type']:
-        #         FBex_lookup[d['fbex']][d['ec_type']].update(
-        #                         {'short_form': d['cvt_db'] + '_' + d['cvt_acc'],
-        #                          'label': d['cvt'],
-        #                          'rank1': d['ec_rank']})
+        iri = map_iri('vfb') + "VFB_internal" + str(UUID.uuid4())
+        short_form = get_sf(iri)
+        self.ni.add_node(['Individual'], iri)  # No label
+        self.ew.add_named_type_ax(s=short_form, o=anat_genus, match_on='short_form')
+        if anat_diff:
+            self.ew.add_anon_type_ax(s=short_form, r='BFO_0000050', o=anat_diff, match_on='short_form')
+        if stage:
+            self.ew.add_anon_type_ax(s=short_form, r='RO_0002093', o=stage, match_on='short_form')
 
-        return FBex_lookup
+        if start_stage:
+            self.ew.add_anon_type_ax(s=short_form, r='start', o=stage, match_on='short_form')
+        if end_stage:
+            self.ew.add_anon_type_ax(s=short_form, r='end', o=stage, match_on='short_form')
+#        leaving out expansion for now
+#        stages = expand_stage_range(self.nc, start_stage, end_stage)
 
-
-    def add_anatByStage_node(self, anat, start, end):
-        iri = map_iri('vfb')
-        short_form = '' # Generic generator?
-        label = '%s from %s to %s' % ('', '', '')
-        stages = (self.nc, start, end)
-        self.ni.add_node()
-        self.ew.add_named_subClassOf_ax()
-        for s in stages:
-            self.ew.add_anon_subClassOf_ax(s=short_form,
-                                           r='RO_0002093',  # exists_during
-                                           o=s,
-                                           match_on=short_form)
-
-        return {'iri': iri, 'short_form': short_form, 'label': label}
+        return {'iri': iri, 'short_form': short_form}
 
 
     def link_ep2anat(self, a, ep, ad):
@@ -181,25 +177,28 @@ class ExpressionWriter(FB2Neo):
         cell_match_merge = "(c:Class { short_form: '%s' }) where 'Cell' in labels(c) " \
                            "MERGE (ep)-[r:has_part { short_form: '', type: 'Related']->(c) " \
                            "SET properties(r) += %s" % (a, str(ad))
-        self.nc.commit_list([ep_match + gross_anatomy_match, ep_match + cell_match_merge])
-
-    def write_fbexp(self, fbex_list):
-        for fbex in fbex_list:
-            anat = self.add_anatByStage_node()
+        self.statements.extend([ep_match + gross_anatomy_match, ep_match + cell_match_merge])
 
 
 
+    def write_expression(self, pub, ep, fbex, assay):
+
+        ## This should all switch to OBAN
+
+        a = self.roll_anat_ind(self.FBex_lookup[fbex])
+        ad = {'pub': pub, 'assay': assay}  # quick and dirty job right now.  Need to switch to OBAN when safe to do so.
+        self.link_ep2anat(a=a, ep=ep, ad=ad)
 
 
-    def write_expression(self, pub, fbid, fbex):
-
-
+        # MVP:
+           # Some link - any link - from expression pattern to anat
+           # Worry about stage & stuff later...
 
         # Phase 1 Generate intermediate (stage restricted) anatomy nodes
-        # Phase 2 For each FBexp = lookup whether cell or not (closed world assumption)
+        # Phase 2 For each FBexp = lookup whether cell or not (closed world assumption?)
         # -> Choose has_part vs overlap
         # Add assay and pub on edge.
-        # But could consider assoc for this
+        # But could consider OBAN assoc for this
 
         ### Where do the different lines get merged?  Do we make a intermediate data structure, or do it all in cypher?
         ### Given that these are already sorted on FBex, couldn't this be done within the loop structure?
@@ -220,7 +219,8 @@ class ExpressionWriter(FB2Neo):
 
         # Or - could leave out for now and worry about it once in OWL.
 
-
-
-
-        return
+    def commit(self):
+        self.ni.commit() # Add new nodes
+        self.ew.commit() # Wire up new nodes
+        self.nc.commit_list(self.statements) # Make annotation links
+        self.statements = []

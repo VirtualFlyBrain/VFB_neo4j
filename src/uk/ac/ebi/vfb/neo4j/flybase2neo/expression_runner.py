@@ -58,43 +58,6 @@ for fep_c in feps_chunked:
     pubs = [f['fbrf'] for f in fep_c]
     taps = [f['fbex'] for f in fep_c]
 
-# Sketch
-# Aim: transform pub:feature:FBex to pub:ep:FBex WHERE ep is expressed as munged gene/ti/tp ID
-# Links could be kept in Python, but could stil be efficient with Cypher *if* done as batch
-# For every GP
-# Follow path from GP -> gene (direct) or GP->allele->ti/tp
-# For each in this list:
-# Generate expression pattern node + classification & expresses link.
-
-# ID generation:
-## FBgn1234567 -> VFBexp_FBgn1234567
-## For Anat + stage range nodes - use UUID, or mung FBBt & FBdv Ids, e.g. VFBexp_FBbt_1234567_FBdv_1234567_FBdv_7654321 ?!
-## Better than UUIDs as should be quite stable.  Stability allows merge on ID.
-## Or could make a hash using combo of IDs.
-
-
-
-
-# TODO - check paths through feature_relations table
-
-# We probably don't need gene products. Uncomment to add if decide we do.
-# Add gene products
-#    gene_products = fm.add_features(gene_product_ids) # Probably don't need these
-# Add types for gene products
-#    fm.addTypes2Neo(gene_product_ids)  # These really need to be typed by ID
-
-# Use GPs to find genes  # But how to keep track of the initial link and still have batch?
-# Answer = use triples!  But nested iteration over 2 lists is very inefficient.
-    # Rolling a dict (or a ChainDict) would be be better, but how/when to do this?
-
-    # Feps (& lookup) have GPID
-    # For genes a triple => GPID -> Gene ID
-    # For transgenes 2 triples => GPID -> allele ID -> transgene ID
-    # For Expression annotation we need the final ID for the link
-    # Strategy: Assume 1:1:1.  Roll lookup gpid -> final
-    # Use this to sub while iterating over.
-    # TBD: keep track of FBex?
-
     #Gene expression
     gp2g = fm.gp2Gene(gene_product_ids)
     gp_lookup = {g[0]: g[2] for g in gp2g}  # Is 1:1 assumption safe?
@@ -125,15 +88,13 @@ for fep_c in feps_chunked:
     fm.add_feature_relations(al2g)
 
     # Add FBex
-    expression_lookup = exp_write.get_expression(FBex_list=taps)
-
+    exp_write.get_expression(FBex_list=taps)
 
     # better to have function do batch?
     for fe in fep_c:
         exp_write.write_expression(fep_c['pub'],
                                    gp_lookup[fep_c['fbid'],
-                                   gp_lookup['fbex']],
-                                   expression_lookup) # P
+                                   fep_c['fbex']]) # P
 
     # Add pubs
     add_pubs(pubs)
