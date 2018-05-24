@@ -125,12 +125,15 @@ for fep_c in feps_chunked:
     fm.add_feature_relations(al2g)
 
     # Add FBex
-    Expression_lookup = exp_write.get_all_expression(FBex_list=taps)
+    expression_lookup = exp_write.get_expression(FBex_list=taps)
 
 
     # better to have function do batch?
     for fe in fep_c:
-        exp_write.write_expression(fep_c['pub'], gp_lookup[fep_c['fbid'], gp_lookup['fbex']])
+        exp_write.write_expression(fep_c['pub'],
+                                   gp_lookup[fep_c['fbid'],
+                                   gp_lookup['fbex']],
+                                   expression_lookup) # P
 
     # Add pubs
     add_pubs(pubs)

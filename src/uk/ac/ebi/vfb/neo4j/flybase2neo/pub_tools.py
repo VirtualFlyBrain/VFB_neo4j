@@ -1,7 +1,7 @@
 from .fb_tools import FB2Neo
 
 class pubMover(FB2Neo):
-
+  # STATUS - SKELETON
 
     def get_pub_details(self, pub_list):
         """Takes list of Fbrfs as input returns ..."""
