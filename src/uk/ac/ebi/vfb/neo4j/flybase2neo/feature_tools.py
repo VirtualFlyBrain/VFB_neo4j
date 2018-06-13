@@ -13,12 +13,13 @@ def clean_sgml_tags(sgml_string):
     return sgml_string
 
 def map_feature_type(fbid, ftype):
-    mapping = {'transgenic_transposon': 'SO_0000796',
-               'insertion_site': 'SO_0001218',
-                'transposable_element_insertion_site': 'SO_0001218',
+    mapping = {'transgenic_transposon': 'SO_0000902',  # Treating as SO: transgene - for consistency with relations
+               'insertion_site': 'GENO_0000418', # Treating as inserted transgene - for consistency with relations
+                'transposable_element_insertion_site': 'GENO_0000418',  # Treating as inserted transgene
                 'natural_transposon_isolate_named': 'SO_0000797',
                 'chromosome_structure_variation': 'SO_1000183'
                 }
+
     if ftype == 'gene':
         if re.match('FBal', fbid):
             return 'SO_0001023'
@@ -90,7 +91,8 @@ class FeatureMover(FB2Neo):
         for d in proc_names:
             d['synonyms'] = '|'.join(d['synonyms'])
         statement = "MERGE (n:Feature:Class { short_form : line.fbid } ) " \
-                    "SET n.label = line.symbol , n.synonyms = split(line.synonyms, '|')"  # Need to set iri
+                    "SET n.label = line.symbol SET n.synonyms = split(line.synonyms, '|') " \
+                    "SET n.iri = 'http://flybase.org/reports/' + line.fbid"  # Why not using ni? Can kbw have switch to work via csv?
         self.commit_via_csv(statement, proc_names)
         self.addTypes2Neo(fbids)
         return feats
@@ -185,26 +187,27 @@ class FeatureMover(FB2Neo):
     def allele2Gene(self, subject_ids):
         """Takes a list of allele IDs, returns a list of triples as python tuples:
          (allele rel gene) where rel is appropriate for addition to prod."""
-        return self._get_objs(subject_ids, chado_rel='alleleof', out_rel='is_allele_of', o_idp='FBgn')
+        return self._get_objs(subject_ids, chado_rel='alleleof', out_rel='GENO_0000408', o_idp='FBgn') # is_allele_of
 
     # gp - transgene R associated_with Type object by uniquename FBgn
     def gp2allele(self, subject_ids):
         """Takes a list of gene product IDs, returns a list of triples as python tuples:
          (gene_product rel transgene) where rel is appropriate for addition to prod."""
-        return self._get_objs(subject_ids, chado_rel='associated_with', out_rel='product_of', o_idp='FBal')
+        return self._get_objs(subject_ids, chado_rel='associated_with', out_rel='RO_0002204', o_idp='FBal') # gene_product_of
 
     # gp - gene associated_with Type object by uniquename FBgn
     def gp2Gene(self, subject_ids):
         """Takes a list of gene product IDs, returns a list of triples as python tuples:
          (gene_product rel gene) where rel is appropriate for addition to prod."""
-        return self._get_objs(subject_ids, chado_rel='associated_with', out_rel='product_of', o_idp='FBgn')
+        return self._get_objs(subject_ids, chado_rel='associated_with', out_rel='RO_0002204', o_idp='FBgn') # gene_product_of
 
     # transgene - allele  R associated_with Type object by uniquename FBal
     def allele2transgene(self, subject_ids):
         """Takes a list of transgene IDs, returns a list of triples as python tuples:
          (transgene rel allele) where rel is appropriate for addition to prod."""
-        return self._get_objs(subject_ids, chado_rel='associated_with', out_rel='fu', o_idp='(FBti|FBtp)')
-
+        return self._get_objs(subject_ids, chado_rel='associated_with', out_rel='GENO_0000418', o_idp='(FBti|FBtp)') # is_allele_of
+        # Above treating TG as gene.  This is consistent with ti/tp classified as GENO_0000093 'integrated transgene'
+        # See https://github.com/monarch-initiative/ingest-artifacts/blob/2ab4a0835b2717ac2426a2e19f1bd9bedf4d6396/docs/Dipper%20Data%20Model%20cmaps.jpg
 
     def add_feature_relations(self, triples, assume_subject=True):
         if not assume_subject:
@@ -216,11 +219,15 @@ class FeatureMover(FB2Neo):
         self.addTypes2Neo(objects)
         statements = []
         for t in triples:
-            statements.append(
-                "MATCH (s:Feature { short_form: '%s'}), (o:Feature { short_form: '%s'}) " \
-                "MERGE (s)-[r:%s]->(o)" % (t[0], t[2], t[1])  # Should be using KB_tools (?)
-            )
-        self.nc.commit_list_in_chunks(statements)
+            self.ew.add_anon_subClassOf_ax(s=t[0],
+                                           r=t[1],
+                                           o=t[2],
+                                           match_on='short_form')
+#            statements.append(
+#                "MATCH (s:Feature { short_form: '%s'}), (o:Feature { short_form: '%s'}) " \
+#                "MERGE (s)-[r:%s]->(o)" % (t[0], t[2], t[1])  # Should be using KB_tools (?)
+#            )
+        self.ew.commit()
 
     def generate_expression_patterns(self, features):
         if not features:

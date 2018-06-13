@@ -99,11 +99,12 @@ for fep_c in feps_chunked:
         # Ughhh.  this is nuts.  Just track it all with a dict of case classes!
         if fe['fbid'] in gp2al_lookup.keys():
             al = gp2al_lookup[fe['fbid']]
-            if al in al2tg_lookup.keys():
-                tg = al2tg_lookup[al]
-                if tg in tg2ep_lookup.keys():
-                    ep = tg2ep_lookup[tg]
-                    exp_write.write_expression(pub=fe['fbrf'], ep=ep, fbex=fe['fbex'])#
+            if al2tg_lookup:
+                if al in al2tg_lookup.keys():
+                    tg = al2tg_lookup[al]
+                    if tg in tg2ep_lookup.keys():
+                        ep = tg2ep_lookup[tg]
+                        exp_write.write_expression(pub=fe['fbrf'], ep=ep, fbex=fe['fbex'])#
 
     exp_write.commit()
 

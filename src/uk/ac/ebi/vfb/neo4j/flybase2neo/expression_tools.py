@@ -144,10 +144,12 @@ class ExpressionWriter(FB2Neo):
             warn("Don't know how to parse %s" % str(tap))
             return False
         if (len(tap['stage']['terms']) == 1):
-            stage = tap['anatomy']['terms'][0]['term']
+            stage = tap['stage']['terms'][0]['term']
         elif (len(tap['stage']['terms']) == 2):
-            start_stage = [t['term'] for t in tap['stage']['terms'] if t['operator'] == 'FROM']
-            end_stage = [t['term'] for t in tap['stage']['terms'] if t['operator'] == 'TO']
+            ss = [t['term'] for t in tap['stage']['terms'] if t['operator'] == 'FROM']
+            if ss: start_stage = ss[0]
+            es = [t['term'] for t in tap['stage']['terms'] if t['operator'] == 'TO']
+            if es: end_stage = es[0]
 
         iri = map_iri('vfb') + "VFB_internal" + str(uuid.uuid4())
         short_form = get_sf(iri)
@@ -159,9 +161,9 @@ class ExpressionWriter(FB2Neo):
             self.ew.add_anon_type_ax(s=short_form, r='RO_0002093', o=stage, match_on='short_form')
 
         if start_stage:
-            self.ew.add_anon_type_ax(s=short_form, r='start', o=stage, match_on='short_form')
+            self.ew.add_anon_type_ax(s=short_form, r='RO_0002488', o=start_stage, match_on='short_form')
         if end_stage:
-            self.ew.add_anon_type_ax(s=short_form, r='end', o=stage, match_on='short_form')
+            self.ew.add_anon_type_ax(s=short_form, r='RO_0002492', o=end_stage, match_on='short_form')
 #        leaving out expansion for now
 #        stages = expand_stage_range(self.nc, start_stage, end_stage)
 
@@ -171,12 +173,13 @@ class ExpressionWriter(FB2Neo):
     def link_ep2anat(self, a, ep, ad, atype):
         # Need batch checking anatomy labels?
         # Giving up on usual pattern for addition...
+        edge_prop_clauses = []
+        for k,v in ad.items():
+            edge_prop_clauses.append(self.ew._add_textual_attribute('r', k, v))
 
-        # Does this really give desired conditionality - need to test.
-        edge_prop_clauses = [self.ew._add_textual_attribute('r', k, v) for k,v in ad.items]
-        ep_match = "(ep:Class { short_form: '%s'}), (t:Class { short_form: '%s'})" % (ep, atype)
+        ep_match = "MATCH (ep:Class { short_form: '%s'}), (t:Class { short_form: '%s'})" % (ep, atype)
         gross_anatomy_match = ", (a:Individual { short_form: '%s' }) where not('Cell' in labels(t)) " \
-                              "MERGE (ep)-[r:overlaps { short_form: 'RO_', type: 'Related'}]->(a) " % a
+                              "MERGE (ep)-[r:overlaps { short_form: 'RO_0002131', type: 'Related'}]->(a) " % a
 
 
         cell_match_merge = ", (a:Individual { short_form: '%s' }) where 'Cell' in labels(t) " \

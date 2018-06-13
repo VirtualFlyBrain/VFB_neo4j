@@ -46,7 +46,7 @@ class FB2Neo(object):
     def __init__(self, endpoint, usr, pwd, file_path=''):
         """Specify Neo4J server endpoint, username and password"""
         self._init(endpoint, usr, pwd)
-        self.file_path = file_path  # A path for temp csv files
+        self.file_path = file_path  # A path for temp csv files  # This really should be pushed up to neo4J connect (via KB tools)
 
 
     def _init(self, endpoint, usr, pwd):
