@@ -205,7 +205,7 @@ class FeatureMover(FB2Neo):
     def allele2transgene(self, subject_ids):
         """Takes a list of transgene IDs, returns a list of triples as python tuples:
          (transgene rel allele) where rel is appropriate for addition to prod."""
-        return self._get_objs(subject_ids, chado_rel='associated_with', out_rel='GENO_0000418', o_idp='(FBti|FBtp)') # is_allele_of
+        return self._get_objs(subject_ids, chado_rel='associated_with', out_rel='GENO_0000408', o_idp='(FBti|FBtp)') # is_allele_of
         # Above treating TG as gene.  This is consistent with ti/tp classified as GENO_0000093 'integrated transgene'
         # See https://github.com/monarch-initiative/ingest-artifacts/blob/2ab4a0835b2717ac2426a2e19f1bd9bedf4d6396/docs/Dipper%20Data%20Model%20cmaps.jpg
 
@@ -222,7 +222,8 @@ class FeatureMover(FB2Neo):
             self.ew.add_anon_subClassOf_ax(s=t[0],
                                            r=t[1],
                                            o=t[2],
-                                           match_on='short_form')
+                                           match_on='short_form',
+                                           safe_label_edge=True)
 #            statements.append(
 #                "MATCH (s:Feature { short_form: '%s'}), (o:Feature { short_form: '%s'}) " \
 #                "MERGE (s)-[r:%s]->(o)" % (t[0], t[2], t[1])  # Should be using KB_tools (?)
