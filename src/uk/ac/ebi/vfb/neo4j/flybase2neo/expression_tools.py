@@ -179,11 +179,14 @@ class ExpressionWriter(FB2Neo):
 
         ep_match = "MATCH (ep:Class { short_form: '%s'}), (t:Class { short_form: '%s'})" % (ep, atype)
         gross_anatomy_match = ", (a:Individual { short_form: '%s' }) where not('Cell' in labels(t)) " \
-                              "MERGE (ep)-[r:overlaps { short_form: 'RO_0002131', type: 'Related'}]->(a) " % a
+                              "MERGE (ep)<-[r:overlaps { short_form: 'RO_0002131', " \
+                              "type: 'Related', iri: 'http://purl.obolibrary.org/RO_0002131'}]-(a) " % a
 
 
         cell_match_merge = ", (a:Individual { short_form: '%s' }) where 'Cell' in labels(t) " \
-                           "MERGE (ep)-[r:has_part { short_form: 'BFO_0000051', type: 'Related'}]->(a) " % a
+                           "MERGE (ep)<-[r:part_of { short_form: 'BFO_0000050', type: 'Related', " \
+                            "iri: 'http://purl.obolibrary.org/BFO_0000050'}]-(a) " % a
+
         self.statements.extend([ep_match + gross_anatomy_match + ' '.join(edge_prop_clauses),
                                 ep_match + cell_match_merge + ' '.join(edge_prop_clauses)])
 
