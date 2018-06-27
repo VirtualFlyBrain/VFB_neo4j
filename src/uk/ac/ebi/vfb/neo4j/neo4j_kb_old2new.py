@@ -47,38 +47,35 @@ def query(query,nc):
         return False
     else:
         return dc
-    
+
 def transform_properties_and_relations_set_types_qsl(nc):
     q_match_properties = 'MATCH (n:Property) RETURN n'
     r = query(q_match_properties,nc)
-    
+
     for n in r:
         iri = n['n']['iri']
         print(iri)
         q_count = 'MATCH (n)-[r {iri:\''+iri+'\'}]->(m) RETURN count(r) as ct'
         ct = query(q_count,nc)[0]['ct']
-        #print('Number of relations: '+str(ct))
-        
-    
+        print('Number of relations: '+str(ct))
+
+
         qsl = dsig[['entity','qsl']].query('entity == @iri')['qsl']
         cl = dsig[['entity','etype']].query('entity == @iri')['etype']
         if qsl.count()>0 and cl.count()>0:
-            qsl = qsl.iloc[0] 
+            qsl = qsl.iloc[0]
             cl = cl.iloc[0]
             if 'Named' in cl:
                 cl = re.sub("Named", "", cl)
-            q_adjust_property = 'MATCH (p:Property {iri:\''+iri+'\'}) SET p:'+cl+' SET p.qsl = \''+qsl+'\''    
-            q_rewrite_edges = 'MATCH (n)-[r {iri:\''+iri+'\'}]->(m) CREATE (n)-[r2:'+qsl+']->(m) SET r2 = r WITH r DELETE r'    
+            q_adjust_property = 'MATCH (p:Property {iri:\''+iri+'\'}) SET p:'+cl+' SET p.qsl = \''+qsl+'\''
+            q_rewrite_edges = 'MATCH (n)-[r {iri:\''+iri+'\'}]->(m) CREATE (n)-[r2:'+qsl+']->(m) SET r2 = r WITH r DELETE r'
             query(q_adjust_property,edge_writer.nc)
-            if ct < 100000:
-                query(q_rewrite_edges,edge_writer.nc)
-            else:
-                print("ERROR: EDGE RENAME SKIPPED, UNCOMMENT!")
-                
+            query(q_rewrite_edges,edge_writer.nc)
+            
         else:
             print('ERROR: '+iri+' not defined in dataset, but has relations')
-        
-            
+
+
 
 def transform_annotation_properties_on_nodes_to_array(nc):
     q = 'MATCH (n:AnnotationProperty) RETURN DISTINCT n.qsl'
@@ -87,7 +84,7 @@ def transform_annotation_properties_on_nodes_to_array(nc):
     for i in r:
         qsl = i['n.qsl']
         query(q_transform % (qsl,qsl,qsl),nc)
-        
+
 
 print('Collecting original database state indicators')
 q_node_count = 'MATCH (n%s) RETURN count(n) as ct'
@@ -101,14 +98,14 @@ print('Make all entities of type :Entity')
 query('MATCH (n) SET n:Entity',nc)
 
 print('Make all INSTANCEOF relations Type')
-query('MATCH (n)-[r:INSTANCEOF]->(m) CREATE (n)-[r2:Type]->(m) SET r2 = r WITH r DELETE r', nc)   
+query('MATCH (n)-[r:INSTANCEOF]->(m) CREATE (n)-[r2:Type]->(m) SET r2 = r WITH r DELETE r', nc)
 
 print('Transforming properties and relations: Correct edge typing, set qsl, change edges to qsls')
 transform_properties_and_relations_set_types_qsl(nc)
 
 print('Making sure that all annotation properties are represented as arrays on nodes rather than string values. Note that this query will fail hard if the property in question is already an array')
 transform_annotation_properties_on_nodes_to_array(nc)
-## 
+##
 
 print('Dealing with annotations on nodes')
 
@@ -126,17 +123,15 @@ ct_undefined_after = query('MATCH (n) WHERE NOT n:Class AND NOT n:Individual AND
 
 if ct_nodes!=ct_nodes_after:
     warn('Number of nodes has changed! (Before: %d, after: %d)' % (ct_nodes, ct_nodes_after))
-    
+
 if ct_class!=ct_class_after:
     warn('Number of classes has changed! (Before: %d, after: %d)' % (ct_class, ct_class_after))
 
 if ct_property!=(ct_objectproperty_after+ct_annotationproperty_after+ct_dataproperty_after):
     warn('Number of properties has changed! (Before: %d, after (object): %d, after (annotation): %d, after (data):%s)' % (ct_property, ct_objectproperty_after, ct_annotationproperty_after,ct_dataproperty_after))
-    
+
 if ct_individual!=ct_individual_after:
     warn('Number of individuals has changed! (Before: %d, after: %d)' % (ct_individual, ct_individual_after))
 
 if ct_undefined!=ct_undefined_after:
     warn('Number of undefined nodes has changed! (Before: %d, after: %d)' % (ct_undefined, ct_undefined_after))
-
-
