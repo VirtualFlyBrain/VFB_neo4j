@@ -27,7 +27,7 @@ def node_must_have_iri(nc):
         print(r)
     else:
         print('PASSED: node_must_have_iri[x]')
-        
+
 def node_must_have_nonemptyiri(nc):
     q_nodes_wo_iri = 'MATCH (n) WHERE (n.iri=\'\') RETURN n LIMIT 3'
     r = query(q_nodes_wo_iri,nc)
@@ -45,51 +45,51 @@ def node_at_least_one_base_type(nc):
         print(r)
     else:
         print('PASSED: node_at_least_one_base_type[x]')
-        
+
 def node_only_one_base_type(nc):
     q = 'MATCH (n:%s:%s) RETURN count(n) as ct'
     passed = True
     if query(q %('Class','Individual'),nc)[0]['ct']>0:
         passed = False
         print('FAIL: There are nodes that are both classes and individuals')
-    
+
     if query(q %('Class','AnnotationProperty'),nc)[0]['ct']>0:
         passed = False
         print('FAIL: There are nodes that are both classes and annotation properties')
-    
+
     if query(q %('DataProperty','AnnotationProperty'),nc)[0]['ct']>0:
         passed = False
         print('FAIL: There are nodes that are both data and annotation properties')
-    
+
     if query(q %('DataProperty','ObjectProperty'),nc)[0]['ct']>0:
         passed = False
         print('FAIL: There are nodes that are both data and object properties')
-        
+
     if query(q %('DataProperty','Class'),nc)[0]['ct']>0:
         passed = False
         print('FAIL: There are nodes that are both classes and data properties')
-    
+
     if query(q %('DataProperty','Individual'),nc)[0]['ct']>0:
         passed = False
         print('FAIL: There are nodes that are both individuals and data properties')
-    
+
     if query(q %('Class','ObjectProperty'),nc)[0]['ct']>0:
         passed = False
         print('FAIL: There are nodes that are both classes and object properties')
-    
+
     if query(q %('ObjectProperty','Individual'),nc)[0]['ct']>0:
         passed = False
         print('FAIL: There are nodes that are both object properties and individuals')
-    
+
     if query(q %('ObjectProperty','AnnotationProperty'),nc)[0]['ct']>0:
         passed = False
         print('FAIL: There are nodes that are both object properties and annotation properties')
-        
+
     if query(q %('Individual','AnnotationProperty'),nc)[0]['ct']>0:
         passed = False
         print('FAIL: There are nodes that are both individuals and annotation properties')
-     
-    if passed:    
+
+    if passed:
         print('PASSED: node_only_one_base_type[x]')
 
 def properties_must_have_qsl(nc):
@@ -100,21 +100,21 @@ def properties_must_have_qsl(nc):
         print(r)
     else:
         print('PASSED: annotation: properties_must_have_qsl[x]')
-        
+
     r = query(q_propertynodes_wo_valid_qsl % 'ObjectProperty',nc)
     if r!=False:
         print("FAIL: There are object property nodes without qsl!")
         print(r)
     else:
         print('PASSED: object: properties_must_have_qsl[x]')
-    
+
     r = query(q_propertynodes_wo_valid_qsl % 'DataProperty',nc)
     if r!=False:
         print("FAIL: There are data property nodes without qsl!")
         print(r)
     else:
         print('PASSED: data: properties_must_have_qsl[x]')
-    
+
 def rel_must_have_iri_with_valid_property(nc):
     q_invalid_qsl_relation = 'MATCH (n:Property) WITH collect(DISTINCT n.iri) as ia MATCH (o)-[r]-(q) WHERE NOT (r.iri IN ia) RETURN o,r,q LIMIT 3'
     r = query(q_invalid_qsl_relation,nc)
@@ -123,19 +123,22 @@ def rel_must_have_iri_with_valid_property(nc):
         print(r)
     else:
         print('PASSED: rel_must_have_iri_with_valid_property[x]')
-        
+
 def all_relationship_types_must_have_corresponding_property_node(nc):
     q = 'MATCH (n)-[r]-() RETURN DISTINCT type(r) as t'
     qt = 'MATCH (n:Property) WHERE n.qsl=\'%s\' RETURN n'
     r = query(q,nc)
     for t in r:
         typ = t['t']
-        r2 = query(qt % typ,nc)
-        if r2==False:
-            print("FAIL: %s does not have a corresponding property with the right qsl!" % typ)
-            print(r2)
+        if typ=='Type' or typ=='SubClassOf':
+            print('IGNORING: Built-in relation type %s.' % typ)
         else:
-            print('PASSED: all_relationship_types_must_have_corresponding_property_node[x]')
+            r2 = query(qt % typ,nc)
+            if r2==False:
+                print("FAIL: %s does not have a corresponding property with the right qsl!" % typ)
+                print(r2)
+            else:
+                print('PASSED: all_relationship_types_must_have_corresponding_property_node[x]')
 
 
 edge_writer = kb_owl_edge_writer(sys.argv[1], sys.argv[2], sys.argv[3])
@@ -154,7 +157,7 @@ node_must_have_iri(nc)
 node_must_have_nonemptyiri(nc)
 
 print('')
-print('Every node must have a valid type')    
+print('Every node must have a valid type')
 node_at_least_one_base_type(nc)
 
 print('')
@@ -162,14 +165,14 @@ print('No node should have more that one base type')
 node_only_one_base_type(nc)
 
 print('')
-print('Every property nodes must have a qsl')    
+print('Every property nodes must have a qsl')
 properties_must_have_qsl(nc)
 
-print('')    
+print('')
 print('Every relationship must have an IRI related to a property')
 rel_must_have_iri_with_valid_property(nc)
 
-print('')    
+print('')
 print('Every relationship type must have a corresponding property node')
 all_relationship_types_must_have_corresponding_property_node(nc)
 
