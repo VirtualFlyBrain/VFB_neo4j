@@ -70,11 +70,11 @@ def transform_properties_and_relations_set_types_qsl(nc):
             q_adjust_property = 'MATCH (p:Property {iri:\''+iri+'\'}) SET p:'+cl+' SET p.qsl = \''+qsl+'\''
             q_rewrite_edges = 'MATCH (n)-[r {iri:\''+iri+'\'}]->(m) CREATE (n)-[r2:'+qsl+']->(m) SET r2 = r WITH r DELETE r'
             query(q_adjust_property,edge_writer.nc)
-            query(q_rewrite_edges,edge_writer.nc)
-            #if ct < 100000:
-            #
-            #else:
-            #    print("ERROR: EDGE RENAME SKIPPED BECAUSE TOO MANY RELATIONS, UNCOMMENT!")
+
+            if ct < 10000000:
+                query(q_rewrite_edges,edge_writer.nc)
+            else:
+                print("ERROR: EDGE RENAME SKIPPED BECAUSE TOO MANY RELATIONS, UNCOMMENT!")
 
         else:
             print('ERROR: '+iri+' not defined in dataset, but has relations')
