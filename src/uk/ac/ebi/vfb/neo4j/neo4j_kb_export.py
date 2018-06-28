@@ -26,7 +26,8 @@ outfile=sys.argv[4]
 
 #kb='http://localhost:7474'
 #user='neo4j'
-#password='neo.'
+#password='neo4j/neo'
+#outfile='/data/mnt/script.owl'
 
 edge_writer = kb_owl_edge_writer(kb, user, password)
 nc = edge_writer.nc
