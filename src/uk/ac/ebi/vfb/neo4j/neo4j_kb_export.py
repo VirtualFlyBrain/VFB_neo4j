@@ -22,6 +22,7 @@ def query(query,nc):
 kb=sys.argv[1]
 user=sys.argv[2]
 password=sys.argv[3]
+outfile=sys.argv[4]
 
 #kb='http://localhost:7474'
 #user='neo4j'
@@ -33,6 +34,6 @@ nc = edge_writer.nc
 print('Exporting KB')
 q_generate = 'CALL ebi.spot.neo4j2owl.exportOWL()'
 o = query(q_generate,nc)[0]['o']
-text_file = open("ontology.owl", "w")
+text_file = open(outfile, "w")
 text_file.write(o)
 text_file.close()
