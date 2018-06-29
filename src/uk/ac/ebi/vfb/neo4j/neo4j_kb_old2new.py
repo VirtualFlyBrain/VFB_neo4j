@@ -16,14 +16,20 @@ kb=sys.argv[1]
 user=sys.argv[2]
 password=sys.argv[3]
 entity_map=sys.argv[4]
+property_map=sys.argv[5]
+edge_limit=sys.argv[6]
 
 #kb='http://localhost:7474'
 #user='neo4j'
-#password='neo4j'
-#entity_map='/ws/VFB_neo4j/src/uk/ac/ebi/vfb/neo4j/namespace_prefix_map.csv'
+#password='neo'
+#entity_map='/ws/VFB_neo4j/src/uk/ac/ebi/vfb/neo4j/data_sig_vfb.csv'
+#property_map='/ws/VFB_neo4j/src/uk/ac/ebi/vfb/neo4j/property_mapping.csv'
+#edge_limit=10000
 
 edge_writer = kb_owl_edge_writer(kb, user, password)
 dsig = pd.read_csv(entity_map)
+prop = pd.read_csv(property_map)
+propNotNull = prop[prop.iri.notnull()]
 nc = edge_writer.nc
 
 # TODO MAPPING:
@@ -35,6 +41,7 @@ nc = edge_writer.nc
 #VFB - IGNORE (edited)
 
 print(dsig.head)
+
 # Make sure Entities have the right type
 
 def query(query,nc):
@@ -71,10 +78,10 @@ def transform_properties_and_relations_set_types_qsl(nc):
             q_rewrite_edges = 'MATCH (n)-[r {iri:\''+iri+'\'}]->(m) CREATE (n)-[r2:'+qsl+']->(m) SET r2 = r WITH r DELETE r'
             query(q_adjust_property,edge_writer.nc)
 
-            if ct < 10000000:
+            if ct < edge_limit:
                 query(q_rewrite_edges,edge_writer.nc)
             else:
-                print("ERROR: EDGE RENAME SKIPPED BECAUSE TOO MANY RELATIONS, UNCOMMENT!")
+                print("ERROR: EDGE RENAME SKIPPED BECAUSE TOO MANY RELATIONS: %s" % edge_limit)
 
         else:
             print('ERROR: '+iri+' not defined in dataset, but has relations')
@@ -88,6 +95,30 @@ def transform_annotation_properties_on_nodes_to_array(nc):
     for i in r:
         qsl = i['n.qsl']
         query(q_transform % (qsl,qsl,qsl),nc)
+        
+def rewrite_property_keys_on_nodes_to_qsl(nc,mapping):
+    q = 'MERGE (n:%s {iri: \'%s\', qsl: \'%s\'}) RETURN n'
+    qchange = 'MATCH (c:Entity) WHERE (EXISTS(c.%s) AND c.%s IS NULL) SET c.%s = c.%s REMOVE c.%s'
+    qchangerel = 'MATCH (c:Entity)-[r]-() WHERE (EXISTS(r.%s) AND r.%s IS NULL) SET r.%s = r.%s REMOVE r.%s'
+
+    for index, row in mapping.iterrows():
+        ap = row["owltype"]
+        key = row["neokey"]
+        iri = row["iri"]
+        keytype = row["keytype"]
+        
+        qrow = dsig[dsig.entity==iri]
+        if len(qrow)>0:
+            qsl = qrow.head(1)['qsl'].tolist()[0]
+            #print((qchangerel % (key,qsl,qsl,key,key)))
+            #Make sure the node is there
+            query((q % (ap,iri,qsl)),nc)
+            if keytype=='node':
+                query((qchange % (key,qsl,qsl,key,key)),nc)
+            else:
+                query((qchangerel % (key,qsl,qsl,key,key)),nc)
+        else:
+            print('FAILURE: %s does not have a corresponding qsl value!' % iri)
 
 
 print('Collecting original database state indicators')
@@ -111,9 +142,9 @@ print('Making sure that all annotation properties are represented as arrays on n
 transform_annotation_properties_on_nodes_to_array(nc)
 ##
 
-print('Dealing with annotations on nodes')
-
-print('Dealing with annotations on edges')
+print('Rewrite property keys to qsl according to map')
+mapping = propNotNull[propNotNull.keytype=='node']
+rewrite_property_keys_on_nodes_to_qsl(nc,mapping)
 
 print('Collecting original database state indicators')
 ct_nodes_after = query(q_node_count % '',nc)[0]['ct']
