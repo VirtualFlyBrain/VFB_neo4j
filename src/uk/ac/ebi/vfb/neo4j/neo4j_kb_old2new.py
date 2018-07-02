@@ -17,7 +17,7 @@ user=sys.argv[2]
 password=sys.argv[3]
 entity_map=sys.argv[4]
 property_map=sys.argv[5]
-edge_limit=sys.argv[6]
+edge_limit=int(sys.argv[6])
 
 #kb='http://localhost:7474'
 #user='neo4j'
