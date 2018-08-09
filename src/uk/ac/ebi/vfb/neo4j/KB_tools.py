@@ -611,7 +611,7 @@ class KB_pattern_writer(object):
         """Adds typed inds for an anatomical individual and channel, 
         linked to each other and to the specified template.
         label: Name of anatomical individual
-        imaging_type: a relevant FBbi term e.g. 'confocal microscopy', 'electron microscopy'
+        imaging_type: a relevant FBbi term e.g. 'confocal microscopy', 'SB-SEM', 'computer graphic'
         template: channel ID of the template to which the image is registered
         start: Start of range for generation of new accessions
         dbxrefs: dict of DB:accession pairs
