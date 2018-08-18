@@ -65,7 +65,8 @@ label_types = {
    'Octopaminergic': 'octopaminergic neuron',
    'Dopaminergic': 'dopaminergic neuron',
    'Serotonergic': 'serotonergic neuron',
-   'Expression_pattern_fragment': 'expression pattern fragment'
+   'Expression_pattern_fragment': 'expression pattern fragment',
+   'Neuromere': 'neuromere'
    }
 
 label_additions = []
