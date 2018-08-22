@@ -77,7 +77,7 @@ class FB2Neo(object):
 
         
     def close(self):
-        self.close()  # Investigate implementing using with statement.  Then method not required.
+        self.conn.close()  # Investigate implementing using with statement.  Then method not required.
 
 
 

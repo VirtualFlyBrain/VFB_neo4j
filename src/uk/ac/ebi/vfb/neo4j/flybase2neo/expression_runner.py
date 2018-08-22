@@ -1,6 +1,7 @@
 from .feature_tools import FeatureMover
 from .expression_tools import ExpressionWriter
 from ..neo4j_tools import chunks
+from .pub_tools import pubMover
 import sys
 import pandas as pd
 
@@ -23,7 +24,7 @@ temp_csv_filepath = sys.argv[4]  # Location for readable csv files
 fm = FeatureMover(endpoint, usr, pwd, temp_csv_filepath)
 def exp_gen(): return # code for generating and wiring up expression patterns
 
-def add_pubs(pubs): return
+
 
 
 
@@ -34,7 +35,7 @@ feps = fm.query_fb("SELECT pub.uniquename as fbrf, "
                    "FROM feature_expression fe "
                    "JOIN pub ON fe.pub_id = pub.pub_id "
                    "JOIN feature f ON fe.feature_id = f.feature_id "
-                   "JOIN expression e ON fe.expression_id = e.expression_id limit 1000")
+                   "JOIN expression e ON fe.expression_id = e.expression_id")
 
 # -> chunk results:
 
@@ -59,7 +60,7 @@ for fep_c in feps_chunked:
     pubs = [f['fbrf'] for f in fep_c]
     taps = [f['fbex'] for f in fep_c]
 
-    #add_pubs(pubs)
+    pubMover(pubs)
 
 
     #Gene expression
@@ -78,7 +79,7 @@ for fep_c in feps_chunked:
     tg_ids = [g[2] for g in al2tg]
     #gp_lookup.update({al2gp_lookup[g[0]]: g[2] for g in al2tg})
 
-#    tg_lookup = {g[0]: g[2] for g in gp2tg}
+#   tg_lookup = {g[0]: g[2] for g in gp2tg}
     expressed_transgenes = fm.add_features(tg_ids)
     tg2ep_lookup = fm.generate_expression_patterns(expressed_transgenes)
 
