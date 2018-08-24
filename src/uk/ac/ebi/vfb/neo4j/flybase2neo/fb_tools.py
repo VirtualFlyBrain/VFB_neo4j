@@ -46,8 +46,7 @@ class FB2Neo(object):
     def __init__(self, endpoint, usr, pwd, file_path=''):
         """Specify Neo4J server endpoint, username and password"""
         self._init(endpoint, usr, pwd)
-        self.file_path = file_path  # A path for temp csv files
-        self.fb_base_URI = 'http://www.flybase.org/reports/' # Should use curie_tools
+        self.file_path = file_path  # A path for temp csv files  # This really should be pushed up to neo4J connect (via KB tools)
 
 
     def _init(self, endpoint, usr, pwd):
@@ -56,6 +55,8 @@ class FB2Neo(object):
         self.ew = pattern_writer.ew
         self.ni = pattern_writer.ni
         self.nc = pattern_writer.ni.nc
+        self.fb_base_URI = 'http://www.flybase.org/reports/' # Should use curie_tools
+
 
     def query_fb(self, query):
         """Runs a query of public Flybase, 
@@ -76,7 +77,7 @@ class FB2Neo(object):
 
         
     def close(self):
-        self.close()  # Investigate implementing using with statement.  Then method not required.
+        self.conn.close()  # Investigate implementing using with statement.  Then method not required.
 
 
 
