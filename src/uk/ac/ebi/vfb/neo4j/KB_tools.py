@@ -3,6 +3,7 @@ Created on Mar 6, 2017
 
 @author: davidos
 '''
+import uuid
 import warnings
 import re
 import json
@@ -408,7 +409,7 @@ class node_importer(kb_writer):
     e.g. from ontologies, FlyBase, CATMAID.
     Constructor: owl_import_updater(endpoint, usr, pwd)
     """
-        
+
     def add_constraints(self, uniqs=None, indexes=None):
         """Specify addition uniqs and indexes via dicts.
         { label : [attributes] } """
@@ -491,6 +492,7 @@ class node_importer(kb_writer):
             ## Update nodes.
             self.add_node(labels, IRI, attribute_dict)
         self.check_for_obsolete_nodes_in_use()
+        self.add_missing_labels()
         return True
 
     def check_for_obsolete_nodes_in_use(self):
@@ -554,7 +556,17 @@ class node_importer(kb_writer):
     def migrate_features_to_new_ids(self, d):
         """STUB"""
         return
-    
+
+    def add_missing_labels(self):
+        self.nc.commit_list(["MATCH (n:Property) WHERE (not exists(n.label)) "
+                             "AND (n.is_obsolete = false) AND "
+                             "(exists(n.short_form)) SET n.label = n.short_form",
+                             "MATCH (n:Class) WHERE (not exists(n.label)) "
+                             "AND (n.is_obsolete = false) AND "
+                             "(exists(n.short_form)) SET n.label = n.short_form"
+                             ])
+
+
 class KB_pattern_writer(object):
     """A wrapper class for adding subgraphs following some pre-specified
     schema pattern.
@@ -721,7 +733,6 @@ class KB_pattern_writer(object):
                              'short_form': short_form,
                              'description': description,
                              'dataset_spec_text': dataset_spec_text})
-        self.ni.commit()
         self.ew.add_annotation_axiom(s=name,
                                      r='license',
                                      o=license,
@@ -740,9 +751,81 @@ class KB_pattern_writer(object):
                                          match_on='short_form',
                                          safe_label_edge=True)
 
+    def add_OBAN_assoc(self, s, r, o, source=None, pubs=None, evidence=None, match_on='short_form'):
 
+        """s = subject short_form
+           r = relation short_form
+           o = object short_form
+           source = DB source. e.g. FlyBase
+           pubs = list of pubs (FBrf or DOI) as strings
+           evidence = list of evidence types (short_form strings)"""
 
+        # requires
+        # - OBAN to be loaded. - Done.
+        # - FlyBase evidence to be loaded - we can gradually map this over to something more standard/structured.
 
+        # Create assoc node with UUID.  Not good for re-use, but that seems OK].
+
+        self.ew.add_fact(s, r, o, match_on=match_on)  # s,r,o triple
+
+        assoc_sf = 'VFBinternal_' + str(uuid.uuid4())
+        assoc_iri = map_iri('vfb') + assoc_sf
+
+        self.ni.add_node(labels=["Individual"],
+                         IRI=assoc_iri)
+
+        self.ew.add_named_type_ax(s=assoc_sf,
+                                  o='association',
+                                  match_on='short_form')  # assoc to type
+
+        self.ew.add_annotation_axiom(s=assoc_sf,
+                                     r='association_has_subject',
+                                     o=s,
+                                     match_on='short_form')  # assoc to subject
+
+        self.ew.add_annotation_axiom(s=assoc_sf,
+                                     r='association_has_predicate',
+                                     o=r,
+                                     match_on='short_form')  # assoc to predicate
+
+        self.ew.add_annotation_axiom(s=assoc_sf,
+                                     r='association_has_object',
+                                     o=o,
+                                     match_on='short_form')  # assoc to object
+
+        prov_sf = 'VFBinternal_' + str(uuid.uuid4())
+        prov_iri = map_iri('vfb') + prov_sf
+
+        self.ni.add_node(labels=["Individual"],
+                         IRI=prov_iri)
+
+        self.ew.add_named_type_ax(s=prov_sf,
+                                  o='provenance',
+                                  match_on='short_form')  # prov to type
+
+        self.ew.add_fact(s=assoc_sf,
+                         r='has_provenance',
+                         o=prov_sf,
+                         match_on='short_form')  # assoc to prov
+
+        if source:
+            self.ew.add_annotation_axiom(s=prov_sf,
+                                         r='source',
+                                         o=source,
+                                         match_on='short_form')  # link to pub
+
+        if pubs:
+            for pub in pubs:
+                self.ew.add_annotation_axiom(s=prov_sf,
+                                             r='references',
+                                             o=pub,
+                                             match_on='short_form')  # link to pub
+        if evidence:
+            for e in evidence:
+                self.ew.add_annotation_axiom(s=prov_sf,
+                                             r='RO_0002558',
+                                             o=e,
+                                             match_on='short_form')  # link to evidence
 
 # Specs for a fb_feature_update
 ## Pull current feature nodes from DB
