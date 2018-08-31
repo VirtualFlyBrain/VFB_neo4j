@@ -554,6 +554,30 @@ class node_importer(kb_writer):
     def migrate_features_to_new_ids(self, d):
         """STUB"""
         return
+
+class EntityChecker(kb_writer):
+
+    def roll_check(self, labels, query, match_on='short_form'):
+        lstring = ':'.join(labels)
+        self.statements.append("OPTIONAL MATCH (n:%s { %s : '%s'}) return n.short_form as result, '%s' as query" % (lstring, match_on, query, query))
+
+    def check_entities(self, hard_fail = False):
+        dc = results_2_dict_list(self.commit())
+        out = {}
+        for d in dc:
+            if d['result']:
+                out[d['query']]=True
+            else:
+                out[d['query']]=False
+                warnings.warn("Unknown entity %s" %d['query'])
+        if False in out.values():
+            if hard_fail:
+
+                raise Exception('Uknown entities.')
+            else:
+                return False
+        else:
+            return True
     
 class KB_pattern_writer(object):
     """A wrapper class for adding subgraphs following some pre-specified
@@ -564,6 +588,7 @@ class KB_pattern_writer(object):
         self.ew = kb_owl_edge_writer(endpoint, usr, pwd)
         self.ni = node_importer(endpoint, usr, pwd)
         self.iri_gen = iri_generator(endpoint, usr, pwd)
+        self.ec = EntityChecker(endpoint, usr, pwd)
         # Hmmm - these look like they're needed for anat image set only.
         self.anat_iri_gen = iri_generator(endpoint, usr, pwd)
         self.anat_iri_gen.set_default_config()
@@ -623,6 +648,24 @@ class KB_pattern_writer(object):
 
         if anatomy_attributes is None: anatomy_attributes = {}
         if dbxrefs is None: dbxrefs = {}
+
+        self.ec.roll_check(labels=['Individual'],
+                           match_on=match_on,
+                           query=template)
+        self.ec.roll_check(labels=['Class'],
+                           match_on=match_on,
+                           query=anatomical_type)
+        self.ec.roll_check(labels=['DataSet'],
+                           match_on=match_on,
+                           query=dataset)
+
+        for k in dbxrefs.keys():
+            self.ec.roll_check(labels=['Site'],
+                               match_on=match_on,
+                               query=k)
+
+
+        self.ec.check_entities(hard_fail=True)
 
         anat_id = self.anat_iri_gen.generate(start)
 
