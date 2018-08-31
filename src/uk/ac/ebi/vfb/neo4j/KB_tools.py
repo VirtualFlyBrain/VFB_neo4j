@@ -631,8 +631,8 @@ class KB_pattern_writer(object):
                               anatomy_attributes=None,
                               dbxrefs=None,
                               image_filename='',
-                              match_on='short_form'
-                              ):
+                              match_on='short_form',
+                              hard_fail = False):
         """Adds typed inds for an anatomical individual and channel, 
         linked to each other and to the specified template.
         label: Name of anatomical individual
@@ -658,14 +658,14 @@ class KB_pattern_writer(object):
         self.ec.roll_check(labels=['DataSet'],
                            match_on=match_on,
                            query=dataset)
-
         for k in dbxrefs.keys():
             self.ec.roll_check(labels=['Site'],
                                match_on=match_on,
                                query=k)
 
-
-        self.ec.check_entities(hard_fail=True)
+        if not self.ec.check_entities(hard_fail=hard_fail):
+            warnings.warn("Unknown entities referenced in, not adding.")
+            return False
 
         anat_id = self.anat_iri_gen.generate(start)
 
