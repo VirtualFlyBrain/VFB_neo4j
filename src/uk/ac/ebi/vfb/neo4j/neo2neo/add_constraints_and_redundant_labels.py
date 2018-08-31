@@ -57,7 +57,7 @@ label_types = {
    'Anatomy': 'material anatomical entity',
    'Cell': 'cell',
    'Glial_cell': 'glial cell',
-   'Expression_pattern': 'expression_pattern',
+   'Expression_pattern': 'expression pattern',
    'Ganglion': 'ganglion',
    'Cholinergic': 'cholinergic neuron',
    'Glutamatergic': 'glutamatergic neuron',
@@ -65,6 +65,8 @@ label_types = {
    'Octopaminergic': 'octopaminergic neuron',
    'Dopaminergic': 'dopaminergic neuron',
    'Serotonergic': 'serotonergic neuron',
+   'Expression_pattern_fragment': 'expression pattern fragment',
+   'Neuromere': 'neuromere'
    }
 
 label_additions = []

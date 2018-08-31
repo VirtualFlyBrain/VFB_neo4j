@@ -1,6 +1,8 @@
 from .fb_tools import FB2Neo
 from ...curie_tools import map_iri
-
+import re
+import warnings
+import collections
 import uuid
 
 def clean_sgml_tags(sgml_string):
@@ -11,12 +13,13 @@ def clean_sgml_tags(sgml_string):
     return sgml_string
 
 def map_feature_type(fbid, ftype):
-    mapping = {'transgenic_transposon': 'SO_0000796',
-               'insertion_site': 'SO_0001218',
-                'transposable_element_insertion_site': 'SO_0001218',
+    mapping = {'transgenic_transposon': 'SO_0000902',  # Treating as SO: transgene - for consistency with relations
+               'insertion_site': 'GENO_0000418', # Treating as inserted transgene - for consistency with relations
+                'transposable_element_insertion_site': 'GENO_0000418',  # Treating as inserted transgene
                 'natural_transposon_isolate_named': 'SO_0000797',
                 'chromosome_structure_variation': 'SO_1000183'
                 }
+
     if ftype == 'gene':
         if re.match('FBal', fbid):
             return 'SO_0001023'
@@ -27,14 +30,26 @@ def map_feature_type(fbid, ftype):
     else:
         return 'SO_0000110' # Sequence feature
 
-def gen_ep_iri(fbid):
-    return { 'iri' : map_feature_type('vfb') + 'VFBexp_' + 'fbid', 'short_form': 'VFBexp_' + fbid }
 
+# Using named tuples to standardise immutable objects for holding data.
+
+Feature = collections.namedtuple('Feature', ['symbol',
+                                             'fbid',
+                                             'synonyms',  # list of synonyms
+                                             'iri'
+                                             ])
+
+Duple = collections.namedtuple('ftype', ['s', 'o'])
+Triple = collections.namedtuple('ftype', ['s', 'r', 'o'])
 
 class FeatureMover(FB2Neo):
 
     def name_synonym_lookup(self, fbids):
-        """Makes unicode name primary.  Makes everything else a synonym"""
+        """Takes a list of fbids, returns a dictionary of Feature objects, keyed on fbid.
+        Note - makes unicode name primary.  Makes everything else a synonym"""
+        if not fbids:
+            warnings.warn("Empty fbid list provided to name_synonym_lookup")
+            return False
         # stypes: symbol nickname synonym fullname
         query = "SELECT f.uniquename as fbid, s.name as ascii_name, " \
                 "stype.name AS stype, " \
@@ -45,18 +60,20 @@ class FeatureMover(FB2Neo):
                 "JOIN cvterm stype on (s.type_id=stype.cvterm_id) " \
                 "WHERE f.uniquename IN ('%s')"
         dc = self.query_fb(query % "','".join(fbids))
-        results = []
+        results = {}
         old_key = ''
         out = {}
         for d in dc:
             key = d['fbid']
             if not (key == old_key):
-                if out: results.append(out)
+                if out:
+                    results[old_key] = Feature(**out)
                 out = {}
-                out['fbid'] = d['fbid']
+                out['fbid'] = key
+                out['iri'] = map_iri('fb') + key
                 out['synonyms'] = set()
             if d['stype'] == 'symbol' and d['is_current']:
-                out['label'] = clean_sgml_tags(d['unicode_name'])
+                out['symbol'] = clean_sgml_tags(d['unicode_name'])
             else:
                 out['synonyms'].add(clean_sgml_tags(d['ascii_name']))
                 out['synonyms'].add(clean_sgml_tags(d['unicode_name']))
@@ -65,14 +82,20 @@ class FeatureMover(FB2Neo):
 
     def add_features(self, fbids):
         """Takes a list of fbids, generates a csv and uses this to merge feature nodes,
-        adding a unicode label and a list of synonyms"""
-        names = self.name_synonym_lookup(fbids)
-        proc_names = [{'fbid': r['fbid'], 'label': r['label'],
-                       'synonyms': '|'.join(r['synonyms'])}
-                      for r in names]  # bit ugly...
-        statement = "MERGE (n:Feature { short_form : line.fbid } ) " \
-                    "SET n.label = line.label , n.synonyms = split(line.synonyms, '|')"  # Need to set iri
+        adding a unicode label and a list of synonyms.  Returns a dictionary of Feature objects, keyed on fbid"""
+        if not fbids:
+            warnings.warn("No fbids provided.")
+            return False
+        feats = self.name_synonym_lookup(fbids)
+        proc_names = [f._asdict() for f in feats.values()]
+        for d in proc_names:
+            d['synonyms'] = '|'.join(d['synonyms'])
+        statement = "MERGE (n:Feature:Class { short_form : line.fbid } ) " \
+                    "SET n.label = line.symbol SET n.synonyms = split(line.synonyms, '|') " \
+                    "SET n.iri = 'http://flybase.org/reports/' + line.fbid"  # Why not using ni? Can kbw have switch to work via csv?
         self.commit_via_csv(statement, proc_names)
+        self.addTypes2Neo(fbids)
+        return feats
 
     # Typing
 
@@ -103,14 +126,14 @@ class FeatureMover(FB2Neo):
 
         feature_classifications = [{'child': t[0], 'parent': t[1]} for t in types]
         statement = "MATCH (p:Class { short_form: line.parent })" \
-                    ",(c:Feature { short_form: line.child }) " \
+                    ",(c:Class { short_form: line.child }) " \
                     "MERGE (p)<-[:SUBCLASSOF]-(c)"
-        self.commit_via_csv(statement, feature_classifications)
+        self.commit_via_csv(statement, feature_classifications)  # This is currently failing, but I have no idea why.  disadvantage csv
 
     def abberationType(self, abbs):
         """abbs = a list of abberation fbids
         Returns a list of (fbid, type) tuples where type is a SO ID"""
-        # Super slow and broken!
+        # Super slow and broken! May not be worth the extra work to fix...
         results = []
         abbs_proc = []  # For tracking processed abbs
         query = "SELECT f.uniquename AS fbid, db.name AS db," \
@@ -153,8 +176,8 @@ class FeatureMover(FB2Neo):
                          "JOIN feature o ON fr.object_id=o.feature_id " \
                          "WHERE s.uniquename IN ('%s') " \
                          "AND r.name = '%s' " \
-                         "AND o.uniquename like '%s'"
-        query = query_template % ("','".join(subject_ids), chado_rel, o_idp + '%')
+                         "AND o.uniquename ~ '%s.+'"
+        query = query_template % ("','".join(subject_ids), chado_rel, o_idp)
         dc = self.query_fb(query)
         results = []
         for d in dc:
@@ -164,25 +187,27 @@ class FeatureMover(FB2Neo):
     def allele2Gene(self, subject_ids):
         """Takes a list of allele IDs, returns a list of triples as python tuples:
          (allele rel gene) where rel is appropriate for addition to prod."""
-        return self._get_objs(subject_ids, chado_rel='alleleof', out_rel='is_allele_of', o_idp='FBgn')
+        return self._get_objs(subject_ids, chado_rel='alleleof', out_rel='GENO_0000408', o_idp='FBgn') # is_allele_of
 
     # gp - transgene R associated_with Type object by uniquename FBgn
-    def gp2Transgene(self, subject_ids):
+    def gp2allele(self, subject_ids):
         """Takes a list of gene product IDs, returns a list of triples as python tuples:
          (gene_product rel transgene) where rel is appropriate for addition to prod."""
-        return self._get_objs(subject_ids, chado_rel='associated_with', out_rel='fu', o_idp='FBti|FBtp')
+        return self._get_objs(subject_ids, chado_rel='associated_with', out_rel='RO_0002204', o_idp='FBal') # gene_product_of
 
     # gp - gene associated_with Type object by uniquename FBgn
     def gp2Gene(self, subject_ids):
         """Takes a list of gene product IDs, returns a list of triples as python tuples:
          (gene_product rel gene) where rel is appropriate for addition to prod."""
-        return self._get_objs(subject_ids, chado_rel='associated_with', out_rel='expressed_by', o_idp='FBgn')
+        return self._get_objs(subject_ids, chado_rel='associated_with', out_rel='RO_0002204', o_idp='FBgn') # gene_product_of
 
     # transgene - allele  R associated_with Type object by uniquename FBal
-    def transgene2allele(self, subject_ids):
+    def allele2transgene(self, subject_ids):
         """Takes a list of transgene IDs, returns a list of triples as python tuples:
          (transgene rel allele) where rel is appropriate for addition to prod."""
-        return self._get_objs(subject_ids, chado_rel='associated_with', out_rel='fu', o_idp='FBal')
+        return self._get_objs(subject_ids, chado_rel='associated_with', out_rel='GENO_0000408', o_idp='(FBti|FBtp)') # is_allele_of
+        # Above treating TG as gene.  This is consistent with ti/tp classified as GENO_0000093 'integrated transgene'
+        # See https://github.com/monarch-initiative/ingest-artifacts/blob/2ab4a0835b2717ac2426a2e19f1bd9bedf4d6396/docs/Dipper%20Data%20Model%20cmaps.jpg
 
     def add_feature_relations(self, triples, assume_subject=True):
         if not assume_subject:
@@ -194,37 +219,52 @@ class FeatureMover(FB2Neo):
         self.addTypes2Neo(objects)
         statements = []
         for t in triples:
-            statements.append(
-                "MATCH (s:Feature { short_form: '%s'}), (o:Feature { short_form: '%s'}) " \
-                "MERGE (s)-[r:%s]->(o)" % (t[0], t[2], t[1])  # Should be using KB_tools (?)
-            )
-        self.nc.commit_list_in_chunks(statements)
-
-    def generate_expression_patterns(self, fbids):
-        ns_lookup = self.name_synonym_lookup(fbids)
-        for fbid in fbids:
-            # Generate iri  - use something derived from FB id as will be 1:1.
-            # Use: VFBexp_FBxxnnnnnnn
-            ad = {}
-            ad['iri'] = gen_ep_iri(fbid)
-            # Generate label = 'label . expression pattern'
-            ad['label'] = ns_lookup[fbid]['label'] + ' expression pattern'
-            ad['synonyms'] = [x + ' expression pattern' for x in ns_lookup[fbid]['synonyms']]
-            # Add node
-            self.ni.add_node(labels='Class:',
-                             attribute_dict=ad)
-            self.ew.add_named_subClassOf_ax(s=ad['iri'],
-                                            o='',
-                                            match_on='iri')
-            self.ew.add_anon_subClassOf_ax(s='',
-                                           r='',
-                                           o='',
-                                           match_on='iri')
-        self.ni.commit()
+            self.ew.add_anon_subClassOf_ax(s=t[0],
+                                           r=t[1],
+                                           o=t[2],
+                                           match_on='short_form',
+                                           safe_label_edge=True)
+#            statements.append(
+#                "MATCH (s:Feature { short_form: '%s'}), (o:Feature { short_form: '%s'}) " \
+#                "MERGE (s)-[r:%s]->(o)" % (t[0], t[2], t[1])  # Should be using KB_tools (?)
+#            )
         self.ew.commit()
 
-        # Add edges - subClassOf expression pattern; expresses fu (we know fu from the feature list.
+    def generate_expression_patterns(self, features):
+        if not features:
+            return False
 
+        out = {}
+        # Keeping this function scope local
+        def gen_ep_feat(feat):
+            return Feature(iri=map_iri('vfb') + 'VFBexp_' + feat.fbid,
+                           fbid='VFBexp_' + feat.fbid,
+                           symbol=feat.symbol + ' expression pattern',
+                           synonyms=[x + ' expression pattern' for x in feat.synonyms])
+
+        for feat in features.values():
+            # Generate iri  - use something derived from FB id as will be 1:1.
+            # Use: VFBexp_FBxxnnnnnnn
+            ep = gen_ep_feat(feat)
+            ad = {'label': ep.symbol, 'synonyms': ep.synonyms}
+            out[feat.fbid] = ep.fbid
+            # Generate label = 'label . expression pattern'
+            # Add node
+            self.ni.add_node(labels=['Class'],
+                             IRI=ep.iri,
+                             attribute_dict=ad)
+
+            self.ew.add_named_subClassOf_ax(s=ep.fbid,
+                                            o='CARO_0030002',  # expression pattern
+                                            match_on='short_form')
+            self.ew.add_anon_subClassOf_ax(s=ep.fbid,
+                                           r='RO_0002292',  # expresses
+                                           o=feat.fbid,
+                                           match_on='short_form')
+
+        self.ni.commit()
+        self.ew.commit()
+        # Add edges - subClassOf expression pattern; expresses fu (we know fu from the feature list.
         # return iris of expression pattern nodes for further use.  Need link back to original feature ID linked to expression
-        return
+        return out
 
