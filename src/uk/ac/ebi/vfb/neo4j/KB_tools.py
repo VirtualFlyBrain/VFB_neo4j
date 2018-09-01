@@ -642,6 +642,7 @@ class KB_pattern_writer(object):
                               dbxrefs=None,
                               image_filename='',
                               match_on='short_form',
+                              orcid = '',
                               hard_fail=False):
         """Adds typed inds for an anatomical individual and channel, 
         linked to each other and to the specified template.
@@ -673,6 +674,11 @@ class KB_pattern_writer(object):
             self.ec.roll_check(labels=['Site'],
                                match_on=match_on,
                                query=k)
+
+        if orcid:
+            self.ec.roll_check(labels=['Person'],
+                               match_on=match_on,
+                               query=orcid)
 
         if not self.ec.check_entities(hard_fail=hard_fail):
             warnings.warn("Unknown entities referenced in, not adding.")
@@ -706,6 +712,10 @@ class KB_pattern_writer(object):
                                              edge_annotations={'accession': acc},
                                              safe_label_edge=True
                                              )
+        if orcid:
+            self.ew.add_annotation_axiom(s=anat_id['short_form'],
+                                         r='contributor',
+                                         o=orcid)  # This assumes matching on short form!
 
         self.ni.add_node(labels=['Individual'],
                          IRI=channel_id['iri'],
@@ -721,6 +731,7 @@ class KB_pattern_writer(object):
         self.ew.add_named_type_ax(s=channel_id['short_form'],
                                   o='VFBext_0000014',
                                   match_on='short_form')
+
 
         # Imaging modality - currently works on internal lookup in script.  Should probably be dynamic with DB
         self.ew.add_anon_type_ax(s=channel_id['iri'],
