@@ -555,13 +555,23 @@ class node_importer(kb_writer):
         """STUB"""
         return
 
+
 class EntityChecker(kb_writer):
 
+    """Check for the existance of nodes"""
+
     def roll_check(self, labels, query, match_on='short_form'):
+        """Roll a check and add it to the stack.
+        labels = list of Neo4J labels match on
+        match_on = property to match_on (default = short_form)
+        query = Value of property matched on for target entity.
+        """
         lstring = ':'.join(labels)
         self.statements.append("OPTIONAL MATCH (n:%s { %s : '%s'}) return n.short_form as result, '%s' as query" % (lstring, match_on, query, query))
 
-    def check_entities(self, hard_fail = False):
+    def check_entities(self, hard_fail=False):
+        """Run checks in the stack then empty the stack.
+        If hard_fail = True, raise exception if any check in the stack fails."""
         dc = results_2_dict_list(self.commit())
         out = {}
         for d in dc:
@@ -632,7 +642,7 @@ class KB_pattern_writer(object):
                               dbxrefs=None,
                               image_filename='',
                               match_on='short_form',
-                              hard_fail = False):
+                              hard_fail=False):
         """Adds typed inds for an anatomical individual and channel, 
         linked to each other and to the specified template.
         label: Name of anatomical individual
@@ -644,7 +654,8 @@ class KB_pattern_writer(object):
         template: channel ID of the template to which the image is registered
         start: Start of range for generation of new accessions
         dbxrefs: dict of DB:accession pairs
-        anatomy_attribute = {}"""
+        anatomy_attribute = {}
+        hard_fail: Boolean.  If True, throw exception for uknown entitise referenced in args"""
 
         if anatomy_attributes is None: anatomy_attributes = {}
         if dbxrefs is None: dbxrefs = {}
