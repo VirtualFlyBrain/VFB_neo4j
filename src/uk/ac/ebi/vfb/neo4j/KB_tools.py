@@ -715,7 +715,8 @@ class KB_pattern_writer(object):
         if orcid:
             self.ew.add_annotation_axiom(s=anat_id['short_form'],
                                          r='contributor',
-                                         o=orcid)  # This assumes matching on short form!
+                                         o=orcid,
+                                         match_on='short_form')  # This assumes matching on short form!
 
         self.ni.add_node(labels=['Individual'],
                          IRI=channel_id['iri'],
