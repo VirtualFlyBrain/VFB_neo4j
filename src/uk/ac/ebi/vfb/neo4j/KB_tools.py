@@ -554,6 +554,40 @@ class node_importer(kb_writer):
     def migrate_features_to_new_ids(self, d):
         """STUB"""
         return
+
+
+class EntityChecker(kb_writer):
+
+    """Check for the existance of nodes"""
+
+    def roll_check(self, labels, query, match_on='short_form'):
+        """Roll a check and add it to the stack.
+        labels = list of Neo4J labels match on
+        match_on = property to match_on (default = short_form)
+        query = Value of property matched on for target entity.
+        """
+        lstring = ':'.join(labels)
+        self.statements.append("OPTIONAL MATCH (n:%s { %s : '%s'}) return n.short_form as result, '%s' as query" % (lstring, match_on, query, query))
+
+    def check_entities(self, hard_fail=False):
+        """Run checks in the stack then empty the stack.
+        If hard_fail = True, raise exception if any check in the stack fails."""
+        dc = results_2_dict_list(self.commit())
+        out = {}
+        for d in dc:
+            if d['result']:
+                out[d['query']]=True
+            else:
+                out[d['query']]=False
+                warnings.warn("Unknown entity %s" %d['query'])
+        if False in out.values():
+            if hard_fail:
+
+                raise Exception('Uknown entities.')
+            else:
+                return False
+        else:
+            return True
     
 class KB_pattern_writer(object):
     """A wrapper class for adding subgraphs following some pre-specified
@@ -564,6 +598,7 @@ class KB_pattern_writer(object):
         self.ew = kb_owl_edge_writer(endpoint, usr, pwd)
         self.ni = node_importer(endpoint, usr, pwd)
         self.iri_gen = iri_generator(endpoint, usr, pwd)
+        self.ec = EntityChecker(endpoint, usr, pwd)
         # Hmmm - these look like they're needed for anat image set only.
         self.anat_iri_gen = iri_generator(endpoint, usr, pwd)
         self.anat_iri_gen.set_default_config()
@@ -606,8 +641,8 @@ class KB_pattern_writer(object):
                               anatomy_attributes=None,
                               dbxrefs=None,
                               image_filename='',
-                              match_on='short_form'
-                              ):
+                              match_on='short_form',
+                              hard_fail=False):
         """Adds typed inds for an anatomical individual and channel, 
         linked to each other and to the specified template.
         label: Name of anatomical individual
@@ -619,10 +654,29 @@ class KB_pattern_writer(object):
         template: channel ID of the template to which the image is registered
         start: Start of range for generation of new accessions
         dbxrefs: dict of DB:accession pairs
-        anatomy_attribute = {}"""
+        anatomy_attribute = {}
+        hard_fail: Boolean.  If True, throw exception for uknown entitise referenced in args"""
 
         if anatomy_attributes is None: anatomy_attributes = {}
         if dbxrefs is None: dbxrefs = {}
+
+        self.ec.roll_check(labels=['Individual'],
+                           match_on=match_on,
+                           query=template)
+        self.ec.roll_check(labels=['Class'],
+                           match_on=match_on,
+                           query=anatomical_type)
+        self.ec.roll_check(labels=['DataSet'],
+                           match_on=match_on,
+                           query=dataset)
+        for k in dbxrefs.keys():
+            self.ec.roll_check(labels=['Site'],
+                               match_on=match_on,
+                               query=k)
+
+        if not self.ec.check_entities(hard_fail=hard_fail):
+            warnings.warn("Unknown entities referenced in, not adding.")
+            return False
 
         anat_id = self.anat_iri_gen.generate(start)
 

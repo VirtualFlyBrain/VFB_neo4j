@@ -6,7 +6,7 @@ Created on Mar 8, 2017
 import unittest
 import os
 
-from ..KB_tools import kb_owl_edge_writer, node_importer, gen_id, iri_generator, KB_pattern_writer
+from ..KB_tools import kb_owl_edge_writer, node_importer, gen_id, iri_generator, KB_pattern_writer, EntityChecker
 from ...curie_tools import map_iri
 from ..neo4j_tools import results_2_dict_list, neo4j_connect
 import re
@@ -253,8 +253,30 @@ class TestKBPatternWriter(unittest.TestCase):
         return
 
 
+class TestEntityChecker(unittest.TestCase):
 
+        def setUp(self):
+            s = ["MERGE (i1:Individual { "
+                 "iri : 'http://fu.bar/Aya', label: 'Aya', short_form: 'Aya' }) "]
+            self.ec = EntityChecker('http://localhost:7474', 'neo4j', 'neo4j')
+            self.ec.nc.commit_list(s)
 
+        def testEntityCheck(self):
+            self.ec.roll_check(labels=['Individual'],
+                               match_on='short_form',
+                               query='Aya')
+
+            self.ec.roll_check(labels=['Individual'],
+                               match_on='iri',
+                               query='http://fu.bar/Aya')
+
+            assert self.ec.check_entities() is True
+
+            self.ec.roll_check(labels=['Individual'],
+                               match_on='label',
+                               query='asdfd')
+
+            assert self.ec.check_entities() is False
 
 if __name__ == "__main__":
     unittest.main()
