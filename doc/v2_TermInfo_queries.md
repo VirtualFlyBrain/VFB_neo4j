@@ -1,3 +1,23 @@
+Common elements
+
+label, description/definition, comment, short_form
+xrefs
+
+Elements differing between types
+
+pub_syn only for Class:
+  - all links to pubs for Individuals are currently via DataSet (although this is denormalized to direct link to individuals in current pdb)
+  - Synonyms on individuals are currently lists - without the additional datastructures allowed for classes.
+
+
+images:
+   - Can (& should) use the same dataStructure on Classes, DataSets
+   - The image dataStructure on anatomical individuals necessarily lacks the Anatomical individual node present on Classes & DataSets.  It's also easier - and probably more appropriate - to include imaging type on the individuals.  
+   - Question: Should we allow for 1:many Anatomical individual: Image Individual?  We can cope with multiple registration templates by having multiple in_register_with_edges
+   
+   
+
+### Type: Class
 
 ```cql
 MATCH (a:Class { short_form: 'FBbt_00003632'}) WITH a
@@ -19,6 +39,8 @@ RETURN collect ({image_sf: i.short_form, image_label: i.label,
        		xrefs, pub_syn, rels, a.short_form, a.label, a.description, 
 		a.comment, labels(a) as atyp, a.synonym
 ```
+
+### Type: Anatomy:individual
 
 ```cql
 MATCH (a:Anatomy:Individual { short_form : 'VFB_00030852' }) with a 
@@ -44,6 +66,8 @@ RETURN COLLECT ({template: template.label, folder: irw.folder})
 	a.synonyms, imaging_type.label
 ```       
 
+### Type: DataSet
+
 ```cql
 MATCH (a:DataSet { short_form : 'Ohyama2015' })-[:has_license]->(l:License)
 WITH a,l OPTIONAL MATCH (pub:Individual)<-[:has_reference]-(a)
@@ -60,7 +84,7 @@ RETURN collect ({image_sf: i.short_form, image_label: i.label,
 ```
 
 
-Standardising JSON structure of output
+### Standardising JSON structure of output
 
 ```cql
 COLLECT ({ miniref: p.miniref, pmid: p.PMID, FlyBase: p.FlyBase, 
