@@ -4,30 +4,44 @@ MATCH (a:Class { short_form: 'FBbt_00003632'}) WITH a
 OPTIONAL MATCH (parent:Class)<-[r]-(a)
 WITH collect({ object: parent.label, rel: r.label}) as rels, a
 OPTIONAL MATCH (a)-[rp]->(pub:pub)
-WITH collect ({ miniref: p.miniref, pmid: p.PMID, FlyBase: p.FlyBase, DOI: p.DOI, ISBN: p.ISBN,
-	       typ: rp.typ, synonym_scope: rp.scope, synonym: rp.synonym, cat: rp.cat }) as pub_syn, a, rels
+WITH collect ({ miniref: p.miniref, pmid: p.PMID, 
+		FlyBase: p.FlyBase, DOI: p.DOI, ISBN: p.ISBN,
+	       typ: rp.typ, synonym_scope: rp.scope, 
+	       synonym: rp.synonym, cat: rp.cat }) 
+	       as pub_syn, a, rels
 OPTIONAL MATCH (s:Site)<-[dbx:hasDbXref]-(a)
 WITH collect ({ link: s.link_base + s.accession, label: s.label}) as xrefs, pub_syn, rels, a
-OPTIONAL MATCH (a)<-[:SUBCLASSOF|INSTANCEOF*]-(i:Individual)<-[:depicts]-(:Individual)-[irw:in_register_with]->(template:Individual)
+OPTIONAL MATCH (a)<-[:SUBCLASSOF|INSTANCEOF*]-
+	(i:Individual)<-[:depicts]-(:Individual)-[irw:in_register_with]->(template:Individual)
 WITH a, pub_syn, rels, i, irw, template, xrefs limit 5 
-RETURN collect ({image_sf: i.short_form, image_label: i.label, template: template.label, folder: irw.folder}) as images,
-       xrefs, pub_syn, rels, a.short_form, a.label, a.description, a.comment, labels(a) as atyp, a.synonym
+RETURN collect ({image_sf: i.short_form, image_label: i.label, 
+		template: template.label, folder: irw.folder}) as images,
+       		xrefs, pub_syn, rels, a.short_form, a.label, a.description, 
+		a.comment, labels(a) as atyp, a.synonym
 ```
 
 ```cql
 MATCH (a:Anatomy:Individual { short_form : 'VFB_00030852' }) with a 
 MATCH (a)-[:has_source]->(ds:DataSet)-[:has_license]->(l:License)
-WITH COLLECT({ dataset_short_form: ds.short_form, dataset_name :  ds.label, license_name: l.label}) as dataset_license, a 
-     OPTIONAL MATCH (a)-[:has_source]->(ds:DataSet)-[:has_reference]->(p:pub)
-WITH COLLECT ({ miniref: p.miniref, pmid: p.PMID, FlyBase: p.FlyBase, DOI: p.DOI, ISBN: p.ISBN } ) as pub, dataset_license, a
-     OPTIONAL MATCH (s:Site:Individual)<-[dbx:hasDbXref]-(a)
-WITH COLLECT ({ link: s.link_base + s.accession, label: s.label}) as xrefs, dataset_license, pub, a
-     OPTIONAL MATCH (parent:Class)<-[r]-(a)
-WITH collect({ object: parent.label, rel: r.label}) as rels, xrefs, dataset_license, pub, a
-     OPTIONAL MATCH (a:Individual)<-[:depicts]-(c:Individual)-[irw:in_register_with]-(template:Individual) // Should this also look up imaging type?
+WITH COLLECT({ dataset_short_form: ds.short_form, 
+		dataset_name :  ds.label, license_name: l.label}) as dataset_license, a 
+OPTIONAL MATCH (a)-[:has_source]->(ds:DataSet)-[:has_reference]->(p:pub)
+WITH COLLECT ({ miniref: p.miniref, pmid: p.PMID, FlyBase: p.FlyBase, 
+		DOI: p.DOI, ISBN: p.ISBN }) as pub, dataset_license, a
+OPTIONAL MATCH (s:Site:Individual)<-[dbx:hasDbXref]-(a)
+WITH COLLECT ({ link: s.link_base + s.accession, label: s.label}) as xrefs, d
+		ataset_license, pub, a
+OPTIONAL MATCH (parent:Class)<-[r]-(a)
+WITH collect({ object: parent.label, rel: r.label}) 
+as rels, xrefs, dataset_license, pub, a
+OPTIONAL MATCH (a:Individual)<-[:depicts]-
+(c:Individual)-[irw:in_register_with]-(template:Individual)
 WITH rels, xrefs, dataset_license, pub, a, template, irw, c
-     OPTIONAL MATCH (c)-[:is_specified_output_of]->(it:Class) with rels, xrefs, dataset_license, pub, a, template, irw, imaging_type. // Potentially dodgy assumption about 1:1 ?
-RETURN COLLECT ({template: template.label, folder: irw.folder}) as images, dataset_license, xrefs, pub, rels, a.label, a.definition, a.synonyms, imaging_type.label
+OPTIONAL MATCH (c)-[:is_specified_output_of]->(it:Class) 
+WITH rels, xrefs, dataset_license, pub, a, template, irw, imaging_type. // Potentially dodgy assumption about 1:1 ?
+RETURN COLLECT ({template: template.label, folder: irw.folder})
+	as images, dataset_license, xrefs, pub, rels, a.label, a.definition, 
+	a.synonyms, imaging_type.label
 ```       
 
 ```cql
@@ -36,22 +50,31 @@ WITH a,l OPTIONAL MATCH (pub:Individual)<-[:has_reference]-(a)
 WITH collect ({ miniref: pub.miniref } ) as pub, a,l
 OPTIONAL MATCH (s:Site)<-[:hasDbXref]-(a)
 WITH collect ({ link: s.iri, label: s.label}) as xrefs, pub, a,l
-     OPTIONAL MATCH (a)<-[:has_source]-(i:Individual)-<-[:depicts]-(:Individual)-[irw:in_register_with]->(template:Individual)
-     with xrefs, pub, a,l, i, irw, template
-RETURN collect ({image_sf: i.short_form, image_label: i.label, template: template.label, folder: irw.folder}) as images,
-xrefs, pub, a.short_form, a.label, a.description, l.label, l.license_name
+OPTIONAL MATCH (a)<-[:has_source]-(i:Individual)
+     <-[:depicts]-(:Individual)-[irw:in_register_with]->(template:Individual)
+     WITH xrefs, pub, a,l, i, irw, template
+RETURN collect ({image_sf: i.short_form, image_label: i.label, 
+		template: template.label, folder: irw.folder}) as images,
+		xrefs, pub, a.short_form, a.label, a.description, 
+		l.label, l.license_name
 ```
 
 
 Standardising JSON structure of output
 
 ```cql
-COLLECT ({ miniref: p.miniref, pmid: p.PMID, FlyBase: p.FlyBase, DOI: p.DOI, ISBN: p.ISBN }) as pub
-COLLECT ({ miniref: p.miniref, pmid: p.PMID, FlyBase: p.FlyBase, DOI: p.DOI, ISBN: p.ISBN, typ: rp.typ, synonym_scope: rp.scope, synonym: rp.synonym, cat: rp.cat }) AS pub_syn
-COLLECT ({ dataset_short_form: ds.short_form, dataset_name :  ds.label, license_name: l.label, l.}) as dataset_license
+COLLECT ({ miniref: p.miniref, pmid: p.PMID, FlyBase: p.FlyBase, 
+	DOI: p.DOI, ISBN: p.ISBN }) as pub
+COLLECT ({ miniref: p.miniref, pmid: p.PMID, FlyBase: p.FlyBase,
+	DOI: p.DOI, ISBN: p.ISBN, typ: rp.typ, synonym_scope: 
+	rp.scope, synonym: rp.synonym, cat: rp.cat }) AS pub_syn
+COLLECT ({ dataset_short_form: ds.short_form, dataset_name :  
+	ds.label, license_name: l.label, l.}) as dataset_license
 COLLECT ({ link: s.link_base + s.accession, label: s.label }) as xrefs
-COLLECT ({ image_sf: i.short_form, image_label: i.label, template: template.label, folder: irw.folder }) as images
-       a.short_form as short_form, a.label as label, a.description as description, a.definition, as definition, a.comment as comments, labels(a) as types,
+COLLECT ({ image_sf: i.short_form, image_label: i.label, 
+	template: template.label, folder: irw.folder }) as images
+        a.short_form as short_form, a.label as label, a.description as description, 
+	a.definition, as definition, a.comment as comments, labels(a) as types,
        a.synonym, it.label, l.license_name
 ```
 
