@@ -397,8 +397,7 @@ class kb_owl_edge_writer(kb_writer):
         missed_edges = [x['match_count'] for x in dc if x and (0 in x['match_count'].values())]
         if missed_edges:
             for e in missed_edges:
-                warnings.warn("No match found for %s in %s" % (str([k for k,v in e.items() if not v]),
-                                                               str(e)))
+                warnings.warn("No match found for %s" % str([k for k, v in e.items() if not v]))
             return False
         else:
             return True

@@ -1,7 +1,6 @@
 from .feature_tools import FeatureMover
 from .expression_tools import ExpressionWriter
 from ..neo4j_tools import chunks
-from .pub_tools import pubMover
 import sys
 import pandas as pd
 
@@ -60,7 +59,6 @@ for fep_c in feps_chunked:
     pubs = [f['fbrf'] for f in fep_c]
     taps = [f['fbex'] for f in fep_c]
 
-    pubMover(pubs)
 
 
     #Gene expression

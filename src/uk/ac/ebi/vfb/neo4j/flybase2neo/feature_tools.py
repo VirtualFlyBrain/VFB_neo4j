@@ -55,7 +55,7 @@ class FeatureMover(FB2Neo):
                 "stype.name AS stype, " \
                 "fs.is_current, s.synonym_sgml as unicode_name " \
                 "FROM feature f " \
-                "JOIN feature_synonym fs on (f.feature_id=fs.feature_id) " \
+                "LEFT OUTER JOIN feature_synonym fs on (f.feature_id=fs.feature_id) " \
                 "JOIN synonym s on (fs.synonym_id=s.synonym_id) " \
                 "JOIN cvterm stype on (s.type_id=stype.cvterm_id) " \
                 "WHERE f.uniquename IN ('%s')"
@@ -63,10 +63,13 @@ class FeatureMover(FB2Neo):
         results = {}
         old_key = ''
         out = {}
-        for d in dc:
+        while dc:
+            d = dc.pop()
             key = d['fbid']
-            if not (key == old_key):
+            if not (key == old_key) or not dc:
                 if out:
+                    if 'symbol' not in out.keys():
+                        out['symbol'] = ''
                     results[old_key] = Feature(**out)
                 out = {}
                 out['fbid'] = key
@@ -78,6 +81,10 @@ class FeatureMover(FB2Neo):
                 out['synonyms'].add(clean_sgml_tags(d['ascii_name']))
                 out['synonyms'].add(clean_sgml_tags(d['unicode_name']))
             old_key = key
+            if key not in results.keys():
+                if 'symbol' not in out.keys():
+                    out['symbol'] = ''
+                results[old_key] = Feature(**out)  # If on
         return results
 
     def add_features(self, fbids):
