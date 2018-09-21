@@ -2,6 +2,7 @@
 import psycopg2
 from ..KB_tools import KB_pattern_writer
 import pandas as pd
+from operator import itemgetter
 
 '''
 Created on 4 Feb 2016
@@ -36,6 +37,37 @@ def get_fb_conn():
     return psycopg2.connect(dbname='flybase',
                             host='chado.flybase.org',
                             user='flybase')
+
+
+def dict_list_2_dict(key, dict_list, pfunc, sort = True):
+    """Processes a list of dicts to produce a single dict.
+    key = key of output dict.  Must be present in dict in dict_list
+    dict_list = a list of dicts.
+    pfunc = a function applied to all dicts in dict_list sharing the same key
+            to produce a value for the output dict.  The type of this value is
+            specified by what the function returns. This function must take 2 args:
+                First arg: input dict
+                Second arg: output datastructure (or False)
+            If the output datastructure is (inrepreted as) False
+            it must generate new one otherwise it should generate a new output
+            datastructure
+    sort = Boolean to set sorting of the input dict_list on value of output key.
+    The default = True as this sorting is required for the function to work, but it can be set to False for purposes of efficiency if the input is already pre-sorted.
+    """
+    if sort:
+        dict_list = sorted(dict_list, key=itemgetter(key))
+    result = {}
+    out = False
+    old_key = ''
+    while dict_list:
+        d = dict_list.pop()
+        current_key = d[key]
+        if not current_key == old_key:
+            out = False
+        out = pfunc(d, out)
+        result[current_key] = out # We can reassign every time as out is mutating.
+        old_key = current_key
+    return result
 
 
 class FB2Neo(object):
