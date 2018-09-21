@@ -44,6 +44,8 @@ Feature = collections.namedtuple('Feature', ['symbol',
 Duple = collections.namedtuple('ftype', ['s', 'o'])
 Triple = collections.namedtuple('ftype', ['s', 'r', 'o'])
 
+split = collections.namedtuple('split', ['name', 'dbd', 'ad'])
+
 
 class FeatureMover(FB2Neo):
 
@@ -273,6 +275,33 @@ class FeatureMover(FB2Neo):
 
         self.ni.commit()
         self.ew.commit()
+
         # Add edges - subClassOf expression pattern; expresses fu (we know fu from the feature list.
         # return iris of expression pattern nodes for further use.  Need link back to original feature ID linked to expression
         return out
+
+
+    def gen_split_ep_feat(self, splits):
+        for s in splits:
+            feats = self.name_synonym_lookup([s.ad, s.dbd])
+            short_form = 'VFBexp_' + s.dbd + s.ad
+            iri = map_iri('vfb') + short_form
+            ad = { 'label' : feats[s.dbd].symbol + '∩' +
+                   feats[s.ad].symbol +'expression pattern',
+                   'synonyms': [s.name] }
+
+            self.ni.add_node(labels=['Class', 'Feature'],
+                             IRI=iri,
+                             ad=ad)
+
+            hemidrivers = [Triple(s=short_form, r='RO_0002292', o=s.ad),
+                           Triple(s=short_form, r='RO_0002292', o=s.dbd)]  # Need to decide on relations!
+
+            self.add_feature_relations(hemidrivers)
+        self.ni.commit()
+        self.ew.commit()
+
+
+
+
+
