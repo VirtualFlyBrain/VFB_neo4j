@@ -29,7 +29,7 @@ Odd to have 'has_license' as relationship.
 ### Common elements
 
 label, description/definition, comment, short_form
-xrefs(links), references
+xrefs(links), references, Queries (Need flexibility in layout - or should these be in a separate, sync'd widget 
 
 ### Elements differing between types
 
