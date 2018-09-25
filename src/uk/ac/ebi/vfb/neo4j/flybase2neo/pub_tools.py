@@ -7,7 +7,7 @@ class pubMover(FB2Neo):
     def move(self, pub_list):
         self.set_pub_details(pub_list)
         self.set_pub_xrefs(pub_list)
-        self.generate_microref_labels()
+        #self.generate_microref_labels()
 
     def get_pub_details(self, pub_list):
         """Takes list of Fbrfs as input returns ..."""
@@ -35,7 +35,7 @@ class pubMover(FB2Neo):
             statements.append("MERGE (p:pub { FlyBase: '%s' } ) "
                               "SET p.title = \"%s\", p.miniref = \"%s\", "
                               "p.volume = '%s', p.year = '%s', p.pages = '%s'"
-                              % (d['fbrf'], title, d['miniref'], d['volume'], d['pyear'], d['pages']))
+                              % (d['fbrf'], title, d['miniref'], d['volume'], d['year'], d['pages']))
             # Generate microref from miniref and append as label
         self.nc.commit_list(statements)
 
@@ -68,6 +68,7 @@ class pubMover(FB2Neo):
 
 
     def generate_microref_labels(self):
+        ### Needs some work
         self.nc.commit_list(["MATCH (n:pub) where has(n.miniref) SET n.label=split(n.miniref,',')[0] + ', ' + split(n.miniref,',')[1]"])
 
 
