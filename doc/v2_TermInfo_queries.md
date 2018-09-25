@@ -1,20 +1,47 @@
-Common elements
+## Draft v2 TermInfo Cypher queries
+
+### Reviewing TermInfo
+
+#### Class
+
+![image](https://user-images.githubusercontent.com/112839/46010830-e3ea4a80-c0bb-11e8-829f-cb44a67d1726.png)
+
+This doesn't need to change much except that xrefs (linkouts) should be a separate section (links) to references).
+
+Question: Should image browser show more (e.g. source)?
+
+#### Individual:Anatomy
+
+![image](https://user-images.githubusercontent.com/112839/46010900-1c8a2400-c0bc-11e8-873d-65fba4ba3e80.png)
+
+Non logical bits should be split out from relationships:
+	- has_license & has_source - move to downloads section
+	- member of ???
+	
+As for Class, xrefs (linkouts) should be split out from References.  But we also need to make a link to data at source distinct from linkouts to any other resources that may have the same data.
+
+#### DataSet
+
+![image](https://user-images.githubusercontent.com/112839/46011046-8efb0400-c0bc-11e8-83d5-d0e0f3bfa1b0.png)
+
+Odd to have 'has_license' as relationship.  
+
+### Common elements
 
 label, description/definition, comment, short_form
-xrefs
+xrefs(links), references
 
-Elements differing between types
+### Elements differing between types
 
-pub_syn only for Class:
+pub_syn (Class only) vs synonyms (Individuals)
+  - Synonyms for classes live on edge, linked to pubs.
   - all links to pubs for Individuals are currently via DataSet (although this is denormalized to direct link to individuals in current pdb)
   - Synonyms on individuals are currently lists - without the additional datastructures allowed for classes.
-
 
 images:
    - Can (& should) use the same dataStructure on Classes, DataSets
    - The image dataStructure on anatomical individuals necessarily lacks the Anatomical individual node present on Classes & DataSets.  It's also easier - and probably more appropriate - to include imaging type on the individuals.  
    - Question: Should we allow for 1:many Anatomical individual: Image Individual?  We can cope with multiple registration templates by having multiple in_register_with_edges
-   
    
 
 ### Type: Class
