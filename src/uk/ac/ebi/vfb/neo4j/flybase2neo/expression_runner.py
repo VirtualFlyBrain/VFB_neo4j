@@ -2,6 +2,7 @@ from .feature_tools import FeatureMover
 from .expression_tools import ExpressionWriter
 from ..neo4j_tools import chunks
 from .pub_tools import pubMover
+import argparse
 import sys
 import pandas as pd
 
@@ -15,14 +16,33 @@ import warnings
 # 4. Merge feature & pub + add typing and details.
 # 5. Instantiate (merge) related types -> gene for features, adding details
 
+parser = argparse.ArgumentParser()
+parser.add_argument('--test', help='Run in test mode. ' \
+                    'runs with limits on cypher queries and additions.',
+                    action = "store_true")
+parser.add_argument("endpoint",
+                    help="Endpoint for connection to neo4J prod")
+parser.add_argument("usr",
+                    help="username")
+parser.add_argument("pwd",
+                    help="password")
+parser.add_argument("filepath",
+                    help="Location for csv files readable by Neo4J.")
 
-endpoint = sys.argv[1]
-usr = sys.argv[2]
-pwd = sys.argv[3]
-temp_csv_filepath = sys.argv[4]  # Location for readable csv files
+args = parser.parse_args()
 
-fm = FeatureMover(endpoint, usr, pwd, temp_csv_filepath)
-pm = pubMover(endpoint, usr, pwd, temp_csv_filepath)
+# endpoint = sys.argv[1]
+# usr = sys.argv[2]
+# pwd = sys.argv[3]
+# temp_csv_filepath = sys.argv[4]  # Location for readable csv files
+
+fm = FeatureMover(args.endpoint, args.usr, args.pwd, args.filepath)
+pm = pubMover(args.endpoint, args.usr, args.pwd, args.filepath)
+
+if args.test:
+    limit = " limit 1000"
+else:
+    limit = ""
 
 
 def exp_gen(): return  # code for generating and wiring up expression patterns
@@ -34,11 +54,11 @@ feps = fm.query_fb("SELECT pub.uniquename as fbrf, "
                    "FROM feature_expression fe "
                    "JOIN pub ON fe.pub_id = pub.pub_id "
                    "JOIN feature f ON fe.feature_id = f.feature_id "
-                   "JOIN expression e ON fe.expression_id = e.expression_id")
+                   "JOIN expression e ON fe.expression_id = e.expression_id" + limit)
 
 # -> chunk results:
 
-exp_write = ExpressionWriter(endpoint, usr, pwd)
+exp_write = ExpressionWriter(args.endpoint, args.usr, args.pwd)
 
 feps_chunked = chunks(feps, 500)
 
