@@ -1,4 +1,5 @@
 from .fb_tools import FB2Neo
+from ...curie_tools import map_iri
 import re
 
 class pubMover(FB2Neo):
@@ -32,10 +33,12 @@ class pubMover(FB2Neo):
                 title = re.sub('"', "\\'", d['title'])
             else:
                 title = ''
-            statements.append("MERGE (p:pub { FlyBase: '%s' } ) "
-                              "SET p.title = \"%s\", p.miniref = \"%s\", "
+            statements.append("MERGE (p:pub { short_form: '%s' } ) "
+                              "SET p.iri = '%s', p.FlyBase = '%s', "
+                              "p.title = \"%s\", p.miniref = \"%s\", "
                               "p.volume = '%s', p.year = '%s', p.pages = '%s'"
-                              % (d['fbrf'], title, d['miniref'], d['volume'], d['year'], d['pages']))
+                              % (d['fbrf'], map_iri('fb') + d['fbrf'], d['fbrf'],
+                                 title, d['miniref'], d['volume'], d['year'], d['pages']))
             # Generate microref from miniref and append as label
         self.nc.commit_list(statements)
 
