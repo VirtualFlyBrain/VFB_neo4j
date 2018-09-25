@@ -1,5 +1,5 @@
 import unittest
-from ..feature_tools import FeatureMover, Feature
+from ..feature_tools import FeatureMover, Feature, split
 import sys
 import re
 
@@ -49,6 +49,12 @@ class TestFeatureMover(unittest.TestCase):
                                             'FBal0028942'])
         assert len(test.keys()) == 3
         assert isinstance(test.pop('FBal0040675'), Feature)
+
+    def test_gen_split_ep_feat(self):
+        s = split(name='MB005B',
+                  dbd='FBtp0117486',
+                  ad='FBtp0117485')
+        test = self.fm.gen_split_ep_feat([s])
 
 
     def tearDown(self):
