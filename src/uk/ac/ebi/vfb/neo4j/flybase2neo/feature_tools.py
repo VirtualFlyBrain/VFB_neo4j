@@ -44,14 +44,20 @@ Feature = collections.namedtuple('Feature', ['symbol',
 Duple = collections.namedtuple('ftype', ['s', 'o'])
 Triple = collections.namedtuple('ftype', ['s', 'r', 'o'])
 
+split = collections.namedtuple('split', ['name', 'dbd', 'ad'])
+
 
 class FeatureMover(FB2Neo):
 
     def name_synonym_lookup(self, fbids):
         """Takes a list of fbids, returns a dictionary of Feature objects, keyed on fbid.
-        Note - makes unicode name primary.  Makes everything else a synonym"""
+        Note - makes unicode name primary.  Makes everything else a synonym."""
+        # Limitation - no concept of type: name (as opposed to symbol).
 
         def proc_feature(d, ds):
+            # Embedding (nesting) this as not expected to call from outside
+            # Should probably check whether this makes code more innefficent.
+
             if ds:
                 out = ds._asdict()
             else:
@@ -217,13 +223,15 @@ class FeatureMover(FB2Neo):
         # Above treating TG as gene.  This is consistent with ti/tp classified as GENO_0000093 'integrated transgene'
         # See https://github.com/monarch-initiative/ingest-artifacts/blob/2ab4a0835b2717ac2426a2e19f1bd9bedf4d6396/docs/Dipper%20Data%20Model%20cmaps.jpg
 
-    def add_feature_relations(self, triples, assume_subject=True):
+    def add_feature_relations(self, triples, assume_subject=True, assume_objects = False):
+        """Adds feature relationships, assuming """
+
         if not assume_subject:
             subjects = [t[0] for t in triples]
             self.add_features(subjects)
             self.addTypes2Neo(subjects)
         objects = [t[2] for t in triples]
-        self.add_features(objects)
+        objects_pdm = self.add_features(objects)
         self.addTypes2Neo(objects)
         statements = []
         for t in triples:
@@ -237,10 +245,13 @@ class FeatureMover(FB2Neo):
         #                "MERGE (s)-[r:%s]->(o)" % (t[0], t[2], t[1])  # Should be using KB_tools (?)
         #            )
         self.ew.commit()
+        return objects_pdm
 
     def generate_expression_patterns(self, features):
         if not features:
+            warnings.warn("No features provided.")
             return False
+
 
         out = {}
 
@@ -273,6 +284,36 @@ class FeatureMover(FB2Neo):
 
         self.ni.commit()
         self.ew.commit()
+
         # Add edges - subClassOf expression pattern; expresses fu (we know fu from the feature list.
         # return iris of expression pattern nodes for further use.  Need link back to original feature ID linked to expression
+
+        # Better standardise output here?
         return out
+
+
+    def gen_split_ep_feat(self, splits):
+        for s in splits:
+            feats = self.name_synonym_lookup([s.ad, s.dbd])
+            short_form = 'VFBexp_' + s.dbd + s.ad
+            iri = map_iri('vfb') + short_form
+            ad = {'label' : feats[s.dbd].symbol + '∩' +
+                   feats[s.ad].symbol +'expression pattern',
+                   'synonyms': [s.name] }
+
+            self.ni.add_node(labels=['Class', 'Feature'],
+                             IRI=iri,
+                             attribute_dict=ad)
+
+            hemidrivers = [Triple(s=short_form, r='RO_0002292', o=s.ad),
+                           Triple(s=short_form, r='RO_0002292', o=s.dbd)]  # Need to decide on relations!
+
+            self.add_feature_relations(hemidrivers)
+        self.ni.commit()
+        self.ew.commit()
+        # Return ?
+
+
+
+
+

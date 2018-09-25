@@ -1,4 +1,4 @@
-from .fb_tools import FB2Neo
+from .fb_tools import FB2Neo, dict_list_2_dict
 from ...curie_tools import map_iri
 from ..KB_tools import get_sf
 import uuid
@@ -96,9 +96,10 @@ class ExpressionWriter(FB2Neo):
         FBex_lookup = {}
         old_key = ''
         stage, anatomy, cellular, assay = '', '', '', ''
-        for d in exp:
+        while exp:
+            d = exp.pop()
             key = d['fbex']
-            if not (key == old_key):
+            if not (key == old_key) or not exp:
                 anatomy = {'terms': [], 'qualifiers': []}
                 cellular = {'terms': [], 'qualifiers': []}
                 stage = {'terms': [], 'qualifiers': []}
@@ -117,7 +118,6 @@ class ExpressionWriter(FB2Neo):
             if d['ec_type'] == 'assay':
                 proc_row(d, assay)
             old_key = key
-
         self.FBex_lookup = FBex_lookup
         return FBex_lookup # Could ditch this.
 
