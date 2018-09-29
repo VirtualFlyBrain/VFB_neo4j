@@ -105,7 +105,7 @@ class FeatureMover(FB2Neo):
                     "SET n.iri = 'http://flybase.org/reports/' + line.fbid"  # Why not using ni? Can kbw have switch to work via csv?
         if commit:
             self.commit_via_csv(statement, proc_names)
-        self.addTypes2Neo(fbids, commit)
+        self.addTypes2Neo(fbids=fbids, commit=commit)
         return feats
 
     # Typing
@@ -141,7 +141,7 @@ class FeatureMover(FB2Neo):
                     "MERGE (p)<-[:SUBCLASSOF]-(c)"
         if commit:
             self.commit_via_csv(statement,
-                            feature_classifications)  # This is currently failing, but I have no idea why.  disadvantage csv
+                                feature_classifications)
 
     def abberationType(self, abbs):
         """abbs = a list of abberation fbids
