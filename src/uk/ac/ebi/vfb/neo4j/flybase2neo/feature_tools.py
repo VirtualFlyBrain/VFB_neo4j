@@ -44,7 +44,7 @@ Feature = collections.namedtuple('Feature', ['symbol',
 Duple = collections.namedtuple('ftype', ['s', 'o'])
 Triple = collections.namedtuple('ftype', ['s', 'r', 'o'])
 
-split = collections.namedtuple('split', ['name', 'dbd', 'ad'])
+split = collections.namedtuple('split', ['name', 'dbd', 'ad', 'xrefs'])
 
 
 class FeatureMover(FB2Neo):
@@ -90,7 +90,7 @@ class FeatureMover(FB2Neo):
 
         return dict_list_2_dict(key='fbid', dict_list=dc, pfunc=proc_feature, sort=False)
 
-    def add_features(self, fbids):
+    def add_features(self, fbids, commit=True):
         """Takes a list of fbids, generates a csv and uses this to merge feature nodes,
         adding a unicode label and a list of synonyms.  Returns a dictionary of Feature objects, keyed on fbid"""
         if not fbids:
@@ -103,8 +103,9 @@ class FeatureMover(FB2Neo):
         statement = "MERGE (n:Feature:Class { short_form : line.fbid } ) " \
                     "SET n.label = line.symbol SET n.synonyms = split(line.synonyms, '|') " \
                     "SET n.iri = 'http://flybase.org/reports/' + line.fbid"  # Why not using ni? Can kbw have switch to work via csv?
-        self.commit_via_csv(statement, proc_names)
-        self.addTypes2Neo(fbids)
+        if commit:
+            self.commit_via_csv(statement, proc_names)
+        self.addTypes2Neo(fbids=fbids, commit=commit)
         return feats
 
     # Typing
@@ -122,7 +123,7 @@ class FeatureMover(FB2Neo):
                                              ftype=d['ftype'])))
         return results
 
-    def addTypes2Neo(self, fbids, detail='gross'):
+    def addTypes2Neo(self, fbids, detail='gross', commit=True):
         """Classify FlyBase features identified by a list of fbids.
         Optionally choose detailed classification with detail = 'fine'.
         (This option is currently experimental)."""
@@ -138,8 +139,9 @@ class FeatureMover(FB2Neo):
         statement = "MATCH (p:Class { short_form: line.parent })" \
                     ",(c:Class { short_form: line.child }) " \
                     "MERGE (p)<-[:SUBCLASSOF]-(c)"
-        self.commit_via_csv(statement,
-                            feature_classifications)  # This is currently failing, but I have no idea why.  disadvantage csv
+        if commit:
+            self.commit_via_csv(statement,
+                                feature_classifications)
 
     def abberationType(self, abbs):
         """abbs = a list of abberation fbids
@@ -223,7 +225,7 @@ class FeatureMover(FB2Neo):
         # Above treating TG as gene.  This is consistent with ti/tp classified as GENO_0000093 'integrated transgene'
         # See https://github.com/monarch-initiative/ingest-artifacts/blob/2ab4a0835b2717ac2426a2e19f1bd9bedf4d6396/docs/Dipper%20Data%20Model%20cmaps.jpg
 
-    def add_feature_relations(self, triples, assume_subject=True, assume_objects = False):
+    def add_feature_relations(self, triples, assume_subject=True, commit=True):
         """Adds feature relationships, assuming """
 
         if not assume_subject:
@@ -231,6 +233,9 @@ class FeatureMover(FB2Neo):
             self.add_features(subjects)
             self.addTypes2Neo(subjects)
         objects = [t[2] for t in triples]
+        if not objects:
+            warnings.warn("No legal triples passed to add feature relations.")
+            return False
         objects_pdm = self.add_features(objects)
         self.addTypes2Neo(objects)
         statements = []
@@ -244,10 +249,11 @@ class FeatureMover(FB2Neo):
         #                "MATCH (s:Feature { short_form: '%s'}), (o:Feature { short_form: '%s'}) " \
         #                "MERGE (s)-[r:%s]->(o)" % (t[0], t[2], t[1])  # Should be using KB_tools (?)
         #            )
-        self.ew.commit()
+        if commit:
+            self.ew.commit()
         return objects_pdm
 
-    def generate_expression_patterns(self, features):
+    def generate_expression_patterns(self, features, commit=True):
         if not features:
             warnings.warn("No features provided.")
             return False
@@ -270,6 +276,7 @@ class FeatureMover(FB2Neo):
             out[feat.fbid] = ep.fbid
             # Generate label = 'label . expression pattern'
             # Add node
+
             self.ni.add_node(labels=['Class'],
                              IRI=ep.iri,
                              attribute_dict=ad)
@@ -281,9 +288,9 @@ class FeatureMover(FB2Neo):
                                            r='RO_0002292',  # expresses
                                            o=feat.fbid,
                                            match_on='short_form')
-
-        self.ni.commit()
-        self.ew.commit()
+        if commit:
+            self.ni.commit()
+            self.ew.commit()
 
         # Add edges - subClassOf expression pattern; expresses fu (we know fu from the feature list.
         # return iris of expression pattern nodes for further use.  Need link back to original feature ID linked to expression
@@ -292,26 +299,62 @@ class FeatureMover(FB2Neo):
         return out
 
 
-    def gen_split_ep_feat(self, splits):
+    def gen_split_ep_feat(self, splits, kb=True, commit=True):
+        """Adds split expression pattern nodes to Neo following
+        schema: (sep)-[:has_hemidriver]->(construct).
+        args:
+        splits: An array of split objects,
+        kb: A boolean specifying whether to add typing and attributes"""
+        out = {}
         for s in splits:
-            feats = self.name_synonym_lookup([s.ad, s.dbd])
+            if kb:
+                feats = self.name_synonym_lookup([s.ad, s.dbd])
+            else:
+                feats = self.add_features([s.ad, s.dbd])
             short_form = 'VFBexp_' + s.dbd + s.ad
             iri = map_iri('vfb') + short_form
-            ad = {'label' : feats[s.dbd].symbol + '∩' +
-                   feats[s.ad].symbol +'expression pattern',
-                   'synonyms': [s.name] }
+            ad = {'label' : feats[s.dbd].symbol + ' ∩ ' +
+                   feats[s.ad].symbol +' expression pattern',
+                   'synonyms': [s.name]}
+            out[s.name] = {'attributes': ad, 'iri': iri, short_form: 'short_form'}
 
-            self.ni.add_node(labels=['Class', 'Feature'],
+            for x in s.xrefs:
+                self.ew.add_xref(s=short_form,
+                                 xref=x,
+                                 stype=':Class')
+
+
+            for k, v in feats.items():
+                self.ni.add_node(labels=['Class', 'Feature'],
+                                 IRI=map_iri('vfb') + k,
+                                 attribute_dict={'label': v.symbol})
+
+
+            self.ni.add_node(labels=['Class'],
                              IRI=iri,
                              attribute_dict=ad)
 
-            hemidrivers = [Triple(s=short_form, r='RO_0002292', o=s.ad),
-                           Triple(s=short_form, r='RO_0002292', o=s.dbd)]  # Need to decide on relations!
+            self.ew.add_named_subClassOf_ax(s=short_form,
+                                            o='VFBext_0000010',
+                                            match_on='short_form')
 
-            self.add_feature_relations(hemidrivers)
-        self.ni.commit()
-        self.ew.commit()
-        # Return ?
+            self.ew.add_anon_subClassOf_ax(s=short_form,
+                                           r='VFBext_0000008',
+                                           o=s.ad,
+                                           match_on='short_form')
+            self.ew.add_anon_subClassOf_ax(s=short_form,
+                                           r='VFBext_0000008',
+                                           o=s.dbd,
+                                           match_on='short_form')
+
+
+
+        if commit:
+            self.ni.commit()
+            self.ew.commit()
+        return out
+
+
 
 
 

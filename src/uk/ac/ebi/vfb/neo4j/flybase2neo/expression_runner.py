@@ -40,7 +40,7 @@ fm = FeatureMover(args.endpoint, args.usr, args.pwd, args.filepath)
 pm = pubMover(args.endpoint, args.usr, args.pwd, args.filepath)
 
 if args.test:
-    limit = " limit 1000"
+    limit = " limit 100"
 else:
     limit = ""
 
@@ -85,6 +85,8 @@ for fep_c in feps_chunked:
     # Path gp -> al -> tg
 
     gp2al = fm.gp2allele(gene_product_ids)
+    if not gp2al:
+        continue
     tg_allele_ids = [g[2] for g in gp2al]
     gp2al_lookup = {g[0]: g[2] for g in gp2al}
     al2tg = fm.allele2transgene(tg_allele_ids)

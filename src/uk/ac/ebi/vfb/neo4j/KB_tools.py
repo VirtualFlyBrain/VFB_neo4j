@@ -272,7 +272,7 @@ class kb_owl_edge_writer(kb_writer):
         self._add_triple(s, r, o, rtype, stype, otype,
                          edge_annotations, match_on, safe_label_edge=safe_label_edge)
 
-    def add_annotation_axiom(self, s, r, o, edge_annotations=None, match_on="iri", safe_label_edge=False):
+    def add_annotation_axiom(self, s, r, o, stype='', otype=':Individual', edge_annotations=None, match_on="iri", safe_label_edge=False):
         """Link an OWL entity to an Individual via an annotation axiom.
         s = property identifying subject entity ,
         r = property identifying relation (AnnotationProperty) ,
@@ -284,8 +284,6 @@ class kb_owl_edge_writer(kb_writer):
         if edge_annotations is None:
             edge_annotations = {}
         rtype = 'Annotation'
-        stype = ''
-        otype = '' # This should really be an individual, but some changes to DB are needed first.
         self._add_triple(s, r, o, rtype, stype, otype,
                          edge_annotations, match_on, safe_label_edge=safe_label_edge)
 
@@ -305,6 +303,19 @@ class kb_owl_edge_writer(kb_writer):
                                edge_annotations=edge_annotations,
                                match_on=match_on,
                                safe_label_edge=safe_label_edge)
+
+    def add_xref(self, s, xref, stype=''):
+        """Add an xref axiom"""
+        # Add regex test for xref
+        x = xref.split(':')
+        self.add_annotation_axiom(s=s,
+                                  r='hasDbXref',
+                                  o=x[0],
+                                  otype=':Site',
+                                  stype=stype,
+                                  edge_annotations={'accession': x[1]},
+                                  match_on='short_form')
+
                 
     def add_anon_type_ax(self, s, r, o, edge_annotations=None,
                          match_on="iri", safe_label_edge=False):
@@ -390,8 +401,7 @@ class kb_owl_edge_writer(kb_writer):
         return out
 
     def test_edge_addition(self):
-        """Tests lists of return values from RESTFUL API for edge creation
-         by checking
+        """Tests lists of return values from REST API for edge creation
         """
         dc = results_2_dict_list(self.output)
         missed_edges = [x['match_count'] for x in dc if x and (0 in x['match_count'].values())]
@@ -438,10 +448,11 @@ class node_importer(kb_writer):
         """
         if attribute_dict is None: attribute_dict = {}
         short_form = re.split('[#/]', IRI)[-1]
-        statement = "MERGE (n:%s { iri: '%s' }) set n.short_form = '%s'" % ((':'.join(labels)),
-                                                     IRI, short_form)
-        statement += self._set_attributes_from_dict(var = 'n', 
-                                                    attribute_dict = attribute_dict)
+        statement = "MERGE (n:%s { iri: '%s' }) set n.short_form = '%s'" % (
+                    (':'.join(labels)),
+                     IRI, short_form)
+        statement += self._set_attributes_from_dict(var='n',
+                                                    attribute_dict=attribute_dict)
         self.statements.append(statement)
 
     

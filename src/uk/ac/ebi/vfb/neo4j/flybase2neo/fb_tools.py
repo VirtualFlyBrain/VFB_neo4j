@@ -83,10 +83,10 @@ class FB2Neo(object):
 
     def _init(self, endpoint, usr, pwd):
         self.conn = get_fb_conn()
-        pattern_writer = KB_pattern_writer(endpoint, usr, pwd)
-        self.ew = pattern_writer.ew
-        self.ni = pattern_writer.ni
-        self.nc = pattern_writer.ni.nc
+        self.pattern_writer = KB_pattern_writer(endpoint, usr, pwd)
+        self.ew = self.pattern_writer.ew
+        self.ni = self.pattern_writer.ni
+        self.nc = self.pattern_writer.ni.nc
         self.fb_base_URI = 'http://www.flybase.org/reports/' # Should use curie_tools
 
 
