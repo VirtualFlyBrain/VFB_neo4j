@@ -233,6 +233,8 @@ class FeatureMover(FB2Neo):
             self.add_features(subjects)
             self.addTypes2Neo(subjects)
         objects = [t[2] for t in triples]
+        if not objects:
+            warnings.warn("No legal triples passed to add feature relations.")
         objects_pdm = self.add_features(objects)
         self.addTypes2Neo(objects)
         statements = []
