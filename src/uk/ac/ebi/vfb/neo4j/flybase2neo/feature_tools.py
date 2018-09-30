@@ -235,6 +235,7 @@ class FeatureMover(FB2Neo):
         objects = [t[2] for t in triples]
         if not objects:
             warnings.warn("No legal triples passed to add feature relations.")
+            return False
         objects_pdm = self.add_features(objects)
         self.addTypes2Neo(objects)
         statements = []
@@ -298,10 +299,18 @@ class FeatureMover(FB2Neo):
         return out
 
 
-    def gen_split_ep_feat(self, splits, commit=True):
+    def gen_split_ep_feat(self, splits, kb=True, commit=True):
+        """Adds split expression pattern nodes to Neo following
+        schema: (sep)-[:has_hemidriver]->(construct).
+        args:
+        splits: An array of split objects,
+        kb: A boolean specifying whether to add typing and attributes"""
         out = {}
         for s in splits:
-            feats = self.name_synonym_lookup([s.ad, s.dbd])
+            if kb:
+                feats = self.name_synonym_lookup([s.ad, s.dbd])
+            else:
+                feats = self.add_features([s.ad, s.dbd])
             short_form = 'VFBexp_' + s.dbd + s.ad
             iri = map_iri('vfb') + short_form
             ad = {'label' : feats[s.dbd].symbol + ' ∩ ' +
