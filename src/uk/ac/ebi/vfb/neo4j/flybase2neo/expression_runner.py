@@ -40,7 +40,7 @@ fm = FeatureMover(args.endpoint, args.usr, args.pwd, args.filepath)
 pm = pubMover(args.endpoint, args.usr, args.pwd, args.filepath)
 
 if args.test:
-    limit = " limit 200"
+    limit = " limit 100"
 else:
     limit = ""
 
