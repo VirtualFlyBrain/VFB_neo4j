@@ -22,7 +22,7 @@ class ExpressionWriter(FB2Neo):
 
     def __init__(self, endpoint, usr, pwd):
         self._init(endpoint, usr, pwd)
-        self.FBex_lookup = []
+        self.FBex_lookup = {}
         self.statements = []
 
     def get_expression(self, limit=0, FBex_list=None):
@@ -190,11 +190,12 @@ class ExpressionWriter(FB2Neo):
         self.statements.extend([ep_match + gross_anatomy_match + ' '.join(edge_prop_clauses),
                                 ep_match + cell_match_merge + ' '.join(edge_prop_clauses)])
 
-
     def write_expression(self, pub, ep, fbex):
 
         ## This should all switch to OBAN
-
+        if not fbex in self.FBex_lookup.keys():
+            warn("%s is mssing from lookup." % fbex)
+            return False
         a = self.roll_anat_ind(self.FBex_lookup[fbex])
         if a:
             assays = self.FBex_lookup[fbex]['assay']['terms']

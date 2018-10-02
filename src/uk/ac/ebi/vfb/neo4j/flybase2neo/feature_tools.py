@@ -100,9 +100,11 @@ class FeatureMover(FB2Neo):
         proc_names = [f._asdict() for f in feats.values()]
         for d in proc_names:
             d['synonyms'] = '|'.join(d['synonyms'])
-        statement = "MERGE (n:Feature:Class { short_form : line.fbid } ) " \
+        statement = "MERGE (n:Class { short_form : line.fbid } ) " \
                     "SET n.label = line.symbol SET n.synonyms = split(line.synonyms, '|') " \
-                    "SET n.iri = 'http://flybase.org/reports/' + line.fbid"  # Why not using ni? Can kbw have switch to work via csv?
+                    "SET n.iri = 'http://flybase.org/reports/' + line.fbid " \
+                    "SET n:Feature"
+        # Why not using ni? Can kbw have switch to work via csv?
         if commit:
             self.commit_via_csv(statement, proc_names)
         self.addTypes2Neo(fbids=fbids, commit=commit)
@@ -220,9 +222,8 @@ class FeatureMover(FB2Neo):
     def allele2transgene(self, subject_ids):
         """Takes a list of transgene IDs, returns a list of triples as python tuples:
          (transgene rel allele) where rel is appropriate for addition to prod."""
-        return self._get_objs(subject_ids, chado_rel='associated_with', out_rel='GENO_0000408',
-                              o_idp='(FBti|FBtp)')  # is_allele_of
-        # Above treating TG as gene.  This is consistent with ti/tp classified as GENO_0000093 'integrated transgene'
+        return self._get_objs(subject_ids, chado_rel='associated_with', out_rel='BFO_0000051',
+                              o_idp='(FBti|FBtp)')  # Hard to choose a relation for this - have gone with has_part - dipper schema docs not much help.
         # See https://github.com/monarch-initiative/ingest-artifacts/blob/2ab4a0835b2717ac2426a2e19f1bd9bedf4d6396/docs/Dipper%20Data%20Model%20cmaps.jpg
 
     def add_feature_relations(self, triples, assume_subject=True, commit=True):
@@ -279,7 +280,7 @@ class FeatureMover(FB2Neo):
 
             self.ni.add_node(labels=['Class'],
                              IRI=ep.iri,
-                             attribute_dict=ad)
+                             attribute_dict=ad,)
 
             self.ew.add_named_subClassOf_ax(s=ep.fbid,
                                             o='CARO_0030002',  # expression pattern
@@ -287,7 +288,8 @@ class FeatureMover(FB2Neo):
             self.ew.add_anon_subClassOf_ax(s=ep.fbid,
                                            r='RO_0002292',  # expresses
                                            o=feat.fbid,
-                                           match_on='short_form')
+                                           match_on='short_form',
+                                           safe_label_edge=True)
         if commit:
             self.ni.commit()
             self.ew.commit()
