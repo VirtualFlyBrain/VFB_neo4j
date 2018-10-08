@@ -15,16 +15,20 @@ Question: Should image browser show more (e.g. source)?
 ![image](https://user-images.githubusercontent.com/112839/46010900-1c8a2400-c0bc-11e8-873d-65fba4ba3e80.png)
 
 Non logical bits should be split out from relationships:
-	- has_license & has_source - move to downloads section
+	- has_license & has_source - move to downloads section. Use license logo where available.
 	- member of ???
 	
-As for Class, xrefs (linkouts) should be split out from References.  But we also need to make a link to data at source distinct from linkouts to any other resources that may have the same data.
+As for Class, xrefs (linkouts) should be split out from References.  But we also need to make a link to data at source distinct from linkouts to any other resources that may have the same data.  Can be in both sections.  
+
+Also: Add project logos for sources where these are available.
 
 #### DataSet
 
 ![image](https://user-images.githubusercontent.com/112839/46011046-8efb0400-c0bc-11e8-83d5-d0e0f3bfa1b0.png)
 
 Odd to have 'has_license' as relationship.  
+
+From discussion: It would be better to have a clearer visual distinction between gross types (Class, Anatomical:Individual, DataSet) - distinct from badges.
 
 ### Common elements
 
