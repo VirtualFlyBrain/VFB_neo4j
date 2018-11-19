@@ -66,7 +66,7 @@ class neo4j_connect():
         self.pwd = pwd
         self.test_connection()
        
-    def commit_list(self, statements, return_graphs = False):
+    def commit_list(self, statements, return_all = False, return_graphs = False):
         """Commit a list of statements to neo4J DB via REST API.
         Prints requests status and warnings if any problems with commit.
             - statements = list of cypher statements as strings
@@ -85,7 +85,10 @@ class neo4j_connect():
                                  % self.base_uri, auth = (self.usr, self.pwd) ,
                                   data = json.dumps(payload))
         if self.rest_return_check(response):
-            return response.json()['results']
+            if return_all:
+                return response.json()
+            else:
+                return response.json()['results']
         else:
             return False
         
