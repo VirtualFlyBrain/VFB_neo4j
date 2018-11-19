@@ -44,7 +44,7 @@ Feature = collections.namedtuple('Feature', ['symbol',
 Duple = collections.namedtuple('ftype', ['s', 'o'])
 Triple = collections.namedtuple('ftype', ['s', 'r', 'o'])
 
-split = collections.namedtuple('split', ['name', 'dbd', 'ad', 'xrefs'])
+split = collections.namedtuple('split', ['name', 'dbd', 'ad', 'xrefs', 'synonyms'])
 
 
 class FeatureMover(FB2Neo):
@@ -57,6 +57,8 @@ class FeatureMover(FB2Neo):
         def proc_feature(d, ds):
             # Embedding (nesting) this as not expected to call from outside
             # Should probably check whether this makes code more innefficent.
+            """d = row
+               ds = output dictionary."""
 
             if ds:
                 out = ds._asdict()
@@ -308,6 +310,8 @@ class FeatureMover(FB2Neo):
         out = {}
         for s in splits:
             if kb:
+                # Not very efficient to run this for every split.
+                # Could easily run as a mega query => lookup.
                 feats = self.name_synonym_lookup([s.ad, s.dbd])
             else:
                 feats = self.add_features([s.ad, s.dbd])
@@ -315,8 +319,8 @@ class FeatureMover(FB2Neo):
             iri = map_iri('vfb') + short_form
             ad = {'label' : feats[s.dbd].symbol + ' ∩ ' +
                    feats[s.ad].symbol +' expression pattern',
-                   'synonyms': [s.name]}
-            out[s.name] = {'attributes': ad, 'iri': iri, short_form: 'short_form'}
+                   'synonyms': s.synonyms }
+            out[s.name] = {'attributes': ad, 'iri': iri, 'short_form': short_form}
 
             for x in s.xrefs:
                 self.ew.add_xref(s=short_form,
