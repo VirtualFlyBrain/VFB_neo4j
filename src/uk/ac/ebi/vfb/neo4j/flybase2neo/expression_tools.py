@@ -4,6 +4,7 @@ from ..KB_tools import get_sf
 import uuid
 from warnings import warn
 
+
 def expand_stage_range(nc, start, end):
     """nc = neo4j_connect object
     start = start stage (short_form_id string)
@@ -82,8 +83,7 @@ class ExpressionWriter(FB2Neo):
 
         exp = self.query_fb(query)
 
-
-        def proc_row(ed, out):
+        def proc_row_old(ed, out):
             short_form = ed['cvt_db'] + '_' + ed['cvt_acc']
             if ed['ectp_name'] == 'qualifier':
                 out['qualifiers'].append(short_form)
@@ -93,13 +93,24 @@ class ExpressionWriter(FB2Neo):
                     out['terms'].append(
                         {'term': short_form, 'operator': d['ectp_value']})
 
-        FBex_lookup = {}
-        old_key = ''
-        stage, anatomy, cellular, assay = '', '', '', ''
-        while exp:
-            d = exp.pop()
-            key = d['fbex']
-            if not (key == old_key) or not exp:
+        def proc_type(row, out):
+            short_form = row['cvt_db'] + '_' + row['cvt_acc']
+            if row['ectp_name'] == 'qualifier':
+                out['qualifiers'].append(short_form)
+            else:
+                # Strip out range expansion in FB prod (not reliable)
+                if not (row['ectp_value'] == 'inter-range'):
+                    out['terms'].append(
+                        {'term': short_form, 'operator': row['ectp_value']})
+
+        def proc_row(row, tap):
+            """Cumulatively builds tap pdm from rows.
+            args:
+              - row: a single row from exp
+              - tap: a tap structure (or something evaluating to false
+                 if it needs to be initialized.)
+            """
+            if not tap:
                 anatomy = {'terms': [], 'qualifiers': []}
                 cellular = {'terms': [], 'qualifiers': []}
                 stage = {'terms': [], 'qualifiers': []}
@@ -108,18 +119,21 @@ class ExpressionWriter(FB2Neo):
                        'cellular': cellular,
                        'stage': stage,
                        'assay': assay}
-                FBex_lookup[key] = tap
-            if d['ec_type'] == 'stage':
-                proc_row(d, stage)
-            if d['ec_type'] == 'anatomy':
-                proc_row(d, anatomy)
-            if d['ec_type'] == 'cellular':
-                proc_row(d, cellular)
-            if d['ec_type'] == 'assay':
-                proc_row(d, assay)
-            old_key = key
-        self.FBex_lookup = FBex_lookup
-        return FBex_lookup # Could ditch this.
+
+            if row['ec_type'] == 'stage':
+                proc_type(row, tap['stage'])
+            if row['ec_type'] == 'anatomy':
+                proc_type(row, tap['anatomy'])
+            if row['ec_type'] == 'cellular':
+                proc_type(row, tap['cellular'])
+            if row['ec_type'] == 'assay':
+                proc_type(row, tap['assay'])
+            return tap
+
+        self.FBex_lookup = dict_list_2_dict(key='fbex',
+                                            dict_list=exp,
+                                            pfunc=proc_row,
+                                            sort=False)
 
 
 
