@@ -66,7 +66,8 @@ label_types = {
    'Dopaminergic': 'dopaminergic neuron',
    'Serotonergic': 'serotonergic neuron',
    'Expression_pattern_fragment': 'expression pattern fragment',
-   'Neuromere': 'neuromere'
+   'Neuromere': 'neuromere',
+   'Muscle': 'Muscle cell'
    }
 
 label_additions = []
