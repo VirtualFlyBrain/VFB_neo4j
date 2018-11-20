@@ -20,8 +20,6 @@ but these are packed into JSON strings on attributes.
 Almost every reference has an FBrf, but a few only have PMIDS or DOIs. 
 Merge strategy uses FBrf first, then PMID, then DOI."""
 
-
-
 supported_xrefs = {'FlyBase': 'FlyBase:FBrf\d{7}',
                    'PMID': 'PMID:\d+',
                    'DOI': 'DOI:.+', 'http': 'http:.+'}
@@ -31,7 +29,6 @@ supported_xrefs = {'FlyBase': 'FlyBase:FBrf\d{7}',
 # "oboXrefs":[{"database":"FlyBase","id":"FBrf0031004","description":null,"url":null},
 # {"database":"FlyBase","id":"FBrf0007734","description":null,"url":null},
 # {"database":"FBC","id":"auto_generated_definition","description":null,"url":null}]}
-
 
 
 # obo_synonym:{"name":"IDFP",
@@ -58,13 +55,14 @@ supported_xrefs = {'FlyBase': 'FlyBase:FBrf\d{7}',
 
 
 def clean_pub_id_typ(sfid, pub_id_typ):
-    pub_id_typ = str(pub_id_typ).replace('.','_') # replace invalid dots from DB types such as 'answers.com'
-    pub_id_typ = pub_id_typ.replace(' ','_') # replace invalid spaces
+    pub_id_typ = str(pub_id_typ).replace('.', '_')  # replace invalid dots from DB types such as 'answers.com'
+    pub_id_typ = pub_id_typ.replace(' ', '_')  # replace invalid spaces
     if '[' in pub_id_typ:
-        print("\n\nNote: Invalid database %s referenced by %s\n\n" % (pub_id_typ, sfid)) 
-        pub_id_typ = pub_id_typ.replace('[','') # remove random '['
+        print("\n\nNote: Invalid database %s referenced by %s\n\n" % (pub_id_typ, sfid))
+        pub_id_typ = pub_id_typ.replace('[', '')  # remove random '['
     return pub_id_typ
-  
+
+
 def roll_cypher_add_def_pub_link(sfid, pub_id_typ, pub_id):
     """Generates a Cypher statement that links an existing class
     to a pub node with the specified attribute.  Generates a new pub node
@@ -78,44 +76,40 @@ def roll_cypher_add_syn_pub_link(sfid, s, pub_id_typ, pub_id):
     """Generates a Cypher statement that links an existing class
     to a pub node ..."""
     label = re.sub("'", "\'", s['name'])
-    return  "MATCH (a:Class { short_form : \"%s\" }) " \
-            "MERGE (p:pub:Individual { %s : \"%s\" }) " \
-            "MERGE (a)-[:has_reference { typ : \"syn\", scope: \"%s\", synonym : \"%s\", cat: \"%s\" }]->(p)" \
-            "" % (sfid, clean_pub_id_typ(sfid, pub_id_typ), pub_id, s['scope'], label, s['type'])
+    return "MATCH (a:Class { short_form : \"%s\" }) " \
+           "MERGE (p:pub:Individual { %s : \"%s\" }) " \
+           "MERGE (a)-[:has_reference { typ : \"syn\", scope: \"%s\", synonym : \"%s\", cat: \"%s\" }]->(p)" \
+           "" % (sfid, clean_pub_id_typ(sfid, pub_id_typ), pub_id, s['scope'], label, s['type'])
 
 
 nc.commit_list(["MERGE (:pub:Individual { FlyBase: 'Unattributed' })"])
-q = nc.commit_list(["MATCH (c) where c:Class or c:Individual return c.short_form as short_form, c.obo_synonym as syns, c.obo_definition_citation as def"])
+q = nc.commit_list([
+                       "MATCH (c) where c:Class or c:Individual return c.short_form as short_form, c.obo_synonym as syns, c.obo_definition_citation as def"])
 dc = results_2_dict_list(q)
 statements = []
 for d in dc:
     if d['def']:
         for cit in d['def']:
-          if cit:
-            def_cit = json.loads(cit)
-            for ref in def_cit['oboXrefs']:
-              if ref['id']:
-                statements.append(roll_cypher_add_def_pub_link(
-                    sfid = d['short_form'],
-                    pub_id = ref['id'],
-                    pub_id_typ = ref['database'],
-                    ))
-    elif d['syns']:
+            if cit:
+                def_cit = json.loads(cit)
+                for ref in def_cit['oboXrefs']:
+                    if ref['id']:
+                        statements.append(roll_cypher_add_def_pub_link(
+                            sfid=d['short_form'],
+                            pub_id=ref['id'],
+                            pub_id_typ=ref['database'],
+                        ))
+    if d['syns']:
         for syn in d['syns']:
             s = json.loads(syn)
             for ref in s['xrefs']:
                 statements.append(roll_cypher_add_syn_pub_link(
-                    sfid = d['short_form'],
-                    pub_id = ref['id'],
-                    pub_id_typ = ref['database'],
+                    sfid=d['short_form'],
+                    pub_id=ref['id'],
+                    pub_id_typ=ref['database'],
                     s=s))
 
 nc.commit_list_in_chunks(statements, verbose=True, chunk_length=2000)
-
-
-
-
-
 
 # to json
 # proc to new commit statements.
