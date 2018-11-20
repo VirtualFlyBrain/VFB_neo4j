@@ -35,7 +35,7 @@ class pubMover(FB2Neo):
                 title = ''
             statements.append("MERGE (p:pub { short_form: '%s' } ) "
                               "SET p.iri = '%s', p.FlyBase = '%s', "
-                              "p.title = \"%s\", p.label = = \"%s\","
+                              "p.title = \"%s\", p.label = \"%s\","
                               "p.miniref = \"%s\", "
                               "p.volume = '%s', p.year = '%s', p.pages = '%s'"
                               % (d['fbrf'], map_iri('fb') + d['fbrf'], d['fbrf'],
@@ -72,9 +72,9 @@ class pubMover(FB2Neo):
         self.nc.commit_list(statements)
 
     def _generate_pub_xref_cypher(self, pub, db, acc):
-        return "MATCH (p:pub) WHERE p.short_form = '%s' " \
-                ", (s:Site) WHERE s.label = '%s" \
-                "MERGE (p)-[dbx :hasDbXref]->(s) p.PMID " \
+        return "MATCH (p:pub), (s:Site) WHERE p.short_form = '%s' " \
+                "AND s.label = '%s' " \
+                "MERGE (p)-[dbx :hasDbXref]->(s) " \
                 "SET dbx.accession = '%s'" % (pub, db, acc)
 
 
