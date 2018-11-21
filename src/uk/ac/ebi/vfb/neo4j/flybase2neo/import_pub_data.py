@@ -1,8 +1,6 @@
 import sys
-from .pub_tools import pubMover
-from .fb_tools import dict_cursor, get_fb_conn
-from ..neo4j_tools import neo4j_connect, results_2_dict_list
-import re
+from uk.ac.ebi.vfb.neo4j.flybase2neo.pub_tools import pubMover
+from uk.ac.ebi.vfb.neo4j.neo4j_tools import neo4j_connect, results_2_dict_list
 import warnings
 
 """Populate pub data.  Should be run as a final step, once all content added."""
@@ -25,6 +23,7 @@ if results:
     dc = results_2_dict_list(results)
     pub_list = [d['pub.FlyBase'] for d in dc if d['pub.FlyBase']]
     if pub_list:
+        print("Importing details for %d pubs." % len(pub_list))
         pm.move(pub_list)
     else:
         warnings.warn("No pubs found in %s" % base_uri)
