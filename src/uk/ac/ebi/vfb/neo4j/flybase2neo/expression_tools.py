@@ -22,7 +22,7 @@ class ExpressionWriter(FB2Neo):
 
     def __init__(self, endpoint, usr, pwd):
         self._init(endpoint, usr, pwd)
-        self.FBex_lookup = []
+        self.FBex_lookup = {}
         self.statements = []
 
     def get_expression(self, limit=0, FBex_list=None):
@@ -119,7 +119,7 @@ class ExpressionWriter(FB2Neo):
                 proc_row(d, assay)
             old_key = key
         self.FBex_lookup = FBex_lookup
-        return FBex_lookup # Could ditch this.
+        return FBex_lookup  # Could ditch this.
 
 
 
@@ -201,7 +201,7 @@ class ExpressionWriter(FB2Neo):
             warn("%s not in lookup" % fbex)
         if a:
             assays = self.FBex_lookup[fbex]['assay']['terms']
-            ad = {'pub': pub } # quick and dirty job right now.  Need to switch to OBAN when safe to do so.
+            ad = {'pub': pub}  # quick and dirty job right now.  Need to switch to OBAN when safe to do so.
             if assays: ad['assay'] = assays[0]['term']
             self.link_ep2anat(a=a['short_form'], ep=ep, ad=ad, atype=a['atype'])
 
