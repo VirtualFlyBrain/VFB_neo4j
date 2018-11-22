@@ -17,11 +17,11 @@ nc = neo4j_connect(base_uri, usr, pwd)
 pm = pubMover(base_uri, usr, pwd)
 
 # Pull all pub FBrfs from graph
-statements = ['MATCH (pub) RETURN DISTINCT pub.FlyBase'] # Needs to be shifted to short_form - coord with KB.
+statements = ['MATCH (pub) RETURN DISTINCT pub.short_form'] # Needs to be shifted to short_form - coord with KB.
 results = nc.commit_list(statements)
 if results:
     dc = results_2_dict_list(results)
-    pub_list = [d['pub.FlyBase'] for d in dc if d['pub.FlyBase']]
+    pub_list = [d['pub.short_form'] for d in dc if d['pub.short_form']]
     if pub_list:
         print("Importing details for %d pubs." % len(pub_list))
         pm.move(pub_list)
