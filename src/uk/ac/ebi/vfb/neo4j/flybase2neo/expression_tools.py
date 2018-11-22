@@ -194,8 +194,11 @@ class ExpressionWriter(FB2Neo):
     def write_expression(self, pub, ep, fbex):
 
         ## This should all switch to OBAN
-
-        a = self.roll_anat_ind(self.FBex_lookup[fbex])
+        a = False
+        if fbex in self.FBex_lookup.keys():
+            a = self.roll_anat_ind(self.FBex_lookup[fbex])
+        else:
+            warn("%s not in lookup" % fbex)
         if a:
             assays = self.FBex_lookup[fbex]['assay']['terms']
             ad = {'pub': pub } # quick and dirty job right now.  Need to switch to OBAN when safe to do so.
