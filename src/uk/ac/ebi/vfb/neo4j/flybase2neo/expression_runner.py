@@ -55,6 +55,8 @@ feps = fm.query_fb("SELECT pub.uniquename as fbrf, "
 
 # -> chunk results:
 
+print("Processing %d expression statements from FB." % len(feps))
+
 exp_write = ExpressionWriter(args.endpoint, args.usr, args.pwd)
 
 feps_chunked = chunks(feps, 500)

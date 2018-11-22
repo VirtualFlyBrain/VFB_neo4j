@@ -190,15 +190,13 @@ class ExpressionWriter(FB2Neo):
         self.statements.extend([ep_match + gross_anatomy_match + ' '.join(edge_prop_clauses),
                                 ep_match + cell_match_merge + ' '.join(edge_prop_clauses)])
 
-
     def write_expression(self, pub, ep, fbex):
 
         ## This should all switch to OBAN
-        a = False
-        if fbex in self.FBex_lookup.keys():
-            a = self.roll_anat_ind(self.FBex_lookup[fbex])
-        else:
-            warn("%s not in lookup" % fbex)
+        if not fbex in self.FBex_lookup.keys():
+            warn("%s is missing from lookup." % fbex)
+            return False
+        a = self.roll_anat_ind(self.FBex_lookup[fbex])
         if a:
             assays = self.FBex_lookup[fbex]['assay']['terms']
             ad = {'pub': pub}  # quick and dirty job right now.  Need to switch to OBAN when safe to do so.
