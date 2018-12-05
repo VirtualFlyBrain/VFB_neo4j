@@ -7,7 +7,7 @@ class pubMover(FB2Neo):
 
     def move(self, pub_list):
         self.set_pub_details(pub_list)
-        self.set_pub_xrefs(pub_list)
+        self.set_pub_xrefs_internal(pub_list)
         #self.generate_microref_labels()
 
     def get_pub_details(self, pub_list):
@@ -57,16 +57,16 @@ class pubMover(FB2Neo):
         statements = []
         for d in xrefs:
             if d['db_name'] == 'pubmed':
-                statements.append("MATCH (p:pub) WHERE p.FlyBase = '%s' "
+                statements.append("MATCH (p:pub) WHERE p.short_form = '%s' "
                                   "SET p.PMID = '%s'" % (d['fbrf'], d['acc']))
             if d['db_name'] == 'PMCID':
-                statements.append("MATCH (p:pub) WHERE p.FlyBase = '%s' "
+                statements.append("MATCH (p:pub) WHERE p.short_form = '%s' "
                                   "SET p.PMCID = '%s'" % (d['fbrf'], d['acc']))
             if d['db_name'] == 'ISBN':
-                statements.append("MATCH (p:pub) WHERE p.FlyBase = '%s' "
+                statements.append("MATCH (p:pub) WHERE p.short_form = '%s' "
                                   "SET p.PMID = '%s'" % (d['fbrf'], d['acc']))
             if d['db_name'] == 'DOI':
-                statements.append("MATCH (p:pub) WHERE p.FlyBase = '%s' "
+                statements.append("MATCH (p:pub) WHERE p.short_form = '%s' "
                                   "SET p.DOI = '%s'" % (d['fbrf'], d['acc']))
 
         self.nc.commit_list(statements)
