@@ -156,14 +156,31 @@ class ExpressionWriter(FB2Neo):
         self.ni.add_node(['Individual'], iri)  # No label
         self.ew.add_named_type_ax(s=short_form, o=anat_genus, match_on='short_form')
         if anat_diff:
-            self.ew.add_anon_type_ax(s=short_form, r='BFO_0000050', o=anat_diff, match_on='short_form')
+            self.ew.add_anon_type_ax(s=short_form,
+                                     r='BFO_0000050',
+                                     o=anat_diff,
+                                     match_on='short_form',
+                                     safe_label_edge=True)
         if stage:
-            self.ew.add_anon_type_ax(s=short_form, r='RO_0002093', o=stage, match_on='short_form')
+            self.ew.add_anon_type_ax(s=short_form,
+                                     r='RO_0002093',
+                                     o=stage,
+                                     match_on='short_form',
+                                     safe_label_edge=True)
 
         if start_stage:
-            self.ew.add_anon_type_ax(s=short_form, r='RO_0002488', o=start_stage, match_on='short_form')
+            self.ew.add_anon_type_ax(s=short_form,
+                                     r='RO_0002488',
+                                     o=start_stage,
+                                     match_on='short_form',
+                                     safe_label_edge=True)
         if end_stage:
-            self.ew.add_anon_type_ax(s=short_form, r='RO_0002492', o=end_stage, match_on='short_form')
+            self.ew.add_anon_type_ax(s=short_form,
+                                     r='RO_0002492',
+                                     o=end_stage,
+                                     match_on='short_form',
+                                     safe_label_edge=True)
+            
 #        leaving out expansion for now
 #        stages = expand_stage_range(self.nc, start_stage, end_stage)
 
