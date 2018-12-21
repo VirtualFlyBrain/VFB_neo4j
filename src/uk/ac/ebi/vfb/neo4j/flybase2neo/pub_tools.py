@@ -7,7 +7,7 @@ class pubMover(FB2Neo):
 
     def move(self, pub_list):
         self.set_pub_details(pub_list)
-        self.set_pub_xrefs(pub_list)
+        self.set_pub_xrefs_internal(pub_list)
         #self.generate_microref_labels()
 
     def get_pub_details(self, pub_list):
@@ -35,10 +35,12 @@ class pubMover(FB2Neo):
                 title = ''
             statements.append("MERGE (p:pub { short_form: '%s' } ) "
                               "SET p.iri = '%s', p.FlyBase = '%s', "
-                              "p.title = \"%s\", p.miniref = \"%s\", "
+                              "p.title = \"%s\", p.label = \"%s\","
+                              "p.miniref = \"%s\", "
                               "p.volume = '%s', p.year = '%s', p.pages = '%s'"
                               % (d['fbrf'], map_iri('fb') + d['fbrf'], d['fbrf'],
-                                 title, d['miniref'], d['volume'], d['year'], d['pages']))
+                                 title, d['miniref'],  d['miniref'], d['volume'],
+                                 d['year'], d['pages']))
             # Generate microref from miniref and append as label
         self.nc.commit_list(statements)
 
@@ -50,24 +52,42 @@ class pubMover(FB2Neo):
                 "WHERE pub.uniquename IN ('%s')" % "', '".join(pub_list)
         return self.query_fb(query)
 
-    def set_pub_xrefs(self, pub_list):
+    def set_pub_xrefs_internal(self, pub_list):
         xrefs = self.get_pub_xrefs(pub_list)
         statements = []
         for d in xrefs:
             if d['db_name'] == 'pubmed':
-                statements.append("MATCH (p:pub) WHERE p.FlyBase = '%s' "
+                statements.append("MATCH (p:pub) WHERE p.short_form = '%s' "
                                   "SET p.PMID = '%s'" % (d['fbrf'], d['acc']))
             if d['db_name'] == 'PMCID':
-                statements.append("MATCH (p:pub) WHERE p.FlyBase = '%s' "
+                statements.append("MATCH (p:pub) WHERE p.short_form = '%s' "
                                   "SET p.PMCID = '%s'" % (d['fbrf'], d['acc']))
             if d['db_name'] == 'ISBN':
-                statements.append("MATCH (p:pub) WHERE p.FlyBase = '%s' "
+                statements.append("MATCH (p:pub) WHERE p.short_form = '%s' "
                                   "SET p.PMID = '%s'" % (d['fbrf'], d['acc']))
             if d['db_name'] == 'DOI':
-                statements.append("MATCH (p:pub) WHERE p.FlyBase = '%s' "
+                statements.append("MATCH (p:pub) WHERE p.short_form = '%s' "
                                   "SET p.DOI = '%s'" % (d['fbrf'], d['acc']))
 
         self.nc.commit_list(statements)
+
+    def _generate_pub_xref_cypher(self, pub, db, acc):
+        return "MATCH (p:pub), (s:Site) WHERE p.short_form = '%s' " \
+                "AND s.label = '%s' " \
+                "MERGE (p)-[dbx :hasDbXref]->(s) " \
+                "SET dbx.accession = '%s'" % (pub, db, acc)
+
+
+    def set_pub_xrefs(self, pub_list):
+        xrefs = self.get_pub_xrefs(pub_list)
+        s = []
+        for d in xrefs:
+            s.append(self._generate_pub_xref_cypher(
+                pub=d['fbrf'],
+                db=d['db_name'],
+                acc=d['acc']
+            ))
+        self.nc.commit_list(s)
 
 
     def generate_microref_labels(self):

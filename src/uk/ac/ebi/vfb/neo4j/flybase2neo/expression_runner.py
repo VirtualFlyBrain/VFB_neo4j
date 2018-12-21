@@ -45,9 +45,6 @@ else:
     limit = ""
 
 
-def exp_gen(): return  # code for generating and wiring up expression patterns
-
-
 # Query feature_expression => pub feature and fbex
 feps = fm.query_fb("SELECT pub.uniquename as fbrf, "
                    "f.uniquename as fbid, e.uniquename as fbex "
