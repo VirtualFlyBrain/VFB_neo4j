@@ -54,7 +54,7 @@ class TestFeatureMover(unittest.TestCase):
         s = split(name='MB005B',
                   dbd='FBtp0117486',
                   ad='FBtp0117485',
-                  xrefs='VFBsite_FlyLightSplit')
+                  xrefs=['VFBsite_FlyLightSplit:asdasdf'])
         test = self.fm.gen_split_ep_feat([s])
 
 

@@ -44,6 +44,11 @@ Feature = collections.namedtuple('Feature', ['symbol',
 Duple = collections.namedtuple('ftype', ['s', 'o'])
 Triple = collections.namedtuple('ftype', ['s', 'r', 'o'])
 
+# spit object args:
+# Name - name in resource (becomes synonym)
+#
+# xrefs = list of db:acc,
+
 split = collections.namedtuple('split', ['name', 'dbd', 'ad', 'xrefs'])
 
 
@@ -305,7 +310,7 @@ class FeatureMover(FB2Neo):
         """Adds split expression pattern nodes to Neo following
         schema: (sep)-[:has_hemidriver]->(construct).
         args:
-        splits: An array of split objects,
+        splits: An array of split objects, namedtuple['name', 'dbd', 'ad', 'xrefs']
         kb: A boolean specifying whether to add typing and attributes"""
         out = {}
         for s in splits:
@@ -317,7 +322,11 @@ class FeatureMover(FB2Neo):
             iri = map_iri('vfb') + short_form
             ad = {'label' : feats[s.dbd].symbol + ' ∩ ' +
                    feats[s.ad].symbol +' expression pattern',
-                   'synonyms': [s.name]}
+                   'synonyms': [s.name],
+                   'description': ['The sum of all cells at the intersection between '
+                                   'the expression patterns of %s and'
+                                   ' %s.' % (feats[s.dbd].symbol,
+                                             feats[s.ad].symbol)]}
             out[s.name] = {'attributes': ad, 'iri': iri, short_form: 'short_form'}
 
             for x in s.xrefs:
