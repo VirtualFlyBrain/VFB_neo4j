@@ -5,9 +5,15 @@ import argparse
 import json
 
 """A simple script to expand xrefs on ontlogy classes in OLS.
+Any XREF in a loaded ontology file whose DB component 
+corresponds to the short_form of a Site node, is 
+turned into a linkout (dbxref) to the site node, with acc
+on  the edge.
 Arg1 = base_uri or neo4J server
 Arg2 = usr
 Arg2 = pwd"""
+
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--test', help='Run in test mode. ' \
@@ -29,12 +35,14 @@ sites = results_2_dict_list(sr)[0]['Sites']
 
 query = "MATCH (c:Class) WHERE exists(c.obo_xref) return c.short_form, c.obo_xref "
 
-r = nc.commit_list(query)
+r = nc.commit_list([query])
 
 dc = results_2_dict_list(r)
 
-statements = []
 ew = kb_owl_edge_writer(args.endpoint, args.usr, args.pwd)
+
+# JSON example for ref:
+# obo_xref:{"database":"FlyBrain_NDB","id":"10079","description":null,"url":null}
 
 for d in dc:
     c = d['c.short_form']
@@ -62,6 +70,5 @@ ew.commit(chunk_length=1000)
 
 
 
-# obo_xref:{"database":"FlyBrain_NDB","id":"10079","description":null,"url":null}
 
 
