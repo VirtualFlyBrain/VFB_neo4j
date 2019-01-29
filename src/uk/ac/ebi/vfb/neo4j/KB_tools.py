@@ -798,19 +798,19 @@ class KB_pattern_writer(object):
                              'description': description,
                              'dataset_spec_text': dataset_spec_text})
         self.ni.commit()
-        self.ew.add_annotation_axiom(s=name,
+        self.ew.add_annotation_axiom(s=short_form,
                                      r='license',
                                      o=license,
                                      match_on='short_form',
                                      safe_label_edge=True)
         if site:
-            self.ew.add_annotation_axiom(s=name,
+            self.ew.add_annotation_axiom(s=short_form,
                                          r='hasDbXref',
                                          o=site,
                                          match_on='short_form',
                                          safe_label_edge=True)
         if pub:
-            self.ew.add_annotation_axiom(s=name,
+            self.ew.add_annotation_axiom(s=short_form,
                                          r='references',
                                          o=pub,
                                          match_on='short_form',
