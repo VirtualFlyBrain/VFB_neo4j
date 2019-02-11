@@ -337,7 +337,7 @@ class FeatureMover(FB2Neo):
 
             for k, v in feats.items():
                 self.ni.add_node(labels=['Class', 'Feature'],
-                                 IRI=map_iri('vfb') + k,
+                                 IRI=map_iri('fb') + k,
                                  attribute_dict={'label': v.symbol})
 
 
