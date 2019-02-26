@@ -30,6 +30,10 @@ args = parser.parse_args()
 nc = neo4j_connect(base_uri = args.endpoint,
                    usr = args.usr, pwd = args.pwd)
 
+# Hack to deal with descrepancy in xref property labels between sources:
+
+nc.commit_list("MATCH (p:Property { short_form: 'hasDbXref' }) SET p.label = 'hasDbXref' ")
+
 sr = nc.commit_list(["MATCH (s:Site) RETURN collect (s.short_form) as Sites"])
 sites = results_2_dict_list(sr)[0]['Sites']
 
@@ -43,6 +47,8 @@ ew = kb_owl_edge_writer(args.endpoint, args.usr, args.pwd)
 
 # JSON example for ref:
 # obo_xref:{"database":"FlyBrain_NDB","id":"10079","description":null,"url":null}
+
+
 
 for d in dc:
     c = d['c.short_form']
