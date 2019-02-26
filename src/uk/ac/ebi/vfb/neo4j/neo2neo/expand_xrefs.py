@@ -32,7 +32,7 @@ nc = neo4j_connect(base_uri = args.endpoint,
 
 # Hack to deal with descrepancy in xref property labels between sources:
 
-nc.commit_list("MATCH (p:Property { short_form: 'hasDbXref' }) SET p.label = 'hasDbXref' ")
+nc.commit_list(["MATCH (p:Property { short_form: 'hasDbXref' }) SET p.label = 'hasDbXref' "])
 
 sr = nc.commit_list(["MATCH (s:Site) RETURN collect (s.short_form) as Sites"])
 sites = results_2_dict_list(sr)[0]['Sites']
