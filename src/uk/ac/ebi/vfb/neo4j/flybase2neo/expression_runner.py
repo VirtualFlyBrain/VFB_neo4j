@@ -3,6 +3,7 @@ from .expression_tools import ExpressionWriter
 from ..neo4j_tools import chunks
 from .pub_tools import pubMover
 import argparse
+import re
 import sys
 import pandas as pd
 
@@ -60,13 +61,35 @@ else:
 #      At what point in the cycle can we effectively  use this lookup?
 #         ??? => EP lookup?
 
+def find_splits(fep_chunk):
+    """Find splits. Modify fep datastructure to incorporate"""
+
+    for f in fep_chunk:
+        f['split'] = {}
+        if f['comment']:
+            m = re.match(
+                "when combined with @(FB.+):(.+)@ "
+                "\(combination referred to as '(.+)'\)",
+                f['comment'])
+            if m:
+                f['split'] = {'hemidriver_id': m.group(1),
+                              'hemidriver_name': m.group(2),
+                              'split_combo_id': m.group(3)}
+
+
 feps = fm.query_fb("SELECT pub.uniquename as fbrf, "
-                   "f.uniquename as fbid, e.uniquename as fbex "
+                   "f.uniquename as fbid, e.uniquename as fbex, "
+                   "fep.value as comment "
                    "FROM feature_expression fe "
                    "JOIN pub ON fe.pub_id = pub.pub_id "
                    "JOIN feature f ON fe.feature_id = f.feature_id "
-                   "JOIN expression e ON fe.expression_id = e.expression_id" + limit)
+                   "JOIN expression e ON fe.expression_id = e.expression_id " 
+                   "LEFT OUTER JOIN feature_expressionprop fep "
+                   "ON fe.feature_expression_id = fep.feature_expression_id "
+                   "WHERE (fep.type_id = '101625' OR fep.type_id is NULL) " + limit)
 
+
+find_splits(feps)
 # -> chunk results:
 # Make lookup with c
 
@@ -74,18 +97,27 @@ print("Processing %d expression statements from FB." % len(feps))
 
 exp_write = ExpressionWriter(args.endpoint, args.usr, args.pwd)
 
+find_splits(feps)
+
 feps_chunked = chunks(feps, 500)
 
 # * This needs to be modified so that name-synonym lookup is called directly and so is
 # avaible to multiple methods. This can be run on case classes, making it easy to plug
 # directly into triple-store integration via dipper.
 
+
+
+
+
 for fep_c in feps_chunked:
+
 
 
     gene_product_ids = [f['fbid'] for f in fep_c]
     pubs = [f['fbrf'] for f in fep_c]
     taps = [f['fbex'] for f in fep_c]
+
+
 
     # Add pub nodes
     pm.move(pubs)
@@ -115,6 +147,12 @@ for fep_c in feps_chunked:
 
     # Roll the last stage of the lookups allowing bridging gp -> ep
     tg2ep_lookup = fm.generate_expression_patterns(expressed_transgenes)
+    ## Should roll split expression patterns in bulk at this point, but this requires lookups -> tg
+    ##   to populate split objects and pass these in bulk to fm.gen_split_ep method
+    ## Also: Watch out for direction! Split objects require DBD vs AD to be distinguished!
+    ## I guess this will need to be regex!
+
+
 
     # Link alleles to genes
     genes = fm.add_feature_relations(fm.allele2Gene(alleles.keys()))
