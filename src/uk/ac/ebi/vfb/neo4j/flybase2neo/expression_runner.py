@@ -46,6 +46,20 @@ else:
 
 
 # Query feature_expression => pub feature and fbex
+
+#  General question on splits:
+#  Is CHADO actually safe for comments?
+## What would happen if we had two on the same pub & feature TAPs that were identical apart from note?  How can these be unique????
+
+#  Plan for splits:
+#   Extend query  to pull TAP-specific comments
+#   Roll lookup for comments using compound key (pub, feat, FBex)
+#   Lookup should values should be parsed comments => partner + combo name.
+#   Questions:
+#      Do we still need to bridge -> TG
+#      At what point in the cycle can we effectively  use this lookup?
+#         ??? => EP lookup?
+
 feps = fm.query_fb("SELECT pub.uniquename as fbrf, "
                    "f.uniquename as fbid, e.uniquename as fbex "
                    "FROM feature_expression fe "
@@ -54,6 +68,7 @@ feps = fm.query_fb("SELECT pub.uniquename as fbrf, "
                    "JOIN expression e ON fe.expression_id = e.expression_id" + limit)
 
 # -> chunk results:
+# Make lookup with c
 
 print("Processing %d expression statements from FB." % len(feps))
 
