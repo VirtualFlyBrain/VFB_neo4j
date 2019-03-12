@@ -1,5 +1,5 @@
-from ..neo4j_tools import neo4j_connect, results_2_dict_list
-from ..KB_tools import kb_owl_edge_writer
+from uk.ac.ebi.vfb.neo4j.neo4j_tools import neo4j_connect, results_2_dict_list
+from uk.ac.ebi.vfb.neo4j.KB_tools import kb_owl_edge_writer
 
 import argparse
 import json
