@@ -505,12 +505,12 @@ class node_importer(kb_writer):
 
     def check_for_obsolete_nodes_in_use(self):
         m = "MATCH (c:Class)-[r]-(fu) WHERE c.is_obsolete=True " \
-            "RETURN c.label, c.IRI"
+            "RETURN c.label, c.iri"
         q = results_2_dict_list(self.nc.commit_list([m]))
         if q:
             for r in q:
                 warnings.warn("%s, %s is obsolete but in use." % 
-                              (r['c.label'], r['c.IRI']))
+                              (r['c.label'], r['c.iri']))
             return False
         else:
             print("No obsolete nodes in use.")
