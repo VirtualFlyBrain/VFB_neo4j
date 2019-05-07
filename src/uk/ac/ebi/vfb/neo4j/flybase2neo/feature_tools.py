@@ -278,7 +278,10 @@ class FeatureMover(FB2Neo):
             # Generate iri  - use something derived from FB id as will be 1:1.
             # Use: VFBexp_FBxxnnnnnnn
             ep = gen_ep_feat(feat)
-            ad = {'label': ep.symbol, 'synonyms': ep.synonyms}
+            ad = {'label': ep.symbol, 'synonyms': ep.synonyms,
+                  'description': ["All the cells in some region of "
+                                  "the body (e.g. adult brain, larval CNS)"
+                                  " that express " + feat.symbol + "."]}
             out[feat.fbid] = ep.fbid
             # Generate label = 'label . expression pattern'
             # Add node
@@ -327,7 +330,7 @@ class FeatureMover(FB2Neo):
                                    'the expression patterns of %s and'
                                    ' %s.' % (feats[s.dbd].symbol,
                                              feats[s.ad].symbol)]}
-            out[s.name] = {'attributes': ad, 'iri': iri, short_form: 'short_form'}
+            out[s.name] = {'attributes': ad, 'iri': iri, 'short_form': short_form}
 
             for x in s.xrefs:
                 self.ew.add_xref(s=short_form,

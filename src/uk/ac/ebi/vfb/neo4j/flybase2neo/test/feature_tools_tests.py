@@ -1,12 +1,15 @@
 import unittest
 from ..feature_tools import FeatureMover, Feature, split
+from ...KB_tools import node_importer, results_2_dict_list
 import sys
 import re
 
 class TestFeatureMover(unittest.TestCase):
 
     def setUp(self):
-        self.fm = FeatureMover('http://localhost:7474', 'neo4j', 'neo4j')
+        self.fm = FeatureMover('http://localhost:7475', 'neo4j', 'neo4j')
+        self.ni = node_importer('http://localhost:7475', 'neo4j', 'neo4j')
+
         # Load up various helper ontologies:
         # VFBext
         # SO
@@ -50,6 +53,22 @@ class TestFeatureMover(unittest.TestCase):
         assert len(test.keys()) == 3
         assert isinstance(test.pop('FBal0040675'), Feature)
 
+    def test_ep(self):
+        #self.ni.nc.commit_list([])
+        self.ni.update_from_flybase(['FBti0016846'])
+        self.ni.commit()
+        fu = self.fm.name_synonym_lookup(['FBti0016846'])
+        self.fm.generate_expression_patterns(fu)
+        q = self.ni.nc.commit_list(["MATCH (ep:Class { short_form: 'VFBexp_%s'})-[]->"
+                                    "(f:Class { short_form: '%s'}) "
+                                    "return ep, f" % ('FBti0016846',
+                                                     'FBti0016846')])
+        if q:
+            r=results_2_dict_list(q)
+            print(r)
+            assert len(r) == 1
+
+
     def test_gen_split_ep_feat(self):
         s = split(name='MB005B',
                   dbd='FBtp0117486',
@@ -59,6 +78,10 @@ class TestFeatureMover(unittest.TestCase):
 
 
     def tearDown(self):
+        to_delete = ['FBtp0117485', 'FBtp0117485', 'FBti0016846', 'VFBexp_FBti0016846',
+         'VFBexp_FBtp0117486FBtp0117485']
+        self.ni.nc.commit_list(["MATCH (c:Class) WHERE c.short_form in %s DETACH DELETE c"
+                                "" % str(to_delete)])
         return
 
 
