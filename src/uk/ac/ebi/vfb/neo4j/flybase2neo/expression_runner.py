@@ -18,6 +18,8 @@ import warnings
 # 4. Merge feature & pub + add typing and details.
 # 5. Instantiate (merge) related types -> gene for features, adding details
 
+#TODO - Review intermediate datastructures - more alignement and doc needed.
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--test', help='Run in test mode. ' \
                                    'runs with limits on cypher queries and additions.',
