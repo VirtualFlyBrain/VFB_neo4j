@@ -49,7 +49,7 @@ Triple = collections.namedtuple('ftype', ['s', 'r', 'o'])
 #
 # xrefs = list of db:acc,
 
-split = collections.namedtuple('split', ['name', 'dbd', 'ad', 'xrefs'])
+split = collections.namedtuple('split', ['synonyms', 'dbd', 'ad', 'xrefs'])
 
 
 class FeatureMover(FB2Neo):
@@ -207,7 +207,8 @@ class FeatureMover(FB2Neo):
     def allele2Gene(self, subject_ids):
         """Takes a list of allele IDs, returns a list of triples as python tuples:
          (allele rel gene) where rel is appropriate for addition to prod."""
-        return self._get_objs(subject_ids, chado_rel='alleleof', out_rel='GENO_0000408', o_idp='FBgn')  # is_allele_of
+        return self._get_objs(subject_ids, chado_rel='alleleof',
+                              out_rel='GENO_0000408', o_idp='FBgn')  # is_allele_of
 
     # gp - transgene R associated_with Type object by uniquename FBgn
     def gp2allele(self, subject_ids):
@@ -232,7 +233,11 @@ class FeatureMover(FB2Neo):
         # See https://github.com/monarch-initiative/ingest-artifacts/blob/2ab4a0835b2717ac2426a2e19f1bd9bedf4d6396/docs/Dipper%20Data%20Model%20cmaps.jpg
 
     def add_feature_relations(self, triples, assume_subject=True, commit=True):
-        """Adds feature relationships, assuming """
+        """Takes a list of triples as python tuples.
+        If assume_subject is False - adds subject
+        Adds object
+        Adds relationship
+        RETURNS a dict object_short_form: feature object"""
 
         if not assume_subject:
             subjects = [t[0] for t in triples]
@@ -259,13 +264,37 @@ class FeatureMover(FB2Neo):
             self.ew.commit()
         return objects_pdm
 
-    def generate_expression_patterns(self, features, commit=True):
+    def generate_expression_patterns(self, features, feature_objects=False, add_features = True, commit=True):
+
+        ### THIS NEEDS TO CHANGE!
+        ### Currently takes a list of feature objects as input, should just take feature IDs!
+        ### I think it does this because it saves looking up info that might already have been
+        ### Looked up - but it's not in
+
+        """Takes a list of features as input,
+        generates expression patterns for these features.
+        returns an dict of ep_feat_short_form: Feature object
+        By default, features = a list of short_form ids (FBids)
+        If feature_objects=True, then features = a dict of feature objects keyed on short_form
+        (This is useful for when a dict of feature objects is already available).
+         If add_features = True, then features are added before the ep (making this false is useful for speed)
+         Method will only commit if commit = true othewise calling script must commit.  Useful for batching:
+            self.ni.commit(batch = ??)
+            self.ew.commit(batch = ??)
+        """
+
         if not features:
             warnings.warn("No features provided.")
             return False
 
 
         out = {}
+
+        if not feature_objects:
+            if add_features:
+                features = self.add_features(features)
+            else:
+                features = self.name_synonym_lookup(features)
 
         # Keeping this function scope local
         def gen_ep_feat(feat):
@@ -276,7 +305,7 @@ class FeatureMover(FB2Neo):
 
         for feat in features.values():
             # Generate iri  - use something derived from FB id as will be 1:1.
-            # Use: VFBexp_FBxxnnnnnnn
+            # Use: VFBexp_FBnnnnnnn
             ep = gen_ep_feat(feat)
             ad = {'label': ep.symbol, 'synonyms': ep.synonyms}
             out[feat.fbid] = ep.fbid
@@ -306,40 +335,48 @@ class FeatureMover(FB2Neo):
         return out
 
 
-    def gen_split_ep_feat(self, splits, kb=True, commit=True):
+    def gen_split_ep_feat(self, splits, add_feats = True, add_feature_details=False, commit=True):
         """Adds split expression pattern nodes to Neo following
+        Returns a dict of feature objects keyed on
         schema: (sep)-[:has_hemidriver]->(construct).
         args:
-        splits: An array of split objects, namedtuple['name', 'dbd', 'ad', 'xrefs']
-        kb: A boolean specifying whether to add typing and attributes"""
+        splits: An array of split objects, namedtuple['synonyms', 'dbd', 'ad', 'xrefs']
+        Returns dict
+        """
+
         out = {}
         for s in splits:
-            if kb:
-                feats = self.name_synonym_lookup([s.ad, s.dbd])
+            if add_feats:
+                if add_feature_details:
+                    feats = self.add_features([s.ad, s.dbd])
+                else:
+                    feats = self.name_synonym_lookup([s.ad, s.dbd])
+                    for k, v in feats.items():
+                        self.ni.add_node(labels=['Class', 'Feature'],
+                                         IRI=map_iri('fb') + k,
+                                         attribute_dict={'label': v.symbol})
             else:
-                feats = self.add_features([s.ad, s.dbd])
+                feats = self.name_synonym_lookup([s.ad, s.dbd])
+
+
             short_form = 'VFBexp_' + s.dbd + s.ad
             iri = map_iri('vfb') + short_form
             ad = {'label' : feats[s.dbd].symbol + ' ∩ ' +
-                   feats[s.ad].symbol +' expression pattern',
-                   'synonyms': [s.name],
-                   'description': ['The sum of all cells at the intersection between '
+                  feats[s.ad].symbol +' expression pattern',
+                  'synonyms': s.synonyms,
+                  'description': ['The sum of all cells at the intersection between '
                                    'the expression patterns of %s and'
                                    ' %s.' % (feats[s.dbd].symbol,
                                              feats[s.ad].symbol)]}
-            out[s.name] = {'attributes': ad, 'iri': iri, short_form: 'short_form'}
+
+
+            out[short_form] = {'attributes': ad, 'iri': iri,
+                               short_form: short_form, 'xrefs': s.xrefs}
 
             for x in s.xrefs:
                 self.ew.add_xref(s=short_form,
                                  xref=x,
                                  stype=':Class')
-
-
-            for k, v in feats.items():
-                self.ni.add_node(labels=['Class', 'Feature'],
-                                 IRI=map_iri('fb') + k,
-                                 attribute_dict={'label': v.symbol})
-
 
             self.ni.add_node(labels=['Class'],
                              IRI=iri,

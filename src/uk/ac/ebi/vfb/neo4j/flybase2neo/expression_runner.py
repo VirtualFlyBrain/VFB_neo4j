@@ -6,6 +6,7 @@ import argparse
 import re
 import sys
 import pandas as pd
+import pandasql as ps
 import re
 
 import warnings
@@ -18,7 +19,7 @@ import warnings
 # 4. Merge feature & pub + add typing and details.
 # 5. Instantiate (merge) related types -> gene for features, adding details
 
-#TODO - Review intermediate datastructures - more alignement and doc needed.
+# TODO - Review intermediate datastructures - more alignement and doc needed.
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--test', help='Run in test mode. ' \
@@ -69,20 +70,51 @@ else:
 
 
 # TODO fix find splits.
-def find_splits(fep_chunk):
-    """Find splits. Modify fep datastructure to incorporate"""
+def proc_splits(fep_chunk):
+    """Find splits. Modify fep datastructure to incorporate details."""
+    hemidrivers =  []
     for f in fep_chunk:
         if f['comment']:
-            m = re.match("when combined with @(FB.+):(.+)@ "
-                         "\(combination referred to as '(.+)'\)", f['comment'])
+            m = re.match("^when combined with @(FB.{9}):(.+)@.*", f['comment'])
             if m:
                 f['split'] = {'hemidriver_id': m.group(1),
-                              'hemidriver_name': m.group(2),
-                              'split_combo_id': m.group(3)}
-                m2 = re.match('P{.+(DBD|AD)}', m.group(2))
-                f['split']['type'] = m2.group(1)
-            else:
-                f['split'] = {}
+                              'hemidriver_name': m.group(2)
+                              }
+                hemidrivers.append(m.group(1))
+                m3 = re.match(".+combination referred to as '(.+)'\).*", f['comment'])
+                if m3:
+                    f['split']['split_combo_id'] = m3.group(1)
+                m2 = re.match('.*{.*(DBD|AD).*}', m.group(2))
+                if m2:
+                    f['split']['type'] = m2.group(1)
+                else:
+                    warnings.warn("Can't identify a type for " + m.group(2))
+    return hemidrivers
+
+#            else:
+#                f['split'] = {}
+#        else:
+#            f['split'] = {}
+
+
+def generate_split_objects(split_df):
+
+    out = []
+    for row in split_df:
+        new_hemidrivers.append(row['split']['hemidriver_id'])
+        expressed_transgenes.pop(row['tg'])
+        if row['split']['type'] == 'DBD':
+            splits.append(
+                split(name=row['split']['split_combo_id'],
+                      dbd=row['split']['hemidriver_id'],
+                      ad=row['tg'], xrefs=[]))
+
+        elif row['split']['type'] == 'AD':
+            splits.append(
+                split(name=row['split']['split_combo_id'],
+                      dbd=row['tg'],
+                      ad=row['split']['hemidriver_id'], xrefs=[]))
+    return out
 
 
 def lookup_2_df(lookup, df: pd.DataFrame, key_column, value_column):
@@ -95,6 +127,14 @@ def lookup_2_df(lookup, df: pd.DataFrame, key_column, value_column):
         df.loc[df[key_column] == k, value_column] = v
 
 
+def triples_2_df(triples, df: pd.DataFrame, key_column, value_column):
+    df.set_index(key_column)  # Might be better to do this outside?
+    if value_column not in list(df.columns):
+        df[value_column] = ''
+    for t in triples:
+        df.loc[df[key_column] == t[0], value_column] = t[2]
+
+
 feps = fm.query_fb("SELECT pub.uniquename as fbrf, "
                    "f.uniquename as gp, e.uniquename as fbex, "
                    "fep.value as comment "
@@ -104,19 +144,19 @@ feps = fm.query_fb("SELECT pub.uniquename as fbrf, "
                    "JOIN expression e ON fe.expression_id = e.expression_id "
                    "LEFT OUTER JOIN feature_expressionprop fep "
                    "ON fe.feature_expression_id = fep.feature_expression_id "
-                   "WHERE (fep.type_id = '101625' OR fep.type_id is NULL) " + limit)
+                   "AND fep.type_id = '101625' "
+                   "AND fep.value ~ 'when combined with @.*@.*'" + limit)
 
-find_splits(feps)
 # -> chunk results:
 # Make lookup with c
 
-fepss = [f for f in feps if f['split']]
+# fepss = [f for f in feps if f['split']]
 
 print("Processing %d expression statements from FB." % len(feps))
 
 exp_write = ExpressionWriter(args.endpoint, args.usr, args.pwd)
 
-feps_chunked = chunks(fepss, 500)
+feps_chunked = chunks(feps, 10000)
 
 # * This needs to be modified so that name-synonym lookup is called directly and so is
 # avaible to multiple methods. This can be run on case classes, making it easy to plug
@@ -125,19 +165,64 @@ feps_chunked = chunks(fepss, 500)
 
 for fep_c in feps_chunked:
 
-    # Using DataFrame for lookup
+    # Using DataFrame for tracking/lookup
 
+    # TODO: check whether indexing relevants elements of df will improve performance
     fep_df = pd.DataFrame.from_records(fep_c)
 
-    gene_product_ids = [f['gp'] for f in fep_c]
+    gps = list(fep_df['gp'])
+    gp2al = fm.gp2allele(gps)  # A list of triples (as python tuples)
+    triples_2_df(triples=gp2al, df=fep_df, key_column='gp', value_column='al')
+
+    # Add alleles (starting point for graph). Only add pubs where allele is present
+    pa = ps.sqldf("SELECT pub, al from fep_df WHERE al IS NOT NULL", locals())
+    fm.add_features(ps['alleles'])
+    pm.move(list(pa['pub']))
+
+    # Add genes linked to alleles (these don't need to be in the table)
+    fm.add_feature_relations(fm.allele2Gene(list(pa['al'])))
+
+    # Find transgenes, add them to table and link them to alleles
+    al2tg = fm.allele2transgene(list(pa['al']))
+    triples_2_df(triples=gp2al, df=fep_df, key_column='al', value_column='tg')
+    transgenes = fm.add_feature_relations(al2tg)  # Dict tg_id: feature object
+
+    # Find and process splits
+    split_df = ps.sqldf("SELECT * from fep_df WHERE comment IS NOT NULL")
+    split_hemidrivers = proc_splits(split_df)
+
+    # Add hemidrivers
+    fm.add_features(split_hemidrivers)
+    # TODO - add code to add graph for split hemidriver !
+
+    # Add regular expression patterns
+    non_split_tgs = ps.sqldf("SELECT tg FROM fep_df WHERE comment IS NULL")
+    eps = fm.generate_expression_patterns(non_split_tgs)  # How to add these to the table?
+
+    splits = generate_split_objects(split_df)
+    fm.gen_split_ep_feat(splits)  # How to add these to the table?!
+
+
+
+
+
+
+
+
+
+    # Add split eps
+
+
+
+
+    # At this point we need to distinguish between splits and regular
+    ## Can we do that with a SQL query given that
+
+    # These should no longer be needed
     split_gps = [f['gp'] for f in fep_c if f['split']]
-    pubs = [f['fbrf'] for f in fep_c]
     taps = [f['fbex'] for f in fep_c]
 
-    gp_splits = ''
-
     # Add pub nodes
-    pm.move(pubs)
 
     ## Aims
     # Map TAP to EP
@@ -147,23 +232,20 @@ for fep_c in feps_chunked:
     # Navigating across the feature graph rolling lookups as we go.
     # Path gp -> al -> tg
 
-    gp2al = fm.gp2allele(gene_product_ids)
-
     if not gp2al:
         continue
-    tg_allele_ids = [g[2] for g in gp2al]
+
     gp2al_lookup = {g[0]: g[2] for g in gp2al}
     lookup_2_df(df=fep_df, lookup=gp2al_lookup, key_column='gp', value_column='al')
-    al2tg = fm.allele2transgene(tg_allele_ids)
+    al2tg = fm.allele2transgene()  # A list of tripes (as python tuples)
     al2tg_lookup = {g[0]: g[2] for g in al2tg}
     lookup_2_df(df=fep_df, lookup=al2tg_lookup, key_column='al', value_column='tg')
 
     # Add alleles as starting point for graph
-    alleles = fm.add_features([f[2] for f in gp2al])
+    alleles = fm.add_features([f[2] for f in gp2al])  # Dict allele_id:feature object
 
     #  Add feature graph al -> tg -> expression pattern (features are typed as we go)
-    transgenes = fm.add_feature_relations(al2tg)
-    expressed_transgenes : dict = fm.add_feature_relations(al2tg)
+    expressed_transgenes: dict = fm.add_feature_relations(al2tg)  # Dict tg_id: feature object
 
     splits = []
     new_hemidrivers = []
@@ -175,15 +257,14 @@ for fep_c in feps_chunked:
             if r['split']['type'] == 'DBD':
                 splits.append(
                     split(name=r['split']['split_combo_id'],
-                          dbd=r['split']['id'],
+                          dbd=r['split']['hemidriver_id'],
                           ad=r['tg'], xrefs=[]))
 
             elif r['split']['type'] == 'AD':
                 splits.append(
                     split(name=r['split']['split_combo_id'],
                           dbd=r['tg'],
-                          ad=r['split']['id'], xrefs=[]))
-
+                          ad=r['split']['hemidriver_id'], xrefs=[]))
 
     fm.add_features(new_hemidrivers)
     split_eps = fm.gen_split_ep_feat(splits=splits)
@@ -201,7 +282,7 @@ for fep_c in feps_chunked:
 
     tg2ep_lookup = fm.generate_expression_patterns(expressed_transgenes)
 
-    lookup_2_df(df=fep_df, lookup=tg2ep_lookup, key_column = 'tg', value_column='ep')
+    lookup_2_df(df=fep_df, lookup=tg2ep_lookup, key_column='tg', value_column='ep')
 
     # Link alleles to genes
     genes = fm.add_feature_relations(fm.allele2Gene(alleles.keys()))
@@ -209,17 +290,22 @@ for fep_c in feps_chunked:
     # Roll TAP pdms and store them in exp_write object
     exp_write.get_expression(FBex_list=taps)
 
-### TODO: Refactor loop to use dataFrame.
+    # for fe in fep_c:
+    #     # Not keen on all these nested lookups - but should be safe.
+    #     if fe['gp'] in gp2al_lookup.keys():
+    #         al = gp2al_lookup[fe['gp']]
+    #         if al2tg_lookup:
+    #             if al in al2tg_lookup.keys():
+    #                 tg = al2tg_lookup[al]
+    #                 if tg in tg2ep_lookup.keys():
+    #                     ep = tg2ep_lookup[tg]
+    #                     exp_write.write_expression(pub=fe['fbrf'], ep=ep, fbex=fe['fbex'])
+
+    ### DONE: Refactor loop to use dataFrame.
     # better to have function do batch?
-    for fe in fep_c:
-        # Not keen on all these nested lookups - but should be safe.
-        if fe['gp'] in gp2al_lookup.keys():
-            al = gp2al_lookup[fe['gp']]
-            if al2tg_lookup:
-                if al in al2tg_lookup.keys():
-                    tg = al2tg_lookup[al]
-                    if tg in tg2ep_lookup.keys():
-                        ep = tg2ep_lookup[tg]
-                        exp_write.write_expression(pub=fe['fbrf'], ep=ep, fbex=fe['fbex'])  #
+
+    for index, r in fep_df.iterrows():
+        if r['ep']:
+            exp_write.write_expression(pub=r['fbrf'], ep=r['ep'], fbex=r['fbex'])  #
 
     exp_write.commit()
