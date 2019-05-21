@@ -6,7 +6,7 @@ import re
 class TestFeatureMover(unittest.TestCase):
 
     def setUp(self):
-        self.fm = FeatureMover('http://localhost:7474', 'neo4j', 'neo4j')
+        self.fm = FeatureMover('http://localhost:7475', 'neo4j', 'neo4j')
         # Load up various helper ontologies:
         # VFBext
         # SO
