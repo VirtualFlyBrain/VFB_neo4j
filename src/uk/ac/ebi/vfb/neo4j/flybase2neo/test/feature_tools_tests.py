@@ -1,12 +1,14 @@
 import unittest
-from ..feature_tools import FeatureMover, Feature, split
-import sys
+from ..feature_tools import FeatureMover, split, Node
+from ...neo4j_tools import results_2_dict_list
 import re
+
+# TODO Fix addition from file!
 
 class TestFeatureMover(unittest.TestCase):
 
     def setUp(self):
-        self.fm = FeatureMover('http://localhost:7474', 'neo4j', 'neo4j')
+        self.fm = FeatureMover('http://localhost:7475', 'neo4j', 'neo4j', file_path='/Users/davidos/')
         # Load up various helper ontologies:
         # VFBext
         # SO
@@ -48,13 +50,26 @@ class TestFeatureMover(unittest.TestCase):
                                             'FBal0040597',
                                             'FBal0028942'])
         assert len(test.keys()) == 3
-        assert isinstance(test.pop('FBal0040675'), Feature)
+        assert isinstance(test.pop('FBal0040675'), Node)
+
+    def test_add_features(self):
+        test = self.fm.add_features(['FBal0040675',
+                                     'FBal0040597',
+                                     'FBal0028942'])
+        assert len(test.keys()) == 3
+        assert isinstance(test.pop('FBal0040675'), Node)
+#        q = self.fm.nc.commit_list(["MATCH (f:Class:Feature"
+#                                    "  { short_form: 'FBal0040675'}) "
+#                                    "RETURN f.short_form"])
+#        r = results_2_dict_list(q)
+#        print(r)
+#        assert r[0]['f.short_form'] == 'FBal0040675'
 
     def test_gen_split_ep_feat(self):
-        s = split(name='MB005B',
+        s = split(synonyms=['MB005B'],
                   dbd='FBtp0117486',
                   ad='FBtp0117485',
-                  xrefs=['VFBsite_FlyLightSplit:asdasdf'])
+                  xrefs=['VFBsite_FlyLightSplit:MB005B'])
         test = self.fm.gen_split_ep_feat([s])
 
 
