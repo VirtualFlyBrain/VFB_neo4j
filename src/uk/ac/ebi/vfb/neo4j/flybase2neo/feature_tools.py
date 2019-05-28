@@ -103,11 +103,11 @@ class FeatureMover(FB2Neo):
                            label=d['ascii_name'],
                            synonyms=set())
             if d['stype'] == 'symbol' and d['is_current']:
-                out.label = d['unicode_name']
-                out.synonyms.add(d['ascii_name'])
+                out.label = clean_sgml_tags(d['unicode_name'])
+                out.synonyms.add(clean_sgml_tags(d['ascii_name']))
             else:
-                out.synonyms.add(d['ascii_name'])
-                out.synonyms.add(d['unicode_name'])
+                out.synonyms.add(clean_sgml_tags(d['ascii_name']))
+                out.synonyms.add(clean_sgml_tags(d['unicode_name']))
             return out
 
         if not fbids:
@@ -136,9 +136,9 @@ class FeatureMover(FB2Neo):
         proc_names = [f.__dict__ for f in feats.values()]
         for d in proc_names:
             d['synonyms'] = '|'.join(d['synonyms'])
-        statement = "MERGE (n:Class { short_form : line.fbid } ) " \
-                    "SET n.label = line.symbol SET n.synonyms = split(line.synonyms, '|') " \
-                    "SET n.iri = 'http://flybase.org/reports/' + line.fbid " \
+        statement = "MERGE (n:Class { short_form : line.short_form } ) " \
+                    "SET n.label = line.label SET n.synonyms = split(line.synonyms, '|') " \
+                    "SET n.iri = 'http://flybase.org/reports/' + line.short_form " \
                     "SET n:Feature"
         # Why not using ni? Can kbw have switch to work via csv?
         if commit:
@@ -325,7 +325,7 @@ class FeatureMover(FB2Neo):
             return Node(iri=map_iri('vfb') + 'VFBexp_' + feat.short_form,
                         short_form='VFBexp_' + feat.short_form,
                         label=feat.label + ' expression pattern',
-                        synonyms=[x + ' expression pattern' for x in feat.synonyms])
+                        synonyms=[x + ' expression pattern' for x in feat.synonyms.split('|')])
 
         for feat in features.values():
             # Generate iri  - use something derived from FB id as will be 1:1.

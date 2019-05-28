@@ -191,6 +191,8 @@ for fep_c in feps_chunked:
                        "WHERE gp = '%s'" % (t[2], t[0]))
         allele_ids.append(t[2])
     # Add alleles (starting point for graph).
+    if not allele_ids:
+        continue
     alleles = fm.add_features(allele_ids)
     # Only add pubs where allele is present
     q = engine.execute("SELECT fbrf from feature_expression WHERE al IS NOT NULL")
@@ -231,7 +233,7 @@ for fep_c in feps_chunked:
     q = engine.execute("SELECT fbrf, ep, fbex FROM feature_expression "
                        "WHERE ep IS NOT NULL")
     dc = dict_cursor(q.cursor)
+    exp_write.get_expression([d['fbex'] for d in dc])
     for r in dc:
         exp_write.write_expression(pub=r['fbrf'], ep=r['ep'], fbex=r['fbex'])
-
     exp_write.commit()
