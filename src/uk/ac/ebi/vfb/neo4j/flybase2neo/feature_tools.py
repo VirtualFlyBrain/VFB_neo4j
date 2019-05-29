@@ -108,8 +108,8 @@ class FeatureMover(FB2Neo):
         statement = "MERGE (n:Class { short_form : line.fbid } ) " \
                     "SET n.label = line.symbol SET n.synonyms = split(line.synonyms, '|') " \
                     "SET n.iri = 'http://flybase.org/reports/' + line.fbid " \
-                    "SET n:Feature"
-        # Why not using ni? Can kbw have switch to work via csv?
+                    "SET n:Feature" \
+                    "SET self_xref = 'FlyBase'"
         if commit:
             self.commit_via_csv(statement, proc_names)
         self.addTypes2Neo(fbids=fbids, commit=commit)
@@ -244,17 +244,12 @@ class FeatureMover(FB2Neo):
             return False
         objects_pdm = self.add_features(objects)
         self.addTypes2Neo(objects)
-        statements = []
         for t in triples:
             self.ew.add_anon_subClassOf_ax(s=t[0],
                                            r=t[1],
                                            o=t[2],
                                            match_on='short_form',
                                            safe_label_edge=True)
-        #            statements.append(
-        #                "MATCH (s:Feature { short_form: '%s'}), (o:Feature { short_form: '%s'}) " \
-        #                "MERGE (s)-[r:%s]->(o)" % (t[0], t[2], t[1])  # Should be using KB_tools (?)
-        #            )
         if commit:
             self.ew.commit()
         return objects_pdm
