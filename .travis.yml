@@ -21,6 +21,12 @@ install:
   - pip install -r requirements.txt
   
 script:
+  - export KB=http://localhost:7474/
+  - export PDB=http://localhost:7475/
+  - export USR=neo4j
+  - export PWD=neo4j
+  - export FILEPATH=$TRAVIS_BUILD_DIR/src/
+  - export ENDPOINT=$PDB
   - echo -e "travis_fold:start:db-log"
   - curl -sSf -u neo4j:neo4j "http://localhost:7474/db/data/"
   - docker logs db
