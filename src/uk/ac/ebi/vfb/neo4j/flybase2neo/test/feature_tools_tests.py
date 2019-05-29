@@ -77,12 +77,6 @@ class TestFeatureMover(unittest.TestCase):
 
 
 
-if __name__ == "__main__":
-    os.environ.get('ENDPOINT', TestFeatureMover.ENDPOINT)
-    os.environ.get('USR', TestFeatureMover.USR)
-    os.environ.get('PWD', TestFeatureMover.PWD)
-    os.environ.get('FILEPATH', TestFeatureMover.FILEPATH)
-    unittest.main()
 
 
 
