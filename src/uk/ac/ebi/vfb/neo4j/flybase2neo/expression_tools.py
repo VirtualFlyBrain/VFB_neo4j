@@ -25,7 +25,7 @@ class ExpressionWriter(FB2Neo):
         self.FBex_lookup = {}
         self.statements = []
 
-    def get_expression(self, limit=0, FBex_list=None):
+    def get_expression(self, FBex_list=None, limit=0):
         """Given a list of FBex IDs, generates a lookup for TAP statements, keyed on FBex.
         Lookup structure:
         Primary keys: stage, anatomy, cellular, assay
@@ -163,7 +163,7 @@ class ExpressionWriter(FB2Neo):
                                      safe_label_edge=True)
         if stage:
             self.ew.add_anon_type_ax(s=short_form,
-                                     r='RO_0002093',
+                                     r='RO_0002490',
                                      o=stage,
                                      match_on='short_form',
                                      safe_label_edge=True)

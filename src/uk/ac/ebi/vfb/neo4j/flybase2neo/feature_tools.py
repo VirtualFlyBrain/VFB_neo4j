@@ -2,8 +2,9 @@ from .fb_tools import FB2Neo, dict_list_2_dict
 from ...curie_tools import map_iri
 import re
 import warnings
+from dataclasses import dataclass, field
+from typing import List, Dict, Set
 import collections
-import uuid
 
 
 def clean_sgml_tags(sgml_string):
@@ -35,6 +36,8 @@ def map_feature_type(fbid, ftype):
 
 # Using named tuples to standardise immutable objects for holding data.
 
+
+
 Feature = collections.namedtuple('Feature', ['symbol',
                                              'fbid',
                                              'synonyms',  # list of synonyms
@@ -43,13 +46,42 @@ Feature = collections.namedtuple('Feature', ['symbol',
 
 Duple = collections.namedtuple('ftype', ['s', 'o'])
 Triple = collections.namedtuple('ftype', ['s', 'r', 'o'])
+split = collections.namedtuple('split', ['synonyms', 'dbd', 'ad', 'xrefs'])
 
-# spit object args:
-# Name - name in resource (becomes synonym)
-#
-# xrefs = list of db:acc,
 
-split = collections.namedtuple('split', ['name', 'dbd', 'ad', 'xrefs'])
+@dataclass
+class Node:
+    short_form: str
+    label: str = ''
+    iri: str = ''
+    synonyms: Set[str] = field(default_factory=set)
+    xrefs: List[str] = field(default_factory=list)
+
+
+@dataclass
+class FeatureRelation:
+    """Super-simple graph representation of nodes and edges.
+    Keeps feature nodes separate from synthetic (ep) nodes"""
+    # Could be more generic having native vs synthetic nodes instead.
+    edges: List[Triple] = field(default_factory=list)
+    features: Dict[str, Node] = field(default_factory=dict)
+    eps: Dict[str, Node] = field(default_factory=dict)
+
+
+
+# For splits
+# pub FBex tg comment split
+# + al
+# + tg
+# + ep # This must be ep corresponding to tg  +  split  tg so  there is a danger of
+# tracking ep based on tg (one hemidriver might be used in multiple - we need a compound
+# key.  could be tg; or could keep hemidriver in table.
+# How to reconsruct this from nodes and edges?
+# short_form IS a compound key! We know one half at the start, and whether it is DBD or AD, but we only get the other half just before the addition.  Solution is to have a separate, bespoke job to update lookup table.  This can happen during Split object generation.
+
+
+
+
 
 
 class FeatureMover(FB2Neo):
@@ -64,20 +96,19 @@ class FeatureMover(FB2Neo):
             # Should probably check whether this makes code more innefficent.
 
             if ds:
-                out = ds._asdict()
+                out = ds
             else:
-                out = {'fbid': d['fbid'],
-                       'iri': map_iri('fb') + d['fbid'],
-                       'symbol': d['ascii_name'],
-                       'synonyms': set()
-                       }
+                out = Node(short_form=d['fbid'],
+                           iri=map_iri('fb') + d['fbid'],
+                           label=d['ascii_name'],
+                           synonyms=set())
             if d['stype'] == 'symbol' and d['is_current']:
-                out['symbol'] = d['unicode_name']
-                out['synonyms'].add(d['ascii_name'])
+                out.label = clean_sgml_tags(d['unicode_name'])
+                out.synonyms.add(clean_sgml_tags(d['ascii_name']))
             else:
-                out['synonyms'].add(d['ascii_name'])
-                out['synonyms'].add(d['unicode_name'])
-            return Feature(**out)
+                out.synonyms.add(clean_sgml_tags(d['ascii_name']))
+                out.synonyms.add(clean_sgml_tags(d['unicode_name']))
+            return out
 
         if not fbids:
             warnings.warn("Empty fbid list provided to name_synonym_lookup")
@@ -102,14 +133,14 @@ class FeatureMover(FB2Neo):
             warnings.warn("No fbids provided.")
             return False
         feats = self.name_synonym_lookup(fbids)
-        proc_names = [f._asdict() for f in feats.values()]
+        proc_names = [f.__dict__ for f in feats.values()]
         for d in proc_names:
             d['synonyms'] = '|'.join(d['synonyms'])
-        statement = "MERGE (n:Class { short_form : line.fbid } ) " \
-                    "SET n.label = line.symbol SET n.synonyms = split(line.synonyms, '|') " \
-                    "SET n.iri = 'http://flybase.org/reports/' + line.fbid " \
-                    "SET n:Feature" \
-                    "SET self_xref = 'FlyBase'"
+        statement = "MERGE (n:Class { short_form : line.short_form } ) " \
+                    "SET n.label = line.label SET n.synonyms = split(line.synonyms, '|') " \
+                    "SET n.iri = 'http://flybase.org/reports/' + line.short_form " \
+                    "SET n:Feature"
+
         if commit:
             self.commit_via_csv(statement, proc_names)
         self.addTypes2Neo(fbids=fbids, commit=commit)
@@ -207,7 +238,8 @@ class FeatureMover(FB2Neo):
     def allele2Gene(self, subject_ids):
         """Takes a list of allele IDs, returns a list of triples as python tuples:
          (allele rel gene) where rel is appropriate for addition to prod."""
-        return self._get_objs(subject_ids, chado_rel='alleleof', out_rel='GENO_0000408', o_idp='FBgn')  # is_allele_of
+        return self._get_objs(subject_ids, chado_rel='alleleof',
+                              out_rel='GENO_0000408', o_idp='FBgn')  # is_allele_of
 
     # gp - transgene R associated_with Type object by uniquename FBgn
     def gp2allele(self, subject_ids):
@@ -232,7 +264,11 @@ class FeatureMover(FB2Neo):
         # See https://github.com/monarch-initiative/ingest-artifacts/blob/2ab4a0835b2717ac2426a2e19f1bd9bedf4d6396/docs/Dipper%20Data%20Model%20cmaps.jpg
 
     def add_feature_relations(self, triples, assume_subject=True, commit=True):
-        """Adds feature relationships, assuming """
+        """Takes a list of triples as python tuples.
+        If assume_subject is False - adds subject
+        Adds object
+        Adds relationship
+        RETURNS a dict object_short_form: feature object"""
 
         if not assume_subject:
             subjects = [t[0] for t in triples]
@@ -250,46 +286,74 @@ class FeatureMover(FB2Neo):
                                            o=t[2],
                                            match_on='short_form',
                                            safe_label_edge=True)
+
         if commit:
             self.ew.commit()
-        return objects_pdm
+        return FeatureRelation(features=objects_pdm, edges=triples)
 
-    def generate_expression_patterns(self, features, commit=True):
+    def generate_expression_patterns(self, features, feature_objects=False, add_features =True, commit=True):
+
+
+        """Takes a list of features as input,
+        generates expression patterns for these features.
+        returns an dict of ep_feat_short_form: Feature object
+        By default, features = a list of short_form ids (FBids)
+        If feature_objects=True, then features = a dict of feature objects keyed on short_form
+        (This is useful for when a dict of feature objects is already available).
+         If add_features = True, then features are added before the ep (making this false is useful for speed)
+         Method will only commit if commit = true othewise calling script must commit.  Useful for batching:
+            self.ni.commit(batch = ??)
+            self.ew.commit(batch = ??)
+        """
+
         if not features:
             warnings.warn("No features provided.")
             return False
 
 
-        out = {}
+        eps = {}
+        triples = []
+
+        if not feature_objects:
+            if add_features:
+                features = self.add_features(features)
+            else:
+                features = self.name_synonym_lookup(features)
 
         # Keeping this function scope local
         def gen_ep_feat(feat):
-            return Feature(iri=map_iri('vfb') + 'VFBexp_' + feat.fbid,
-                           fbid='VFBexp_' + feat.fbid,
-                           symbol=feat.symbol + ' expression pattern',
-                           synonyms=[x + ' expression pattern' for x in feat.synonyms])
+            return Node(iri=map_iri('vfb') + 'VFBexp_' + feat.short_form,
+                        short_form='VFBexp_' + feat.short_form,
+                        label=feat.label + ' expression pattern',
+                        synonyms=[x + ' expression pattern' for x in feat.synonyms.split('|')])
 
         for feat in features.values():
             # Generate iri  - use something derived from FB id as will be 1:1.
-            # Use: VFBexp_FBxxnnnnnnn
+            # Use: VFBexp_FBnnnnnnn
             ep = gen_ep_feat(feat)
-            ad = {'label': ep.symbol, 'synonyms': ep.synonyms}
-            out[feat.fbid] = ep.fbid
+            ad = {'label': ep.label, 'synonyms': ep.synonyms}
+            eps[ep.short_form] = ep,
+
+
             # Generate label = 'label . expression pattern'
             # Add node
 
             self.ni.add_node(labels=['Class'],
                              IRI=ep.iri,
-                             attribute_dict=ad,)
+                             attribute_dict=ad)
 
-            self.ew.add_named_subClassOf_ax(s=ep.fbid,
+            self.ew.add_named_subClassOf_ax(s=ep.short_form,
                                             o='CARO_0030002',  # expression pattern
                                             match_on='short_form')
-            self.ew.add_anon_subClassOf_ax(s=ep.fbid,
-                                           r='RO_0002292',  # expresses
-                                           o=feat.fbid,
+
+            t = Triple(s=ep.short_form, r='RO_0002292', o=feat.short_form)
+            self.ew.add_anon_subClassOf_ax(s=t.s,
+                                           r=t.r,  # expresses
+                                           o=t.o,
                                            match_on='short_form',
                                            safe_label_edge=True)
+            triples.append(t)
+
         if commit:
             self.ni.commit()
             self.ew.commit()
@@ -298,43 +362,51 @@ class FeatureMover(FB2Neo):
         # return iris of expression pattern nodes for further use.  Need link back to original feature ID linked to expression
 
         # Better standardise output here?
-        return out
+        return FeatureRelation(features=features, edges=triples, eps=eps)
 
 
-    def gen_split_ep_feat(self, splits, kb=True, commit=True):
+    def gen_split_ep_feat(self, splits, add_feats = True, add_feature_details=False, commit=True):
         """Adds split expression pattern nodes to Neo following
+        Returns a dict of feature objects keyed on
         schema: (sep)-[:has_hemidriver]->(construct).
         args:
-        splits: An array of split objects, namedtuple['name', 'dbd', 'ad', 'xrefs']
-        kb: A boolean specifying whether to add typing and attributes"""
+        splits: An array of split objects, namedtuple['synonyms', 'dbd', 'ad', 'xrefs']
+        Returns dict
+        """
+
         out = {}
         for s in splits:
-            if kb:
-                feats = self.name_synonym_lookup([s.ad, s.dbd])
+            if add_feats:
+                if add_feature_details:
+                    feats = self.add_features([s.ad, s.dbd])
+                else:
+                    feats = self.name_synonym_lookup([s.ad, s.dbd])
+                    for k, v in feats.items():
+                        self.ni.add_node(labels=['Class', 'Feature'],
+                                         IRI=map_iri('fb') + k,
+                                         attribute_dict={'label': v.label})
             else:
-                feats = self.add_features([s.ad, s.dbd])
+                feats = self.name_synonym_lookup([s.ad, s.dbd])
+
+
             short_form = 'VFBexp_' + s.dbd + s.ad
             iri = map_iri('vfb') + short_form
-            ad = {'label' : feats[s.dbd].symbol + ' ∩ ' +
-                   feats[s.ad].symbol +' expression pattern',
-                   'synonyms': [s.name],
-                   'description': ['The sum of all cells at the intersection between '
+            ad = {'label' : feats[s.dbd].label + ' ∩ ' +
+                  feats[s.ad].label +' expression pattern',
+                  'synonyms': s.synonyms,
+                  'description': ['The sum of all cells at the intersection between '
                                    'the expression patterns of %s and'
-                                   ' %s.' % (feats[s.dbd].symbol,
-                                             feats[s.ad].symbol)]}
-            out[s.name] = {'attributes': ad, 'iri': iri, short_form: 'short_form'}
+                                   ' %s.' % (feats[s.dbd].label,
+                                             feats[s.ad].label)]}
+
+
+            out[short_form] = {'attributes': ad, 'iri': iri,
+                               short_form: short_form, 'xrefs': s.xrefs}
 
             for x in s.xrefs:
                 self.ew.add_xref(s=short_form,
                                  xref=x,
                                  stype=':Class')
-
-
-            for k, v in feats.items():
-                self.ni.add_node(labels=['Class', 'Feature'],
-                                 IRI=map_iri('fb') + k,
-                                 attribute_dict={'label': v.symbol})
-
 
             self.ni.add_node(labels=['Class'],
                              IRI=iri,

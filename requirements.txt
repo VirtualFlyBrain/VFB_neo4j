@@ -3,3 +3,4 @@ requests
 pymysql
 psycopg2
 pandas
+pandasql
