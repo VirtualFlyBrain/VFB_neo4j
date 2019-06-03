@@ -47,4 +47,4 @@ voxel_overlap_left,,relation,
 voxel_overlap_right,,relation,
 wlz,,relation,
 xref_db,,node,
-xrefs,http://www.geneontology.org/formats/oboInOwl#hasDbXref,node,
+xrefs,http://www.geneontology.org/formats/oboInOwl#hasDbXref,node,AnnotationProperty
