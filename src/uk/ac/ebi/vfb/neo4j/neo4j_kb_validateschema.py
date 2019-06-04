@@ -141,7 +141,15 @@ def all_relationship_types_must_have_corresponding_property_node(nc):
                 print('PASSED: all_relationship_types_must_have_corresponding_property_node[x]')
 
 
-edge_writer = kb_owl_edge_writer(sys.argv[1], sys.argv[2], sys.argv[3])
+kb=sys.argv[1]
+user=sys.argv[2]
+password=sys.argv[3]
+
+#kb='http://localhost:7474'
+#user='neo4j'
+#password='neo4j/neo'
+
+edge_writer = kb_owl_edge_writer(kb, user, password)
 nc = edge_writer.nc
 
 print('Collecting original database state indicators')
