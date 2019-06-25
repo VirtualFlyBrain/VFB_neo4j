@@ -79,5 +79,7 @@ label_additions.append("MATCH (a:Individual)<-[d:Related]-(ch:Individual)-[r:Rel
                        "WHERE fbbi.label = 'computer graphic' and d.short_form = 'depicts' " \
                        "SET a:Painted_domain;")
 
+label_additions.extend(["MATCH (a:Class)SET a:Entity", "MATCH (a:Individual)SET a:Entity"])
+
 nc.commit_list(label_additions)
 
