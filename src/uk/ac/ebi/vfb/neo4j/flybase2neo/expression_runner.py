@@ -162,7 +162,7 @@ print("Processing %d expression statements from FB." % len(feps))
 
 exp_write = ExpressionWriter(args.endpoint, args.usr, args.pwd)
 
-feps_chunked = chunks(feps, 10000)
+feps_chunked = chunks(feps, 2000)
 
 # * This needs to be modified so that name-synonym lookup is called directly and so is
 # avaible to multiple methods. This can be run on case classes, making it easy to plug
