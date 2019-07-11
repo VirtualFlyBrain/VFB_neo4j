@@ -81,5 +81,10 @@ label_additions.append("MATCH (a:Individual)<-[d:Related]-(ch:Individual)-[r:Rel
 
 label_additions.extend(["MATCH (a:Class)SET a:Entity", "MATCH (a:Individual)SET a:Entity"])
 
+label_additions.append("CREATE INDEX ON :Entity(short_form)")
+
+for k,v in label_types.items():
+    label_additions.append("CREATE INDEX ON :%s(short_form)" % (k))
+
 nc.commit_list(label_additions)
 
