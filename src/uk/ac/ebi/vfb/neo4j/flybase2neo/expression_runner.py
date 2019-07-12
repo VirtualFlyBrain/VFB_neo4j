@@ -160,8 +160,6 @@ feps = fm.query_fb("SELECT pub.uniquename as fbrf, "
 
 print("Processing %d expression statements from FB." % len(feps))
 
-exp_write = ExpressionWriter(args.endpoint, args.usr, args.pwd)
-
 feps_chunked = chunks(feps, 10000)
 
 # * This needs to be modified so that name-synonym lookup is called directly and so is
@@ -233,7 +231,9 @@ for fep_c in feps_chunked:
     q = engine.execute("SELECT fbrf, ep, fbex FROM feature_expression "
                        "WHERE ep IS NOT NULL")
     dc = dict_cursor(q.cursor)
+    exp_write = ExpressionWriter(args.endpoint, args.usr, args.pwd)
     exp_write.get_expression([d['fbex'] for d in dc])
     for r in dc:
         exp_write.write_expression(pub=r['fbrf'], ep=r['ep'], fbex=r['fbex'])
     exp_write.commit()
+    exp_write = None
