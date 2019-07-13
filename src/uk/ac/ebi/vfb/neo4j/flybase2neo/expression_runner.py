@@ -10,6 +10,8 @@ from sqlalchemy import create_engine
 import re
 from ..SQL_tools import dict_cursor
 
+import datetime
+
 import warnings
 
 # General strategy:
@@ -160,7 +162,7 @@ feps = fm.query_fb("SELECT pub.uniquename as fbrf, "
 
 print("Processing %d expression statements from FB." % len(feps))
 
-feps_chunked = chunks(feps, 10000)
+feps_chunked = chunks(feps, 2000)
 
 # * This needs to be modified so that name-synonym lookup is called directly and so is
 # avaible to multiple methods. This can be run on case classes, making it easy to plug
@@ -231,9 +233,18 @@ for fep_c in feps_chunked:
     q = engine.execute("SELECT fbrf, ep, fbex FROM feature_expression "
                        "WHERE ep IS NOT NULL")
     dc = dict_cursor(q.cursor)
+    now = datetime.datetime.now()
+    print ("Start collecting:")
+    print (now.strftime("%Y-%m-%d %H:%M:%S"))
     exp_write = ExpressionWriter(args.endpoint, args.usr, args.pwd)
     exp_write.get_expression([d['fbex'] for d in dc])
     for r in dc:
         exp_write.write_expression(pub=r['fbrf'], ep=r['ep'], fbex=r['fbex'])
+    now = datetime.datetime.now()
+    print ("Start commit:")
+    print (now.strftime("%Y-%m-%d %H:%M:%S"))
     exp_write.commit()
+    now = datetime.datetime.now()
+    print ("Finished commit:")
+    print (now.strftime("%Y-%m-%d %H:%M:%S"))
     exp_write = None
