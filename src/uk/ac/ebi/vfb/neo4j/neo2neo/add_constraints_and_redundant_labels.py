@@ -54,7 +54,7 @@ label_types = {
    'Cluster': 'cluster',
    'Neuroblast': 'neuroblast',
    'GMC': 'ganglion_mother_cell',
-   'Anatomy': 'material anatomical entity',
+   'Anatomy': 'anatomical entity',
    'Cell': 'cell',
    'Glial_cell': 'glial cell',
    'Expression_pattern': 'intersectional expression pattern',
