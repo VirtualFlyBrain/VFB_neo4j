@@ -57,6 +57,7 @@ label_types = {
    'Anatomy': 'material anatomical entity',
    'Cell': 'cell',
    'Glial_cell': 'glial cell',
+   'Expression_pattern': 'intersectional expression pattern',
    'Expression_pattern': 'expression pattern',
    'Ganglion': 'ganglion',
    'Cholinergic': 'cholinergic neuron',
