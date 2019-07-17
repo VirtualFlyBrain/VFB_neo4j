@@ -80,15 +80,19 @@ label_additions.append("MATCH (a:Individual)<-[d:Related]-(ch:Individual)-[r:Rel
                        "WHERE fbbi.label = 'computer graphic' and d.short_form = 'depicts' " \
                        "SET a:Painted_domain;")
 
-label_additions.extend(["MATCH (a:Class)SET a:Entity", "MATCH (a:Individual)SET a:Entity"])
+label_additions.extend(["MATCH (a:Class)SET a:Entity", "MATCH (a:Individual)SET a:Entity"]) # Entity exclude Property. Not queried
 
 nc.commit_list(label_additions)
-label_additions = []
 
-label_additions.append("CREATE INDEX ON :Entity(short_form)")
+# Indexing
 
-for k,v in label_types.items():
-    label_additions.append("CREATE INDEX ON :%s(short_form)" % (k))
+# leaving off Class and Individual as these are indexed by default on OLS.
+index_labels = ['Entity', 'DataSet', 'pub', 'Site', 'Expression_pattern', 'License', 'Template'] 
 
-nc.commit_list(label_additions)
+index_additions = []
+
+for il in index_labels():
+    index_additions.append("CREATE INDEX ON :%s(short_form)" % (il))
+
+nc.commit_list(index_additions)
 
