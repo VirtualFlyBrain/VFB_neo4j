@@ -30,7 +30,7 @@ for m in matches.values():
     print(query)
     q = nc.commit_list([query])
 
-    r = results_2_dict_list(q)[0]
+    r = results_2_dict_list(q)[0].encode('utf-8')
     print(r)
 
 #    requests.put(args.solr + json.dumps(r['flat']))
