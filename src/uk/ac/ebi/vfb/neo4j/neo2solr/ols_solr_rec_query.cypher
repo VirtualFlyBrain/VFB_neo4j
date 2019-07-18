@@ -8,7 +8,7 @@ WITH collect(DISTINCT {
      label_autosuggest: n.label, 
      label_autosuggest_ws: n.label, 
      label_autosuggest_e: n.label, 
-     synonyms: n.synonyms, 
+     synonym: n.synonyms, 
      synonym_autosuggest: coalesce(n.synonyms, []), 
      synonym_autosuggest_ws: coalesce(n.synonyms, []), 
      synonym_autosuggest_e: coalesce(n.synonyms, []), 
