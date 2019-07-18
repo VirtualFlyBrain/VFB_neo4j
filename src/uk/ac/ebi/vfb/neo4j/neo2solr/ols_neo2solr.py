@@ -36,5 +36,5 @@ for m in matches.values():
     r = results_2_dict_list(q)[0]
     print(json.dumps(r))
 
-    solr.add(json.dumps(r))
+    solr.add(json.loads(r))
 #    requests.put(args.solr + json.dumps(r['flat']))
