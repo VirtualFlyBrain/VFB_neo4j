@@ -31,6 +31,6 @@ for m in matches.values():
     q = nc.commit_list([query])
 
     r = results_2_dict_list(q)[0]
-    print(r)
+    print(str(r).encode('uft-8'))
 
 #    requests.put(args.solr + json.dumps(r['flat']))
