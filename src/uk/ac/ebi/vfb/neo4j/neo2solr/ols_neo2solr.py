@@ -34,7 +34,7 @@ for m in matches.values():
     q = nc.commit_list([query])
 
     r = results_2_dict_list(q)[0]
-    print(str(r).encode('utf-8'))
+    print(json.dumps(r))
 
-    solr.add(r)
+    solr.add(json.dumps(r))
 #    requests.put(args.solr + json.dumps(r['flat']))
