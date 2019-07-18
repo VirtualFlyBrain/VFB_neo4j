@@ -54,9 +54,10 @@ label_types = {
    'Cluster': 'cluster',
    'Neuroblast': 'neuroblast',
    'GMC': 'ganglion_mother_cell',
-   'Anatomy': 'material anatomical entity',
+   'Anatomy': 'anatomical entity',
    'Cell': 'cell',
    'Glial_cell': 'glial cell',
+   'Expression_pattern': 'intersectional expression pattern',
    'Expression_pattern': 'expression pattern',
    'Ganglion': 'ganglion',
    'Cholinergic': 'cholinergic neuron',
@@ -79,5 +80,19 @@ label_additions.append("MATCH (a:Individual)<-[d:Related]-(ch:Individual)-[r:Rel
                        "WHERE fbbi.label = 'computer graphic' and d.short_form = 'depicts' " \
                        "SET a:Painted_domain;")
 
+label_additions.extend(["MATCH (a:Class)SET a:Entity", "MATCH (a:Individual)SET a:Entity"]) # Entity exclude Property. Not queried
+
 nc.commit_list(label_additions)
+
+# Indexing
+
+# leaving off Class and Individual as these are indexed by default on OLS.
+index_labels = ['Entity', 'DataSet', 'pub', 'Site', 'Expression_pattern', 'License', 'Template'] 
+
+index_additions = []
+
+for il in index_labels():
+    index_additions.append("CREATE INDEX ON :%s(short_form)" % (il))
+
+nc.commit_list(index_additions)
 
