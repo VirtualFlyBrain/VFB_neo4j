@@ -2,6 +2,7 @@ from ..neo4j_tools import neo4j_connect, results_2_dict_list
 import json
 import requests
 import argparse
+import pysolr
 
 parser = argparse.ArgumentParser()
 
@@ -25,6 +26,8 @@ with_clause = with_file.read()
 
 nc = neo4j_connect(args.pdb_endpoint, 'neo4j', 'neo4j')
 
+solr = pysolr.Solr(args.solr_endpoint, timeout=30)
+
 for m in matches.values():
     query = ' \n'.join([m, with_clause])
     print(query)
@@ -33,4 +36,5 @@ for m in matches.values():
     r = results_2_dict_list(q)[0]
     print(str(r).encode('utf-8'))
 
+    solr.add(r)
 #    requests.put(args.solr + json.dumps(r['flat']))
