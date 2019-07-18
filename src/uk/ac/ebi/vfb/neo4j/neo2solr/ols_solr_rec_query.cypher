@@ -1,0 +1,27 @@
+WITH collect(DISTINCT {
+     id: "vfb:class:" + coalesce(n.iri,n.short_form,"XXX"), 
+     iri: coalesce(n.iri,n.short_form,"XXX"), 
+     short_form: coalesce(n.short_form,"XXX"), 
+     shortform_autosuggest:[n.short_form], 
+     obo_id: n.short_form, 
+     label: n.label, 
+     label_autosuggest: n.label, 
+     label_autosuggest_ws: n.label, 
+     label_autosuggest_e: n.label, 
+     synonym: n.synonyms, 
+     synonym_autosuggest: coalesce(n.synonyms, []), 
+     synonym_autosuggest_ws: coalesce(n.synonyms, []), 
+     synonym_autosuggest_e: coalesce(n.synonyms, []), 
+     autosuggest: [n.label] + n.synonyms, 
+     autosuggest_e:[n.label] + n.synonyms, 
+     description: [coalesce(n.description, n.label)], 
+     ontology_name: 'vfb', 
+     ontology_title: 'Virtual Fly Brain Knowledge Base', 
+     ontology_prefix: 'VFB', 
+     ontology_iri: 'http://purl.obolibrary.org/obo/fbbt/vfb/vfb.owl', 
+     type: 'class', 
+     is_defining_ontology: false, 
+     has_children: false, 
+     is_root: true}) AS doc
+RETURN REDUCE(output = [], r IN doc | output + r) AS flat
+
