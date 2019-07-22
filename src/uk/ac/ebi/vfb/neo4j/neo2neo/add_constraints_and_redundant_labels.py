@@ -75,8 +75,8 @@ for k,v in label_types.items():
     label_additions.append("MATCH (n)-[r:SUBCLASSOF|INSTANCEOF*]->(n2:Class) "
                            "WHERE n2.label in %s SET n:%s, n2:%s" % (str(v), k, k))  # Relies on coincidence of Python/Cypher list syntax
 
-label_additions.append("MATCH (a:Individual)<-[d:Related]-(ch:Individual)-[r:Related]->(fbbi:Class) " \
-                       "WHERE fbbi.label = 'computer graphic' and d.short_form = 'depicts' " \
+label_additions.append("MATCH (a:Individual)<-[d:Related]-(ch:Individual)-[r:Related]->(fbbi:Class) "
+                       "WHERE fbbi.label = 'computer graphic' and d.short_form = 'depicts' "
                        "SET a:Painted_domain;")
 
 label_additions.append("MATCH (n:pub) WHERE NOT n:Individual SET n:Individual")
