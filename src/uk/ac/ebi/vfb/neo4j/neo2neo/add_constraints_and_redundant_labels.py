@@ -71,7 +71,7 @@ label_types = {
    }
 
 label_additions = []
-for k,v in label_types.items():
+for k, v in label_types.items():
     label_additions.append("MATCH (n)-[r:SUBCLASSOF|INSTANCEOF*]->(n2:Class) "
                            "WHERE n2.label in %s SET n:%s, n2:%s" % (str(v), k, k))  # Relies on coincidence of Python/Cypher list syntax
 
@@ -83,7 +83,13 @@ label_additions.append("MATCH (n:pub) WHERE NOT n:Individual SET n:Individual")
 
 label_additions.extend(["MATCH (a:Class)SET a:Entity", "MATCH (a:Individual)SET a:Entity"])  # Entity excludes Property. Not queried
 
+
+
 nc.commit_list(label_additions)
+
+# Remove Anatomy label from Expression_pattern classes - bit hacky, but needed for correct queries in current schema
+
+nc.commit_list(["MATCH (n:Expression_pattern:Class:Anatomy) REMOVE n:Anatomy"])
 
 # Indexing - leaving off Class and Individual as these are indexed by default on OLS.
 index_labels = ['Entity', 'DataSet', 'pub', 'Site', 'Expression_pattern', 'License', 'Template'] 
