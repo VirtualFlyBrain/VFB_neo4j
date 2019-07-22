@@ -14,6 +14,7 @@ class TestPubMover(unittest.TestCase):
         test = self.pm.nc.commit_list(["MATCH (p:pub { short_form : 'FBrf0086456'}) RETURN p.miniref"])
         if test:
             fu = results_2_dict_list(test)
+            print(fu[0]['p.miniref'])
             assert isinstance(fu[0]['p.miniref'], str)
 
 

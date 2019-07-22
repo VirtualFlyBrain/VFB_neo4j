@@ -14,12 +14,10 @@ class pubMover(FB2Neo):
         """Takes list of Fbrfs as input returns ..."""
 
         query = "SELECT pub.title as title, pub.miniref as miniref, pub.pyear as year, pub.pages as pages, " \
-                "pub.volume as volume, typ.name as type, pub.uniquename as fbrf, " \
-                "db.name AS db_name, dbx.accession AS acc " \
-                "FROM pub JOIN cvterm typ on typ.cvterm_id = pub.type_id " \
-                "JOIN pub_dbxref pdbx on pdbx.pub_id=pub.pub_id " \
-                "JOIN dbxref dbx on pdbx.dbxref_id=dbx.dbxref_id " \
-                "JOIN db on dbx.db_id=db.db_id WHERE pub.uniquename IN ('%s') " % "', '".join(pub_list)
+                "pub.volume as volume, typ.name as type, pub.uniquename as fbrf " \
+                "FROM pub " \
+                "LEFT OUTER JOIN cvterm typ on typ.cvterm_id = pub.type_id " \
+                "WHERE pub.uniquename IN ('%s') " % "', '".join(pub_list)
         return self.query_fb(query)
 
     def set_pub_details(self, pub_list):
@@ -33,7 +31,7 @@ class pubMover(FB2Neo):
                 title = re.sub('"', "\\'", d['title'])
             else:
                 title = ''
-            statements.append("MERGE (p:pub { short_form: '%s' } ) "
+            statements.append("MERGE (p:pub:Individual { short_form: '%s' } ) "
                               "SET p.iri = '%s', p.FlyBase = '%s', "
                               "p.title = \"%s\", p.label = \"%s\","
                               "p.miniref = \"%s\", "
