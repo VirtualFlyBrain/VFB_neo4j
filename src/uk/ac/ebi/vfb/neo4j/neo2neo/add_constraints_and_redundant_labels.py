@@ -85,9 +85,7 @@ label_additions.extend(["MATCH (a:Class)SET a:Entity", "MATCH (a:Individual)SET 
 
 nc.commit_list(label_additions)
 
-# Indexing
-
-# leaving off Class and Individual as these are indexed by default on OLS.
+# Indexing - leaving off Class and Individual as these are indexed by default on OLS.
 index_labels = ['Entity', 'DataSet', 'pub', 'Site', 'Expression_pattern', 'License', 'Template'] 
 
 index_additions = []
