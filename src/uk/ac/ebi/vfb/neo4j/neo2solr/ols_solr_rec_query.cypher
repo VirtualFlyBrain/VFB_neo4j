@@ -20,7 +20,7 @@ WITH collect(DISTINCT {
      ontology_prefix: 'VFB', 
      ontology_iri: 'http://purl.obolibrary.org/obo/fbbt/vfb/vfb.owl', 
      type: 'class', 
-     is_defining_ontology: false, 
+     is_defining_ontology: true, 
      has_children: false, 
      is_root: true}) AS doc
 RETURN REDUCE(output = [], r IN doc | output + r) AS flat
