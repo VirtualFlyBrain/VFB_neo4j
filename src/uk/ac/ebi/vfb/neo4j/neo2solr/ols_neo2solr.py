@@ -32,10 +32,8 @@ for m in matches.values():
     query = ' \n'.join([m, with_clause])
     print(query)
     q = nc.commit_list([query])
-    
-    print(q);
 
-    r = results_2_dict_list(q)[0]
-    print(json.dumps(r, indent=4))
-
-    solr.add(json.loads(json.dumps(r))['flat'])
+    if not isinstance(q, bool):
+      r = results_2_dict_list(q)[0]
+      print(json.dumps(r, indent=4))
+      solr.add(json.loads(json.dumps(r))['flat'])
