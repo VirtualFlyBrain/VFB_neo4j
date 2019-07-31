@@ -631,7 +631,8 @@ class KB_pattern_writer(object):
             'computer graphic': 'http://purl.obolibrary.org/obo/FBbi_00000224',
             'channel': 'http://purl.obolibrary.org/obo/fbbt/vfb/VFBext_0000014',
             'confocal microscopy': 'http://purl.obolibrary.org/obo/FBbi_00000251',
-            'SB-SEM': 'http://purl.obolibrary.org/obo/FBbi_00000585'
+            'SB-SEM': 'http://purl.obolibrary.org/obo/FBbi_00000585',
+            'TEM': 'http://purl.obolibrary.org/obo/FBbi_00000258'
             }
 
     def commit(self, ni_chunk_length=5000, ew_chunk_length=2000, verbose=False):
@@ -657,8 +658,9 @@ class KB_pattern_writer(object):
         """Adds typed inds for an anatomical individual and channel, 
         linked to each other and to the specified template.
         label: Name of anatomical individual
-        imaging_type: One of: 'confocal microscopy', 'SB-SEM', 'computer graphic'.
-           - SB-SEM = serial block face scanning EM, this is used for CATMAID data
+        imaging_type: One of: 'confocal microscopy', TEM, 'SB-SEM', 'computer graphic'.
+           - SB-SEM = serial block face scanning EM (use for FIB-SEM data)
+           - TEM = transmission electron microscopy (TEM) (use for CATMAID data)
            - 'computer graphic' is used for painted domains.
            If your image does not fit into these types, please post a ticket to request
            the list of supported types be extended.
