@@ -12,6 +12,8 @@ kbw.add_anatomy_image_set(anatomical_type='FBbt_', label='fu neuron of Zwart2019
                           
 # Note tempalte currently requires channel ID.  These can be looked up on pdb easily, but better to switch this to names.  
 
+```
+
 1. [KB_pattern_writer.add_dataSet]()
 1. Update ontology - [node_importer.update_from_obograph](https://github.com/VirtualFlyBrain/VFB_neo4j/blob/master/src/uk/ac/ebi/vfb/neo4j/KB_tools.py#L459)
 1. Update Features from FlyBase [node_importer.update_current_features_from_FlyBase]()
