@@ -83,7 +83,7 @@ label_additions.append("MATCH (n:pub) WHERE NOT n:Individual SET n:Individual")
 
 label_additions.extend(["MATCH (a:Class)SET a:Entity", "MATCH (a:Individual)SET a:Entity"])  # Entity excludes Property. Not queried
 
-
+label_additions.extend("MATCH (n:Feature) SET n.self_xref = 'FlyBase'")
 
 nc.commit_list(label_additions)
 
