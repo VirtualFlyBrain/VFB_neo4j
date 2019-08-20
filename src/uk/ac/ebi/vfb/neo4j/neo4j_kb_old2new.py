@@ -129,47 +129,48 @@ ct_property = query(q_node_count % ':Property',nc)[0]['ct']
 ct_individual = query(q_node_count % ':Individual',nc)[0]['ct']
 ct_undefined = query('MATCH (n) WHERE NOT n:Class AND NOT n:Individual AND NOT n:Property RETURN count(n) as ct',nc)[0]['ct']
 
-print('Make all entities of type :Entity')
-query('MATCH (n) SET n:Entity',nc)
+if false:
+    print('Make all entities of type :Entity')
+    query('MATCH (n) SET n:Entity',nc)
 
-print('Make all INSTANCEOF relations Type')
-query('MATCH (n)-[r:INSTANCEOF]->(m) CREATE (n)-[r2:Type]->(m) SET r2 = r WITH r DELETE r', nc)
+    print('Make all INSTANCEOF relations Type')
+    query('MATCH (n)-[r:INSTANCEOF]->(m) CREATE (n)-[r2:Type]->(m) SET r2 = r WITH r DELETE r', nc)
 
-print('Make all SUBCLASSOF relations SubClassOf')
-query('MATCH (n)-[r:SUBCLASSOF]->(m) CREATE (n)-[r2:SubClassOf]->(m) SET r2 = r WITH r DELETE r', nc)
+    print('Make all SUBCLASSOF relations SubClassOf')
+    query('MATCH (n)-[r:SUBCLASSOF]->(m) CREATE (n)-[r2:SubClassOf]->(m) SET r2 = r WITH r DELETE r', nc)
 
-print('Transforming properties and relations: Correct edge typing, set qsl, change edges to qsls')
-transform_properties_and_relations_set_types_qsl(nc)
+    print('Transforming properties and relations: Correct edge typing, set qsl, change edges to qsls')
+    transform_properties_and_relations_set_types_qsl(nc)
 
-print('Making sure that all annotation properties are represented as arrays on nodes rather than string values. Note that this query will fail hard if the property in question is already an array')
-transform_annotation_properties_on_nodes_to_array(nc)
-##
+    print('Making sure that all annotation properties are represented as arrays on nodes rather than string values. Note that this query will fail hard if the property in question is already an array')
+    transform_annotation_properties_on_nodes_to_array(nc)
+    ##
 
-print('Rewrite property keys to qsl according to map')
-mapping = propNotNull[propNotNull.keytype=='node']
-rewrite_property_keys_on_nodes_to_qsl(nc,mapping)
+    print('Rewrite property keys to qsl according to map')
+    mapping = propNotNull[propNotNull.keytype=='node']
+    rewrite_property_keys_on_nodes_to_qsl(nc,mapping)
 
-print('Collecting original database state indicators')
-ct_nodes_after = query(q_node_count % '',nc)[0]['ct']
-ct_class_after = query(q_node_count % ':Class',nc)[0]['ct']
-ct_objectproperty_after = query(q_node_count % ':ObjectProperty',nc)[0]['ct']
-ct_dataproperty_after = query(q_node_count % ':DataProperty',nc)[0]['ct']
-ct_individual_after = query(q_node_count % ':Individual',nc)[0]['ct']
-ct_annotationproperty_after = query(q_node_count % ':AnnotationProperty',nc)[0]['ct']
-ct_undefined_after = query('MATCH (n) WHERE NOT n:Class AND NOT n:Individual AND NOT n:AnnotationProperty AND NOT n:ObjectProperty AND NOT n:DataProperty RETURN count(n) as ct',nc)[0]['ct']
+    print('Collecting original database state indicators')
+    ct_nodes_after = query(q_node_count % '',nc)[0]['ct']
+    ct_class_after = query(q_node_count % ':Class',nc)[0]['ct']
+    ct_objectproperty_after = query(q_node_count % ':ObjectProperty',nc)[0]['ct']
+    ct_dataproperty_after = query(q_node_count % ':DataProperty',nc)[0]['ct']
+    ct_individual_after = query(q_node_count % ':Individual',nc)[0]['ct']
+    ct_annotationproperty_after = query(q_node_count % ':AnnotationProperty',nc)[0]['ct']
+    ct_undefined_after = query('MATCH (n) WHERE NOT n:Class AND NOT n:Individual AND NOT n:AnnotationProperty AND NOT n:ObjectProperty AND NOT n:DataProperty RETURN count(n) as ct',nc)[0]['ct']
 
 
-if ct_nodes!=ct_nodes_after:
-    warn('Number of nodes has changed! (Before: %d, after: %d)' % (ct_nodes, ct_nodes_after))
+    if ct_nodes!=ct_nodes_after:
+        warn('Number of nodes has changed! (Before: %d, after: %d)' % (ct_nodes, ct_nodes_after))
 
-if ct_class!=ct_class_after:
-    warn('Number of classes has changed! (Before: %d, after: %d)' % (ct_class, ct_class_after))
+    if ct_class!=ct_class_after:
+        warn('Number of classes has changed! (Before: %d, after: %d)' % (ct_class, ct_class_after))
 
-if ct_property!=(ct_objectproperty_after+ct_annotationproperty_after+ct_dataproperty_after):
-    warn('Number of properties has changed! (Before: %d, after (object): %d, after (annotation): %d, after (data):%s)' % (ct_property, ct_objectproperty_after, ct_annotationproperty_after,ct_dataproperty_after))
+    if ct_property!=(ct_objectproperty_after+ct_annotationproperty_after+ct_dataproperty_after):
+        warn('Number of properties has changed! (Before: %d, after (object): %d, after (annotation): %d, after (data):%s)' % (ct_property, ct_objectproperty_after, ct_annotationproperty_after,ct_dataproperty_after))
 
-if ct_individual!=ct_individual_after:
-    warn('Number of individuals has changed! (Before: %d, after: %d)' % (ct_individual, ct_individual_after))
+    if ct_individual!=ct_individual_after:
+        warn('Number of individuals has changed! (Before: %d, after: %d)' % (ct_individual, ct_individual_after))
 
-if ct_undefined!=ct_undefined_after:
-    warn('Number of undefined nodes has changed! (Before: %d, after: %d)' % (ct_undefined, ct_undefined_after))
+    if ct_undefined!=ct_undefined_after:
+        warn('Number of undefined nodes has changed! (Before: %d, after: %d)' % (ct_undefined, ct_undefined_after))
