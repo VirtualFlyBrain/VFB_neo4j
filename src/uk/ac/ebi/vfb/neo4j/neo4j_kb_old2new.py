@@ -129,7 +129,7 @@ ct_property = query(q_node_count % ':Property',nc)[0]['ct']
 ct_individual = query(q_node_count % ':Individual',nc)[0]['ct']
 ct_undefined = query('MATCH (n) WHERE NOT n:Class AND NOT n:Individual AND NOT n:Property RETURN count(n) as ct',nc)[0]['ct']
 
-if false:
+if False:
     print('Make all entities of type :Entity')
     query('MATCH (n) SET n:Entity',nc)
 
