@@ -129,24 +129,23 @@ ct_property = query(q_node_count % ':Property',nc)[0]['ct']
 ct_individual = query(q_node_count % ':Individual',nc)[0]['ct']
 ct_undefined = query('MATCH (n) WHERE NOT n:Class AND NOT n:Individual AND NOT n:Property RETURN count(n) as ct',nc)[0]['ct']
 
-
-print('Make all entities of type :Entity')
-query('MATCH (n) SET n:Entity',nc)
-
-print('Make all INSTANCEOF relations Type')
-query('MATCH (n)-[r:INSTANCEOF]->(m) CREATE (n)-[r2:Type]->(m) SET r2 = r WITH r DELETE r', nc)
-
-print('Make all SUBCLASSOF relations SubClassOf')
-query('MATCH (n)-[r:SUBCLASSOF]->(m) CREATE (n)-[r2:SubClassOf]->(m) SET r2 = r WITH r DELETE r', nc)
-
-
-print('Transforming properties and relations: Correct edge typing, set qsl, change edges to qsls')
-transform_properties_and_relations_set_types_qsl(nc)
 if False:
-    print('Making sure that all annotation properties are represented as arrays on nodes rather than string values. Note that this query will fail hard if the property in question is already an array')
-    transform_annotation_properties_on_nodes_to_array(nc)
-    ##
+    print('Make all entities of type :Entity')
+    query('MATCH (n) SET n:Entity',nc)
 
+    print('Make all INSTANCEOF relations Type')
+    query('MATCH (n)-[r:INSTANCEOF]->(m) CREATE (n)-[r2:Type]->(m) SET r2 = r WITH r DELETE r', nc)
+
+    print('Make all SUBCLASSOF relations SubClassOf')
+    query('MATCH (n)-[r:SUBCLASSOF]->(m) CREATE (n)-[r2:SubClassOf]->(m) SET r2 = r WITH r DELETE r', nc)
+
+    print('Transforming properties and relations: Correct edge typing, set qsl, change edges to qsls')
+    transform_properties_and_relations_set_types_qsl(nc)
+
+print('Making sure that all annotation properties are represented as arrays on nodes rather than string values. Note that this query will fail hard if the property in question is already an array')
+transform_annotation_properties_on_nodes_to_array(nc)
+    ##
+if False:
     print('Rewrite property keys to qsl according to map')
     mapping = propNotNull[propNotNull.keytype=='node']
     rewrite_property_keys_on_nodes_to_qsl(nc,mapping)
