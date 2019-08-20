@@ -139,10 +139,10 @@ query('MATCH (n)-[r:INSTANCEOF]->(m) CREATE (n)-[r2:Type]->(m) SET r2 = r WITH r
 print('Make all SUBCLASSOF relations SubClassOf')
 query('MATCH (n)-[r:SUBCLASSOF]->(m) CREATE (n)-[r2:SubClassOf]->(m) SET r2 = r WITH r DELETE r', nc)
 
-if False:
-    print('Transforming properties and relations: Correct edge typing, set qsl, change edges to qsls')
-    transform_properties_and_relations_set_types_qsl(nc)
 
+print('Transforming properties and relations: Correct edge typing, set qsl, change edges to qsls')
+transform_properties_and_relations_set_types_qsl(nc)
+if False:
     print('Making sure that all annotation properties are represented as arrays on nodes rather than string values. Note that this query will fail hard if the property in question is already an array')
     transform_annotation_properties_on_nodes_to_array(nc)
     ##
