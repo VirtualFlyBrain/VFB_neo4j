@@ -90,7 +90,7 @@ def transform_properties_and_relations_set_types_qsl(nc):
 
 def transform_annotation_properties_on_nodes_to_array(nc):
     q = 'MATCH (n:AnnotationProperty) RETURN DISTINCT n.qsl'
-    q_transform = 'MATCH (p) WHERE EXISTS(p.%s) SET p.%s=[p.%s]'
+    q_transform = 'MATCH (p) WHERE EXISTS(p.%s) SET p.%s=[] + p.%s'
     r = query(q,nc)
     for i in r:
         qsl = i['n.qsl']
