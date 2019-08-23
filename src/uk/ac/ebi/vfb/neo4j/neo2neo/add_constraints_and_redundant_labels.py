@@ -85,6 +85,9 @@ label_additions.extend(["MATCH (a:Class)SET a:Entity", "MATCH (a:Individual)SET 
 
 label_additions.append("MATCH (n:Feature) SET n.self_xref = 'FlyBase'")
 
+# Add Cluster label to all INSTANCES OF Cell Cluster
+label_additions.append("MATCH (:Class {short_form:'VFB_10000005'})<-[:INSTANCEOF]-(n:Individual) SET n:Cluster")
+
 nc.commit_list(label_additions)
 
 # Remove Anatomy label from Expression_pattern classes - bit hacky, but needed for correct queries in current schema
