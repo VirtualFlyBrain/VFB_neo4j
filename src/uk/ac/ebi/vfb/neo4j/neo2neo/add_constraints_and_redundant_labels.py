@@ -85,6 +85,8 @@ label_additions.extend(["MATCH (a:Class)SET a:Entity", "MATCH (a:Individual)SET 
 
 label_additions.append("MATCH (n:Feature) SET n.self_xref = 'FlyBase'")
 
+label_additions.append("MATCH (c:Class) WHERE c.iri =~ 'http://flybase.org/reports/FB.+' SET c.self_xref = 'FlyBase'")
+
 # Add Cluster label to all INSTANCES OF Cell Cluster
 label_additions.append("MATCH (:Class {short_form:'VFB_10000005'})<-[:INSTANCEOF]-(n:Individual) SET n:Cluster")
 
