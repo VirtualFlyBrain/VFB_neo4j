@@ -631,7 +631,8 @@ class KB_pattern_writer(object):
             'computer graphic': 'http://purl.obolibrary.org/obo/FBbi_00000224',
             'channel': 'http://purl.obolibrary.org/obo/fbbt/vfb/VFBext_0000014',
             'confocal microscopy': 'http://purl.obolibrary.org/obo/FBbi_00000251',
-            'SB-SEM': 'http://purl.obolibrary.org/obo/FBbi_00000585'
+            'SB-SEM': 'http://purl.obolibrary.org/obo/FBbi_00000585',
+            'TEM': 'http://purl.obolibrary.org/obo/FBbi_00000258'
             }
 
     def commit(self, ni_chunk_length=5000, ew_chunk_length=2000, verbose=False):
