@@ -79,13 +79,16 @@ def roll_cypher_add_syn_pub_link(sfid, s, pub_id_typ, pub_id):
     label = re.sub("'", "\'", s['name'])
     return "MATCH (a:Class { short_form : \"%s\" }) " \
            "MERGE (p:pub:Individual { short_form : \"%s\" }) " \
-           "MERGE (a)-[:has_reference { typ : \"syn\", scope: \"%s\", synonym : \"%s\", cat: \"%s\" }]->(p)" \
+           "MERGE (a)-[:has_reference { typ : \"syn\", scope: \"%s\", " \
+           "synonym : \"%s\", cat: \"%s\" }]->(p)" \
            "" % (sfid, pub_id, s['scope'], label, s['type'])
 
 
-nc.commit_list(["MERGE (:pub:Individual { FlyBase: 'Unattributed' })"])
-q = nc.commit_list([
-                       "MATCH (c) where c:Class or c:Individual RETURN c.short_form as short_form, c.obo_synonym as syns, c.obo_definition_citation as def"])
+nc.commit_list(["MERGE (:pub:Individual { short_form: 'Unattributed' })"])
+q = nc.commit_list(["MATCH (c) where c:Class or c:Individual "
+                    "RETURN c.short_form as short_form, "
+                    "c.synonym as slist, c.obo_synonym as refd_syns,"
+                    " c.obo_definition_citation as def"])
 dc = results_2_dict_list(q)
 statements = []
 for d in dc:
@@ -100,17 +103,30 @@ for d in dc:
                             pub_id=ref['id'],
                             pub_id_typ=ref['database'],
                         ))
-    if d['syns']:
-        for syn in d['syns']:
-            s = json.loads(syn)
-            for ref in s['xrefs']:
+    # slist = simple list of strings containing all all synonyms
+    # refd_synse = list of JSON strings for all_synonyms with xrefs (may be subset of slist)
+    # generate a dict of in refd syns keyd on name
+    # iterate of slist - checking if ref'd syn dict keys
+    if d['slist']:
+        if d['refd_syns']:
+            rsd = {x['name']: x for x in [json.loads(y) for y in d['refd_syns']]}
+        else:
+            rsd = {}
+        for syn in d['slist']:
+            if syn in rsd.keys():
+                rs = rsd[syn]
+            else:
+                rs = {'name': syn,
+                      'scope': 'hasExactSynonym',
+                      'type': False,
+                      'xrefs': [{'id': 'Unattributed', 'database': 'FlyBase'}]}  #
+            for ref in rs['xrefs']:
                 if ref['database'] == 'FlyBase':
                     statements.append(roll_cypher_add_syn_pub_link(
                         sfid=d['short_form'],
                         pub_id=ref['id'],
                         pub_id_typ=ref['database'],
-                        s=s))
-
+                        s=rs))
 nc.commit_list_in_chunks(statements, verbose=True, chunk_length=2000)
 
 # to json
@@ -122,3 +138,4 @@ nc.commit_list_in_chunks(statements, verbose=True, chunk_length=2000)
 # obo_synonym = json.loads(obo_synonym_string)
 # obo_definition_citation_string = '{"definition":"A sense organ embedded in the integument and consisting of one or a cluster of sensory neurons and associated sensory structures, support cells and glial cells forming a single organized unit with a largely bona fide boundary.","oboXrefs":[{"database":"FlyBase","id":"FBrf0111704","description":null,"url":null}]}'
 # obo_definition_citation = json.load(obo_definition_citation_string)
+q
