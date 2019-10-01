@@ -796,8 +796,8 @@ class KB_pattern_writer(object):
                          attribute_dict={
                              'label': name,
                              'short_form': short_form,
-                             'description': description,
-                             'dataset_spec_text': dataset_spec_text})
+                             'description': [description],
+                             'dataset_spec_text': [dataset_spec_text]})
         self.ni.commit()
         self.ew.add_annotation_axiom(s=short_form,
                                      r='license',

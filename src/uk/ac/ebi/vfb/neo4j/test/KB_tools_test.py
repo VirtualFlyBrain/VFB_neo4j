@@ -247,6 +247,18 @@ class TestKBPatternWriter(unittest.TestCase):
         )
         self.kpw.commit()
 
+    def testAddAnatomyImageSet(self):
+        self.kpw.add_dataSet(
+            name='dosumis2020',
+            license='CCBYNC4',
+            short_form='dosumis2020',
+            pub='',
+            description='', 
+            dataset_spec_text='',
+            site=''
+        )
+        self.kpw.commit()
+
         ## TODO: Add test using code in neo2neo.kb_tests - needs a little refactoring to make callable.
 
     def tearDown(self):
