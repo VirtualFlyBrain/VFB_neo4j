@@ -57,7 +57,8 @@ label_types = {
    'Anatomy': ['anatomical entity'],
    'Cell': ['cell'],
    'Glial_cell': ['glial cell'],
-   'Expression_pattern': ['expression pattern','intersectional expression pattern'],
+   'Expression_pattern': ['expression pattern', 'intersectional expression pattern'],
+   'Split': ['intersectional expression pattern'],
    'Ganglion': ['ganglion'],
    'Cholinergic': ['cholinergic neuron'],
    'Glutamatergic': ['glutamatergic neuron'],
@@ -89,6 +90,8 @@ label_additions.append("MATCH (c:Class) WHERE c.iri =~ 'http://flybase.org/repor
 
 # Add Cluster label to all INSTANCES OF Cell Cluster
 label_additions.append("MATCH (:Class {short_form:'VFB_10000005'})<-[:INSTANCEOF]-(n:Individual) SET n:Cluster")
+
+label_additions.append("MATCH (n:Class) WHERE NOT (n)<-[:SUBCLASSOF]-() SET n:Leaf_node")
 
 nc.commit_list(label_additions)
 
