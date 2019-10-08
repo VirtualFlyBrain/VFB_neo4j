@@ -2,7 +2,9 @@
 import sys
 from uk.ac.ebi.vfb.neo4j.neo4j_tools import neo4j_connect
 
-nc = neo4j_connect(base_uri = sys.argv[1], usr = sys.argv[2], pwd = sys.argv[3])
+nc = neo4j_connect(base_uri=sys.argv[1],
+                   usr=sys.argv[2],
+                   pwd=sys.argv[3])
 
 # Some AP deletions required for uniqueness constraints.  Needed due to quirks of OLS import.
 
@@ -91,9 +93,10 @@ label_additions.append("MATCH (c:Class) WHERE c.iri =~ 'http://flybase.org/repor
 # Add Cluster label to all INSTANCES OF Cell Cluster
 label_additions.append("MATCH (:Class {short_form:'VFB_10000005'})<-[:INSTANCEOF]-(n:Individual) SET n:Cluster")
 
-label_additions.append("MATCH (n:Class) WHERE NOT (n)<-[:SUBCLASSOF]-() SET n:Leaf_node")
-
 nc.commit_list(label_additions)
+
+# Adding leaf nodes after other classifications in place. Also needs WITH otherwise hangs.  
+nc.commit_list(["MATCH (n:Class:Cell) WHERE NOT (n)<-[:SUBCLASSOF]-() WITH n SET n:Leaf_node"])
 
 # Remove Anatomy label from Expression_pattern classes - bit hacky, but needed for correct queries in current schema
 
