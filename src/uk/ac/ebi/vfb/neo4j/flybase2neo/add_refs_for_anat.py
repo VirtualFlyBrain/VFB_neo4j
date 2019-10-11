@@ -118,7 +118,7 @@ for d in dc:
             else:
                 rs = {'name': syn,
                       'scope': 'hasExactSynonym',
-                      'type': False,
+                      'type': '',
                       'xrefs': [{'id': 'Unattributed', 'database': 'FlyBase'}]}  #
             for ref in rs['xrefs']:
                 if ref['database'] == 'FlyBase':
