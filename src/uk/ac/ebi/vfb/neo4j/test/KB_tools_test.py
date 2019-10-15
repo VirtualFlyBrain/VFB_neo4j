@@ -274,21 +274,21 @@ class TestEntityChecker(unittest.TestCase):
             self.ec.nc.commit_list(s)
 
         def testEntityCheck(self):
-            self.ec.roll_check(labels=['Individual'],
-                               match_on='short_form',
-                               query='Aya')
+            self.ec.roll_entity_check(labels=['Individual'],
+                                      match_on='short_form',
+                                      query='Aya')
 
-            self.ec.roll_check(labels=['Individual'],
-                               match_on='iri',
-                               query='http://fu.bar/Aya')
+            self.ec.roll_entity_check(labels=['Individual'],
+                                      match_on='iri',
+                                      query='http://fu.bar/Aya')
 
-            assert self.ec.check_entities() is True
+            assert self.ec.check() is True
 
-            self.ec.roll_check(labels=['Individual'],
-                               match_on='label',
-                               query='asdfd')
+            self.ec.roll_entity_check(labels=['Individual'],
+                                      match_on='label',
+                                      query='asdfd')
 
-            assert self.ec.check_entities() is False
+            assert self.ec.check() is False
 
 if __name__ == "__main__":
     unittest.main()
