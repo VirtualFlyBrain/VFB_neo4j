@@ -16,9 +16,9 @@ Created on 4 Feb 2016
 @author: davidos"""
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--test', help='Run in test mode. ' \
+parser.add_argument('--test', help='Run in test mode. '
                     'runs with limits on cypher queries and additions.',
-                    action = "store_true")
+                    action="store_true")
 parser.add_argument("endpoint",
                     help="Endpoint for connection to neo4J prod")
 parser.add_argument("usr",
@@ -26,6 +26,7 @@ parser.add_argument("usr",
 parser.add_argument("pwd",
                     help="password")
 args = parser.parse_args()
+
 
 
 
