@@ -568,49 +568,62 @@ class node_importer(kb_writer):
 
 class EntityChecker(kb_writer):
 
-    """Check for the existance of nodes"""
+    """Check for the existance of nodes or dbxrefs"""
 
     def __init__(self, endpoint, usr, pwd):
         super(EntityChecker, self).__init__(endpoint, usr, pwd)
         self.should_exist = []
         self.should_not_exist = []
 
-
     def roll_entity_check(self, labels, query, match_on='short_form'):
+
         """Roll a check and add it to the stack.
-        labels = list of Neo4J labels match on
+        labels = list of Neo4J labels to match on. You must provide at least one.
         match_on = property to match_on (default = short_form)
         query = Value of property matched on for target entity.
         """
         lstring = ':'.join(labels)
         self.should_exist.append("OPTIONAL MATCH (n:%s { %s : '%s'})"
-                               " return n.short_form as result, "
-                               "'%s' as query" % (lstring,
-                                                  match_on,
-                                                  query,
-                                                  query))
+                                 " return n.short_form as result, "
+                                 "'%s' as query" % (lstring,
+                                                    match_on,
+                                                    query,
+                                                    query))
 
     def roll_dbxref_check(self, db, acc):
         self.should_not_exist.append(
-            "MATCH (s:Site { short_form: '%s' } )"
+            "OPTIONAL MATCH (s:Site { short_form: '%s' } )"
             "<-[r:hasDbXref { acc: '%s' }]-(i:Individual) "
-            "RETURN s.short_form, r.acc")
+            "RETURN s.short_form + ':' + r.acc AS result, "
+            "'%s:%s' AS query" % (db, acc, db, acc))
 
-    def check_should_not_exist(self, hard_fail=False):
+    def _check_should_not_exist(self, hard_fail=False):
+        self.statements.extend(self.should_not_exist)
+        self.should_not_exist.clear()
+        return(self._check("Already in DB: ", exists=False, hard_fail=hard_fail))
+
+    def _check_should_exist(self, hard_fail=False):
         self.statements.extend(self.should_exist)
-        self.check("Already in DB: ", hard_fail=hard_fail)
+        self.should_exist.clear()
+        return self._check("Unknown entity: ", hard_fail=hard_fail)
 
-    def check_should_exist(self, hard_fail=False):
-        self.statements.extend(self.should_exist)
-        self.check("Unknown entity: ", hard_fail=hard_fail)
+    def check(self, hard_fail=False):
+        a = self._check_should_exist(hard_fail=hard_fail)
+        b = self._check_should_not_exist(hard_fail=hard_fail)
+        if not (a and b):
+            return False
+        else:
+            return True
 
-    def check(self, error_message, hard_fail=False):
+
+
+    def _check(self, error_message, exists=True, hard_fail=False):
         """Run checks in the stack then empty the stack.
         If hard_fail = True, raise exception if any check in the stack fails."""
         dc = results_2_dict_list(self.commit())
         out = {}
         for d in dc:
-            if d['result']:
+            if bool(d['result']) is exists:
                 out[d['query']] = True
             else:
                 out[d['query']] = False
@@ -677,7 +690,7 @@ class KB_pattern_writer(object):
                               dbxrefs=None,
                               image_filename='',
                               match_on='short_form',
-                              orcid = '',
+                              orcid='',
                               hard_fail=False):
         """Adds typed inds for an anatomical individual and channel, 
         linked to each other and to the specified template.
@@ -720,15 +733,11 @@ class KB_pattern_writer(object):
             return False
 
         if dbxrefs:
-            q = []
-            for site, acc in dbxrefs.items():
-                s = []
-                s.append("MATCH (s:Site { short_form: '%s' } )" \
-                    "<-[r:hasDbXref { acc: '%s' }]-(i:Individual) " \
-                    "RETURN (count distinct r)")
-            self.ni.nc.commit_list()
-
-
+            for db, acc in dbxrefs.items():
+                self.ec.roll_dbxref_check(db, acc)
+            if not self.ec.check():
+                warnings.warn("Load fail: Cross-referenced enties already exist.")
+                return False
 
 
         anat_id = self.anat_iri_gen.generate(start)

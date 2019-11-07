@@ -217,12 +217,14 @@ class TestKBPatternWriter(unittest.TestCase):
         statements = []
         for k,v in self.kpw.relation_lookup.items():
             short_form = re.split('[/#]', v)[-1]
-            statements.append("MERGE (p:Property { iri : '%s', label: '%s', short_form : '%s' }) " %
+            statements.append("MERGE (p:Property { iri : '%s', label: '%s', "
+                              "short_form : '%s' }) " %
                               (v, k, short_form))
 
         for k,v in self.kpw.class_lookup.items():
             short_form = re.split('[/#]', v)[-1]
-            statements.append("MERGE (p:Class { iri : '%s', label: '%s', short_form : '%s' }) " %
+            statements.append("MERGE (p:Class { iri : '%s', "
+                              "label: '%s', short_form : '%s' }) " %
                               (v, k, short_form))
 
         self.nc.commit_list(statements)
@@ -230,13 +232,17 @@ class TestKBPatternWriter(unittest.TestCase):
         statements.append("MERGE (p:Class { short_form: 'lobulobus', label: 'lobulobus' })")
         statements.append("MERGE (p:Individual:Template { short_form: 'template_of_dave', label: 'template_of_dave' })")
         statements.append("MERGE (s:Site:Individual { short_form : 'fu' }) ")
+        statements.append("MATCH (s:Site:Individual { short_form : 'fu' }), "
+                          "(i:Individual:Template { short_form: 'template_of_dave'}) "
+                          "MERGE (i)-[:hasDbXref { acc: 'GMR_fubar_23'}]->(s)")
+
         statements.append("MERGE (ds:DataSet:Individual { short_form : 'dosumis2020' }) ")
 
 
         self.nc.commit_list(statements)
 
     def testAddAnatomyImageSet(self):
-        self.kpw.add_anatomy_image_set(
+        t = self.kpw.add_anatomy_image_set(
             dataset='dosumis2020',
             imaging_type='computer graphic',
             label='lobulobus of Dave',
@@ -245,19 +251,35 @@ class TestKBPatternWriter(unittest.TestCase):
             dbxrefs={'fu': 'bar'},
             start=100
         )
+        assert bool(t) is True
         self.kpw.commit()
 
-    def testAddAnatomyImageSet(self):
-        self.kpw.add_dataSet(
-            name='dosumis2020',
-            license='CCBYNC4',
-            short_form='dosumis2020',
-            pub='',
-            description='', 
-            dataset_spec_text='',
-            site=''
+        t = self.kpw.add_anatomy_image_set(
+            dataset='asdf',
+            imaging_type='computer graphic',
+            label='lobulobus of Dave',
+            template='asdofiuo',
+            anatomical_type='aoiu',
+            dbxrefs={'fu': 'bar'},
+            start=100
         )
+        assert t is False
         self.kpw.commit()
+
+        t = self.kpw.add_anatomy_image_set(
+            dataset='dosumis2020',
+            imaging_type='computer graphic',
+            label='lobulobus of Dave',
+            template='template_of_dave',
+            anatomical_type='lobulobus',
+            dbxrefs={'fu': 'GMR_fubar_23'},
+            start=100
+        )
+        assert t is False
+
+        self.kpw.commit()
+
+
 
         ## TODO: Add test using code in neo2neo.kb_tests - needs a little refactoring to make callable.
 
@@ -269,7 +291,11 @@ class TestEntityChecker(unittest.TestCase):
 
         def setUp(self):
             s = ["MERGE (i1:Individual { "
-                 "iri : 'http://fu.bar/Aya', label: 'Aya', short_form: 'Aya' }) "]
+                 "iri : 'http://fu.bar/Aya', label: 'Aya', short_form: 'Aya' }) ",
+                 "MERGE (s:Site { short_form: 'FlyLight' })",
+                 "MATCH (i:Individual { label: 'Aya' }), "
+                 "(s:Site { short_form: 'FlyLight' })"
+                 " MERGE (i)-[:hasDbXref { acc: 'GMR_fubar_23'}]->(s)"]
             self.ec = EntityChecker('http://localhost:7474', 'neo4j', 'neo4j')
             self.ec.nc.commit_list(s)
 
@@ -287,6 +313,10 @@ class TestEntityChecker(unittest.TestCase):
             self.ec.roll_entity_check(labels=['Individual'],
                                       match_on='label',
                                       query='asdfd')
+
+            assert self.ec.check() is False
+
+            self.ec.roll_dbxref_check('FlyLight', 'GMR_fubar_23')
 
             assert self.ec.check() is False
 
