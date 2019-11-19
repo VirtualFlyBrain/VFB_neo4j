@@ -314,7 +314,8 @@ class kb_owl_edge_writer(kb_writer):
                                   otype=':Site',
                                   stype=stype,
                                   edge_annotations={'accession': x[1]},
-                                  match_on='short_form')
+                                  match_on='short_form',
+                                  safe_label_edge=True)
 
                 
     def add_anon_type_ax(self, s, r, o, edge_annotations=None,

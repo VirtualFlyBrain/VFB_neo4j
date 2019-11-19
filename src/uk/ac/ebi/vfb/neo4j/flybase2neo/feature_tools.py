@@ -406,7 +406,7 @@ class FeatureMover(FB2Neo):
             for x in s.xrefs:
                 self.ew.add_xref(s=short_form,
                                  xref=x,
-                                 stype=':Class')
+                                 stype=':Class',)
 
             self.ni.add_node(labels=['Class'],
                              IRI=iri,
