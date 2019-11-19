@@ -778,7 +778,7 @@ class KB_pattern_writer(object):
         return {'channel': channel_id, 'anatomy': anat_id }
 
     def add_dataSet(self, name, license, short_form, pub='',
-                    description='', dataset_spec_text='', site=''):
+                    description='', dataset_spec_text='', site='', schema='image'):
 
         """Add a new dataset to the DB:
         required ARGS:
@@ -798,7 +798,8 @@ class KB_pattern_writer(object):
                              'label': name,
                              'short_form': short_form,
                              'description': [description],
-                             'dataset_spec_text': [dataset_spec_text]})
+                             'dataset_spec_text': [dataset_spec_text],
+                             'schema': schema})
         self.ni.commit()
         self.ew.add_annotation_axiom(s=short_form,
                                      r='license',
