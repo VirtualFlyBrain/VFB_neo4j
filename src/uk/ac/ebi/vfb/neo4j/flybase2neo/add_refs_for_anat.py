@@ -81,14 +81,15 @@ def roll_cypher_add_syn_pub_link(sfid, s, pub_id_typ, pub_id):
            "MERGE (p:pub:Individual { short_form : \"%s\" }) " \
            "MERGE (a)-[:has_reference { typ : \"syn\", scope: \"%s\", " \
            "synonym : \"%s\", cat: \"%s\" }]->(p)" \
-           "" % (sfid, pub_id, s['scope'], label, s['type'])
 
 
 nc.commit_list(["MERGE (:pub:Individual { short_form: 'Unattributed' })"])
+
 q = nc.commit_list(["MATCH (c) where c:Class or c:Individual "
                     "RETURN c.short_form as short_form, "
                     "c.synonym as slist, c.obo_synonym as refd_syns,"
                     " c.obo_definition_citation as def"])
+
 dc = results_2_dict_list(q)
 statements = []
 for d in dc:

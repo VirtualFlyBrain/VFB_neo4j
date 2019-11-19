@@ -278,7 +278,7 @@ class kb_owl_edge_writer(kb_writer):
         r = property identifying relation (AnnotationProperty) ,
         o = property identifying object individual.
         match_on = property to match individuals/Property on; default = 'iri'
-        Optionally add edge annotations specified as key value pairs in dict.
+        Optionally add edge new_annotations specified as key value pairs in dict.
         Optionally specify edge type as safe_label (default = False => edge type: Annotation)
        """
         if edge_annotations is None:
@@ -295,7 +295,7 @@ class kb_owl_edge_writer(kb_writer):
         r = property identifying relation (ObjectProperty) ,
         o = property identifying object individual.
         match_on = property to match individuals/Property on; default = 'iri'
-        Optionally add edge annotations specified as key value pairs in dict.
+        Optionally add edge new_annotations specified as key value pairs in dict.
         Optionally specify edge type as safe_label (default = False => edge type: Related)
        """
         if edge_annotations is None: edge_annotations = {}
@@ -324,7 +324,7 @@ class kb_owl_edge_writer(kb_writer):
         r = property identifying relation (ObjectProperty) ,
         o = property identifying object class.
         match_on = property to match owl entities on; default = 'iri'
-        Optionally add edge annotations specified as key value pairs in dict.
+        Optionally add edge new_annotations specified as key value pairs in dict.
         Optionally specify edge type as safe_label (default = False => edge type: Related)
        """
         if edge_annotations is None: edge_annotations = {}
@@ -338,7 +338,7 @@ class kb_owl_edge_writer(kb_writer):
          s = property identifying subject Individual ,
          o = property identifying object Class.
          match_on = property to match owl entities on; default = 'iri'
-         Optionally add edge annotations specified as key value pairs in dict."""
+         Optionally add edge new_annotations specified as key value pairs in dict."""
 
         if edge_annotations is None: edge_annotations = {}
         out = "OPTIONAL MATCH (s:Individual {{ {match_on}:'{s}' }} ) " \
@@ -358,7 +358,7 @@ class kb_owl_edge_writer(kb_writer):
         r = property identifying relation (ObjectProperty) ,
         o = property identifying object Class.
         match_on = property to match owl entities on; default = 'iri'
-        Optionally add edge annotations specified as key value pairs in dict.
+        Optionally add edge new_annotations specified as key value pairs in dict.
         Optionally specify edge type as safe_label (default = False => edge type: Related)
         """
 
@@ -604,7 +604,7 @@ class KB_pattern_writer(object):
     schema pattern.
     """
     
-    def __init__(self, endpoint, usr, pwd):
+    def __init__(self, endpoint, usr, pwd, lookup_config=None):
         self.ew = kb_owl_edge_writer(endpoint, usr, pwd)
         self.ni = node_importer(endpoint, usr, pwd)
         self.iri_gen = iri_generator(endpoint, usr, pwd)
@@ -616,6 +616,7 @@ class KB_pattern_writer(object):
         self.channel_iri_gen.configure(idp='VFBc',
                                        acc_length=8,
                                        base=map_iri('vfb'))
+        self.lookups = self.generate_lookups(lookup_config)
 
         #  Adding a dict of common classes and properties. (Should really just use KB lookup...)
 
@@ -625,7 +626,7 @@ class KB_pattern_writer(object):
             'is specified output of': 'http://purl.obolibrary.org/obo/OBI_0000312',
             'hasDbXref': 'http://www.geneontology.org/formats/oboInOwl#hasDbXref',
             'has_source': 'http://purl.org/dc/terms/source'
-            }
+            } # Roll this into general lookup?
 
         self.class_lookup = {
             'computer graphic': 'http://purl.obolibrary.org/obo/FBbi_00000224',
@@ -633,12 +634,91 @@ class KB_pattern_writer(object):
             'confocal microscopy': 'http://purl.obolibrary.org/obo/FBbi_00000251',
             'SB-SEM': 'http://purl.obolibrary.org/obo/FBbi_00000585',
             'TEM': 'http://purl.obolibrary.org/obo/FBbi_00000258'
-            }
+            }  # Rename this?!  Was always an odd add-hoc design choice.
 
     def commit(self, ni_chunk_length=5000, ew_chunk_length=2000, verbose=False):
 
         self.ni.commit(verbose=verbose, chunk_length=ni_chunk_length)
         self.ew.commit(verbose=verbose, chunk_length=ew_chunk_length)
+
+    def generate_lookups(self, lookup_config):
+        """Generate  :Class name:ID lookups from DB for loading by label.
+         Lookups are defined by standard config that specifies a config:
+         name:field:regex
+         name should match the kwarg for which it is to be used.
+         """
+        lookup = {}
+        if lookup_config:
+            # Add some type checking here?
+            for name, v in lookup_config.items():
+                lookup[name] = {}
+                for field, regex in v.items():
+                    q = "MATCH (c:Class) where c.%s =~ '%s' RETURN c.label as label" \
+                        ", c.short_form as short_form" % (field, regex)
+                    print(q)
+                    rr = self.ni.nc.commit_list([q])
+                    r = results_2_dict_list(rr)
+                    lookup[name].update({x['label']: x['short_form'] for x in r})
+            return lookup
+        else:
+            return False
+
+
+    def load_new_image_table(self,
+                              dataset,
+                              imaging_type,
+                              label,
+                              start,
+                              template,
+                              anatomical_type,
+                              classification_reference='',
+                              classification_comment='',
+                              part_of = '',
+                              expresses = '',
+                              index=False,
+                              center=(),
+                              anatomy_attributes=None,
+                              dbxrefs=None,
+                              dbxref_strings=None,
+                              image_filename='',
+                              match_on='short_form',
+                              orcid='',
+                              name_id_sub_via_lookup = False,
+                              hard_fail=False):
+
+        """Method for loading new image curation tables.
+        Spec: https://github.com/VirtualFlyBrain/curation/blob/test_curation/records/new_images/anatomy_spec.yaml
+        All ontology fields use labels"""
+
+        # Strategies for rdfs:label matching
+
+        # 1. use match_on = label - some risk of choosing term from wrong ontology. This could potentially be managed in KB
+        # via enforced label uniquenes.  This would require some clean up! We already have 7 pairs of :Class nodes with
+        # matching labels, although none are currently used in annotation.  3 are GO:FBbt CC term, the rest are FBbi or
+        # SO terms with duplicate names. The only term likely to cause problems is GO:Cell. It is not clear to me why GO
+        # is in the KB at all. It is not used in annotation.
+        # BUT: enforcing uniquenes is a pain given that we will potentially load many external ontologies, some of which
+        # already have duplicates!
+
+        # 2. match_on = label + some additional match criteria (label, or short_form regex). This would require some
+        # re-engineering of core methods. The easiest strategy to support would be filter on neo4j:label.  However, the
+        # KB is deliberately poor in labels - maintaining them would be an overhead. (extending core methods to support
+        # labels seems like a good idea anyway - potentially useful for pdb).
+
+        # 3. Roll lookup(s) that enforce some set of restrictions - e.g. short_form or iri regex.  Use lookup (dict) to
+        # run add_anatomy_image set using short_forms.  We can use these lookups to enforce some annotation consistency
+        # The maintenance overhead here is on the load table method and is relatively easy to manage through kwargs.
+        # is_a: broad - maybe just maintain a blacklist
+        # part_of: FBbt only
+        # expresses: iri filter for FlyBase?
+        # kwargs be on KB_pattern_writer __init__ so lookups only need to be rolled once.
+
+        args = locals()
+        for k, v in args.items():
+            if k in self.lookups.keys():
+                args[k] = self.lookups[k][v]
+        self.add_anatomy_image_set(**args)  # Surely possible to do this on the original method!
+
 
     def add_anatomy_image_set(self,
                               dataset,
@@ -646,14 +726,20 @@ class KB_pattern_writer(object):
                               label,
                               start,
                               template,
-                              anatomical_type='',
+                              anatomical_type,
+                              classification_reference='',
+                              classification_comment='',
+                              part_of = '',
+                              expresses = '',
                               index=False,
                               center=(),
                               anatomy_attributes=None,
                               dbxrefs=None,
+                              dbxref_strings=None,
                               image_filename='',
                               match_on='short_form',
-                              orcid = '',
+                              orcid='',
+                              name_id_sub_via_lookup = False,
                               hard_fail=False):
         """Adds typed inds for an anatomical individual and channel, 
         linked to each other and to the specified template.
@@ -668,6 +754,16 @@ class KB_pattern_writer(object):
         dbxrefs: dict of DB:accession pairs
         anatomy_attribute = {}
         hard_fail: Boolean.  If True, throw exception for uknown entitise referenced in args"""
+
+        if name_id_sub_via_lookup:
+            if self.lookups:
+                args = locals()
+                for k, v in args.items():
+                    if k in self.lookups.keys():
+                        if v in self.lookups[k].keys():
+                            exec('k = ' + self.lookups[k][v])  # Apparently this is a bad idea.
+                        else:
+                            warnings.warn("%s is not a know legal entity for %s" % (v, k))
 
         if anatomy_attributes is None: anatomy_attributes = {}
         if dbxrefs is None: dbxrefs = {}
@@ -798,7 +894,9 @@ class KB_pattern_writer(object):
                              'short_form': short_form,
                              'description': [description],
                              'dataset_spec_text': [dataset_spec_text]})
+
         self.ni.commit()
+
         self.ew.add_annotation_axiom(s=short_form,
                                      r='license',
                                      o=license,

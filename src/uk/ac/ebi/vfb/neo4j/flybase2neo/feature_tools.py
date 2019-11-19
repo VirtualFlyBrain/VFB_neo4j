@@ -373,6 +373,10 @@ class FeatureMover(FB2Neo):
         splits: An array of split objects, namedtuple['synonyms', 'dbd', 'ad', 'xrefs']
         Returns dict
         """
+        # dict of what!!!
+        # This really should return FeatureRelation object !
+        # Instead: out[short_form] = {'attributes': ad, 'iri': iri,
+        #                              short_form: short_form, 'xrefs': s.xrefs}
 
         out = {}
         for s in splits:

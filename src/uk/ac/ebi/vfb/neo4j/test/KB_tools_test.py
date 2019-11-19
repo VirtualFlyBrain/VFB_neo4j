@@ -210,10 +210,13 @@ class TestIriGenerator(unittest.TestCase):
 class TestKBPatternWriter(unittest.TestCase):
 
     def setUp(self):
+        lconf = {'part_of': {'short_form': 'FBbt_.+'}}
         self.nc = neo4j_connect(
             'http://localhost:7474', 'neo4j', 'neo4j')
         self.kpw = KB_pattern_writer(
             'http://localhost:7474', 'neo4j', 'neo4j')
+        self.kpwl = KB_pattern_writer(
+            'http://localhost:7474', 'neo4j', 'neo4j', lookup_config=lconf)
         statements = []
         for k,v in self.kpw.relation_lookup.items():
             short_form = re.split('[/#]', v)[-1]
@@ -247,19 +250,22 @@ class TestKBPatternWriter(unittest.TestCase):
         )
         self.kpw.commit()
 
-    def testAddAnatomyImageSet(self):
-        self.kpw.add_dataSet(
-            name='dosumis2020',
-            license='CCBYNC4',
-            short_form='dosumis2020',
-            pub='',
-            description='', 
-            dataset_spec_text='',
-            site=''
-        )
-        self.kpw.commit()
 
         ## TODO: Add test using code in neo2neo.kb_tests - needs a little refactoring to make callable.
+
+    def testAddAnatomyImageSet_l(self):
+        self.kpwl.add_anatomy_image_set(
+            dataset='dosumis2020',
+            imaging_type='computer graphic',
+            label='lobulobus of Dave',
+            template='template_of_dave',
+            anatomical_type='lobulobus',
+            part_of='adult brain',
+            dbxrefs={'fu': 'bar'},
+            start=100,
+            name_id_sub_via_lookup=True,
+        )
+        self.kpw.commit()
 
     def tearDown(self):
         return
