@@ -653,7 +653,7 @@ class KB_pattern_writer(object):
                               dbxrefs=None,
                               image_filename='',
                               match_on='short_form',
-                              orcid = '',
+                              orcid='',
                               hard_fail=False):
         """Adds typed inds for an anatomical individual and channel, 
         linked to each other and to the specified template.
@@ -693,7 +693,7 @@ class KB_pattern_writer(object):
                                query=orcid)
 
         if not self.ec.check_entities(hard_fail=hard_fail):
-            warnings.warn("Unknown entities referenced in, not adding.")
+            warnings.warn("Unknown entities referenced not adding.")
             return False
 
         anat_id = self.anat_iri_gen.generate(start)
@@ -778,7 +778,7 @@ class KB_pattern_writer(object):
         return {'channel': channel_id, 'anatomy': anat_id }
 
     def add_dataSet(self, name, license, short_form, pub='',
-                    description='', dataset_spec_text='', site='', schema='image'):
+                    description='', dataset_spec_text='', site='', schema='image', match_on='short_form'):
 
         """Add a new dataset to the DB:
         required ARGS:
@@ -791,6 +791,21 @@ class KB_pattern_writer(object):
             dataset_spec_text = Some text to be added to the description of individuals in the dataset
             site = short_form identifier for site.
         """
+
+        self.ec.roll_check(labels=['Individual'],
+                           match_on=match_on,
+                           query=license)
+        if pub:
+            self.ec.roll_check(labels=['Individual'],
+                               match_on=match_on,
+                               query=pub)
+        if site:
+            self.ec.roll_check(labels=['Individual'],
+                               match_on=match_on,
+                               query=site)
+
+        if not self.ec.check_entities():
+            return False
 
         self.ni.add_node(labels=['Individual', 'DataSet'],
                          IRI=map_iri('data') + short_form,
