@@ -207,6 +207,15 @@ class TestIriGenerator(unittest.TestCase):
         print(i['short_form'])
         assert i['short_form'] == 'VFB_00000001'
 
+    def test_base36_id_gen(self):
+        self.ig.set_default_config()
+        print(self.ig.generate('1000', use_base36=True))
+        print(self.ig.generate('JHM00000', use_base36=True))
+        print(self.ig.generate('JHM00000', use_base36=True))
+
+
+
+
 class TestKBPatternWriter(unittest.TestCase):
 
     def setUp(self):
