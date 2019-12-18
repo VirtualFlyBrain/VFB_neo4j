@@ -577,32 +577,69 @@ class node_importer(kb_writer):
 
 class EntityChecker(kb_writer):
 
-    """Check for the existance of nodes"""
+    """Check for the existance of nodes or dbxrefs"""
 
-    def roll_check(self, labels, query, match_on='short_form'):
+    def __init__(self, endpoint, usr, pwd):
+        super(EntityChecker, self).__init__(endpoint, usr, pwd)
+        self.should_exist = []
+        self.should_not_exist = []
+
+    def roll_entity_check(self, labels, query, match_on='short_form'):
+
         """Roll a check and add it to the stack.
-        labels = list of Neo4J labels match on
+        labels = list of Neo4J labels to match on. You must provide at least one.
         match_on = property to match_on (default = short_form)
         query = Value of property matched on for target entity.
         """
         lstring = ':'.join(labels)
-        self.statements.append("OPTIONAL MATCH (n:%s { %s : '%s'}) return n.short_form as result, '%s' as query" % (lstring, match_on, query, query))
+        self.should_exist.append("OPTIONAL MATCH (n:%s { %s : '%s'})"
+                                 " return n.short_form as result, "
+                                 "'%s' as query" % (lstring,
+                                                    match_on,
+                                                    query,
+                                                    query))
 
-    def check_entities(self, hard_fail=False):
+    def roll_dbxref_check(self, db, acc):
+        self.should_not_exist.append(
+            "OPTIONAL MATCH (s:Site { short_form: '%s' } )"
+            "<-[r:hasDbXref { acc: '%s' }]-(i:Individual) "
+            "RETURN s.short_form + ':' + r.acc AS result, "
+            "'%s:%s' AS query" % (db, acc, db, acc))
+
+    def _check_should_not_exist(self, hard_fail=False):
+        self.statements.extend(self.should_not_exist)
+        self.should_not_exist.clear()
+        return(self._check("Already in DB: ", exists=False, hard_fail=hard_fail))
+
+    def _check_should_exist(self, hard_fail=False):
+        self.statements.extend(self.should_exist)
+        self.should_exist.clear()
+        return self._check("Unknown entity: ", hard_fail=hard_fail)
+
+    def check(self, hard_fail=False):
+        a = self._check_should_exist(hard_fail=hard_fail)
+        b = self._check_should_not_exist(hard_fail=hard_fail)
+        if not (a and b):
+            return False
+        else:
+            return True
+
+
+
+    def _check(self, error_message, exists=True, hard_fail=False):
         """Run checks in the stack then empty the stack.
         If hard_fail = True, raise exception if any check in the stack fails."""
         dc = results_2_dict_list(self.commit())
         out = {}
         for d in dc:
-            if d['result']:
-                out[d['query']]=True
+            if bool(d['result']) is exists:
+                out[d['query']] = True
             else:
-                out[d['query']]=False
-                warnings.warn("Unknown entity %s" %d['query'])
+                out[d['query']] = False
+                warnings.warn(error_message + d['query'])
         if False in out.values():
             if hard_fail:
-
-                raise Exception('Uknown entities.')
+                raise Exception(error_message)
             else:
                 return False
         else:
@@ -682,28 +719,38 @@ class KB_pattern_writer(object):
         if anatomy_attributes is None: anatomy_attributes = {}
         if dbxrefs is None: dbxrefs = {}
 
-        self.ec.roll_check(labels=['Individual'],
-                           match_on=match_on,
-                           query=template)
-        self.ec.roll_check(labels=['Class'],
-                           match_on=match_on,
-                           query=anatomical_type)
-        self.ec.roll_check(labels=['DataSet'],
-                           match_on=match_on,
-                           query=dataset)
+        self.ec.roll_entity_check(labels=['Individual'],
+                                  match_on=match_on,
+                                  query=template)
+        self.ec.roll_entity_check(labels=['Class'],
+                                  match_on=match_on,
+                                  query=anatomical_type)
+        self.ec.roll_entity_check(labels=['DataSet'],
+                                  match_on=match_on,
+                                  query=dataset)
         for k in dbxrefs.keys():
-            self.ec.roll_check(labels=['Site'],
-                               match_on=match_on,
-                               query=k)
+            self.ec.roll_entity_check(labels=['Site'],
+                                      match_on=match_on,
+                                      query=k)
 
         if orcid:
-            self.ec.roll_check(labels=['Person'],
-                               match_on=match_on,
-                               query=orcid)
+            self.ec.roll_entity_check(labels=['Person'],
+                                      match_on=match_on,
+                                      query=orcid)
 
-        if not self.ec.check_entities(hard_fail=hard_fail):
-            warnings.warn("Unknown entities referenced not adding.")
+
+        if not self.ec.check(hard_fail=hard_fail):
+            warnings.warn("Load fail: Unknown entities referenced.")
+
             return False
+
+        if dbxrefs:
+            for db, acc in dbxrefs.items():
+                self.ec.roll_dbxref_check(db, acc)
+            if not self.ec.check():
+                warnings.warn("Load fail: Cross-referenced enties already exist.")
+                return False
+
 
         anat_id = self.anat_iri_gen.generate(start)
 
