@@ -11,6 +11,7 @@ import requests
 from .neo4j_tools import neo4j_connect, results_2_dict_list
 from .SQL_tools import get_fb_conn, dict_cursor
 from ..curie_tools import map_iri
+import base36
 
 
 #  * OWL - Only edges of types Related, INSTANCEOF, SUBCLASSOF are exported to OWL.
@@ -40,7 +41,7 @@ def get_sf(iri):
     """Get a short form from an iri."""
     return re.split('[#/]', iri)[-1]
 
-def gen_id(idp, ID, length, id_name):
+def gen_id(idp, ID, length, id_name, use_base36=False):
     """
     Generates an ID of form <idp>_<padded_accession>
     ARG1: idp (string), 
@@ -51,10 +52,17 @@ def gen_id(idp, ID, length, id_name):
         dl = len(str(ID)) # coerce int to string.
         k = idp+'_'+(length - dl)*'0'+str(ID)
         return k
-    
-    k = gen_key (ID, length)
+
+    k = gen_key(ID, length)
+
+
+
+
     while k in id_name:
-        ID += 1
+        if use_base36:
+            ID = base36.dumps(base36.loads(ID) + 1)
+        else:
+            ID += 1
         k = gen_key(ID, length)
     return {'short_form' : k, 'acc_int' : ID} # useful to return ID to use for next round.
 
@@ -145,8 +153,8 @@ class iri_generator(kb_writer):
     def set_channel_config(self):
         self.configure(idp='VFBc', acc_length = 8, base = map_iri('vfb'))
 
-    def generate(self, start, label=''):
-        ID = gen_id(idp = self.idp, ID = start, length = self.acc_length, id_name = self.id_name)
+    def generate(self, start, label='', use_base36=False):
+        ID = gen_id(idp = self.idp, ID = start, length = self.acc_length, id_name = self.id_name,  use_base36=use_base36)
         short_form = ID['short_form']
         iri =  self.base + short_form
         self.id_name[short_form] = label
@@ -173,7 +181,7 @@ class kb_owl_edge_writer(kb_writer):
         Purge triples using properties not found in the DB from the stack."""
 
         statements = []
-        for k,v in self.properties.items():
+        for k, v in self.properties.items():
             # If this was only operating on Neo3, could just grab all node properties as a map.
             statements.append(
                 "OPTIONAL MATCH (r:Property { %s: '%s' }) " 
@@ -314,7 +322,8 @@ class kb_owl_edge_writer(kb_writer):
                                   otype=':Site',
                                   stype=stype,
                                   edge_annotations={'accession': x[1]},
-                                  match_on='short_form')
+                                  match_on='short_form',
+                                  safe_label_edge=True)
 
                 
     def add_anon_type_ax(self, s, r, o, edge_annotations=None,
@@ -695,8 +704,9 @@ class KB_pattern_writer(object):
         """Adds typed inds for an anatomical individual and channel, 
         linked to each other and to the specified template.
         label: Name of anatomical individual
-        imaging_type: One of: 'confocal microscopy', 'SB-SEM', 'computer graphic'.
-           - SB-SEM = serial block face scanning EM, this is used for CATMAID data
+        imaging_type: One of: 'confocal microscopy', TEM, 'SB-SEM', 'computer graphic'.
+           - SB-SEM = serial block face scanning EM (use for FIB-SEM data)
+           - TEM = transmission electron microscopy (TEM) (use for CATMAID data)
            - 'computer graphic' is used for painted domains.
            If your image does not fit into these types, please post a ticket to request
            the list of supported types be extended.
@@ -728,8 +738,10 @@ class KB_pattern_writer(object):
                                       match_on=match_on,
                                       query=orcid)
 
+
         if not self.ec.check(hard_fail=hard_fail):
             warnings.warn("Load fail: Unknown entities referenced.")
+
             return False
 
         if dbxrefs:
@@ -822,7 +834,7 @@ class KB_pattern_writer(object):
         return {'channel': channel_id, 'anatomy': anat_id }
 
     def add_dataSet(self, name, license, short_form, pub='',
-                    description='', dataset_spec_text='', site=''):
+                    description='', dataset_spec_text='', site='', schema='image', match_on='short_form'):
 
         """Add a new dataset to the DB:
         required ARGS:
@@ -836,13 +848,29 @@ class KB_pattern_writer(object):
             site = short_form identifier for site.
         """
 
+        self.ec.roll_check(labels=['Individual'],
+                           match_on=match_on,
+                           query=license)
+        if pub:
+            self.ec.roll_check(labels=['Individual'],
+                               match_on=match_on,
+                               query=pub)
+        if site:
+            self.ec.roll_check(labels=['Individual'],
+                               match_on=match_on,
+                               query=site)
+
+        if not self.ec.check_entities():
+            return False
+
         self.ni.add_node(labels=['Individual', 'DataSet'],
                          IRI=map_iri('data') + short_form,
                          attribute_dict={
                              'label': name,
                              'short_form': short_form,
                              'description': [description],
-                             'dataset_spec_text': [dataset_spec_text]})
+                             'dataset_spec_text': [dataset_spec_text],
+                             'schema': schema})
         self.ni.commit()
         self.ew.add_annotation_axiom(s=short_form,
                                      r='license',
