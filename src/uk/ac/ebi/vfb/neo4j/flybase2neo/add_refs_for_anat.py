@@ -84,7 +84,8 @@ def roll_cypher_add_syn_pub_link(sfid, s, pub_id_typ, pub_id):
            "" % (sfid, pub_id, s['scope'], label, s['type'])
 
 
-nc.commit_list(["MERGE (:pub:Individual { short_form: 'Unattributed' })"])
+nc.commit_list(["MERGE (:pub:Individual { short_form: 'Unattributed', "
+                "iri: 'http://virtualflybrain.org/reports/Unattributed'})"])
 q = nc.commit_list(["MATCH (c) where c:Class or c:Individual "
                     "RETURN c.short_form as short_form, "
                     "c.synonym as slist, c.obo_synonym as refd_syns,"
