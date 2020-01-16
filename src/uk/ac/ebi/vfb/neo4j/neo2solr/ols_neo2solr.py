@@ -26,7 +26,7 @@ with_clause = with_file.read()
 
 nc = neo4j_connect(args.pdb_endpoint, 'neo4j', 'neo4j')
 
-solr = pysolr.Solr(args.solr_endpoint, timeout=900)
+solr = pysolr.Solr(args.solr_endpoint, always_commit=True)
 
 for m in matches.values():
     query = ' \n'.join([m, with_clause])
