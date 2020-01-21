@@ -483,8 +483,8 @@ class node_importer(kb_writer):
                 obographs = r.json()
                 primary_graph = obographs['graphs'][0]   # Add a check for success here!
             else:
-                warnings.warn("URL connection issue %s %s" % (r.status_code, 
-                                                              r.reason))
+                warnings.warn("URL connection issue %s %s for %s" % (r.status_code, 
+                                                              r.reason, url))
                 return False
         else:
             warnings.warn('Please provide a file_path or a URL')
