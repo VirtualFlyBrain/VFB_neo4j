@@ -114,7 +114,8 @@ for d in dc:
         else:
             rsd = {}
         for syn in d['slist']:
-            if syn in rsd.keys():
+            if syn in rsd.keys() and 'FlyBase' in [x['database'] for
+                                                   x in rsd[syn]['xrefs']]:
                 rs = rsd[syn]
             else:
                 rs = {'name': syn,
