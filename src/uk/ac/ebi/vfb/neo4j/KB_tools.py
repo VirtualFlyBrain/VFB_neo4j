@@ -583,6 +583,7 @@ class EntityChecker(kb_writer):
         super(EntityChecker, self).__init__(endpoint, usr, pwd)
         self.should_exist = []
         self.should_not_exist = []
+        self.log = []
 
     def roll_entity_check(self, labels, query, match_on='short_form'):
 
@@ -625,7 +626,6 @@ class EntityChecker(kb_writer):
             return True
 
 
-
     def _check(self, error_message, exists=True, hard_fail=False):
         """Run checks in the stack then empty the stack.
         If hard_fail = True, raise exception if any check in the stack fails."""
@@ -637,6 +637,7 @@ class EntityChecker(kb_writer):
             else:
                 out[d['query']] = False
                 warnings.warn(error_message + d['query'])
+                self.log.append(error_message + d['query'])
         if False in out.values():
             if hard_fail:
                 raise Exception(error_message)
@@ -747,7 +748,7 @@ class KB_pattern_writer(object):
         if dbxrefs:
             for db, acc in dbxrefs.items():
                 self.ec.roll_dbxref_check(db, acc)
-            if not self.ec.check():
+            if not self.ec.check(hard_fail=hard_fail):
                 warnings.warn("Load fail: Cross-referenced enties already exist.")
                 return False
 
