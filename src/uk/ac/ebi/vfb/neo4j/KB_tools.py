@@ -700,6 +700,7 @@ class KB_pattern_writer(object):
                               image_filename='',
                               match_on='short_form',
                               orcid='',
+                              type_edge_annotations=None,
                               hard_fail=False):
         """Adds typed inds for an anatomical individual and channel, 
         linked to each other and to the specified template.
@@ -808,9 +809,13 @@ class KB_pattern_writer(object):
                                  o=self.class_lookup[imaging_type])
 
         if anatomical_type:
+            if self.type_edge_annotations is None:
+                self.type_edge_annotations = {}
+                
             self.ew.add_named_type_ax(s=anat_id[match_on],
                                       o=anatomical_type,
-                                      match_on=match_on)
+                                      match_on=match_on,
+                                      edge_annotations=type_edge_annotations)
         # Add facts
 
         # This takes no vars so match_on can be fixed.
