@@ -286,12 +286,8 @@ class TestKBPatternWriter(unittest.TestCase):
             start=100
         )
         assert t is False
-
         self.kpw.commit()
 
-
-
-        ## TODO: Add test using code in neo2neo.kb_tests - needs a little refactoring to make callable.
 
     def tearDown(self):
         return
@@ -329,6 +325,9 @@ class TestEntityChecker(unittest.TestCase):
             self.ec.roll_dbxref_check('FlyLight', 'GMR_fubar_23')
 
             assert self.ec.check() is False
+
+            # Log length should  match number negative tests
+            assert len(self.ec.log) == 2
 
 if __name__ == "__main__":
     unittest.main()
