@@ -240,7 +240,11 @@ class TestKBPatternWriter(unittest.TestCase):
         self.nc.commit_list(statements)
         statements = []
         statements.append("MERGE (p:Class { short_form: 'lobulobus', label: 'lobulobus' })")
-        statements.append("MERGE (p:Individual:Template { short_form: 'template_of_dave', label: 'template_of_dave' })")
+        statements.append("MERGE (p:Class { short_form: 'brain', label: 'brain' })")
+        statements.append("MERGE (p:Property { short_form: 'part_of', label: 'part of', iri: 'http://fubar/part_of' })")
+
+        statements.append("MERGE (p:Individual:Template { short_form: 'template_of_dave',"
+                          " label: 'template_of_dave' })")
         statements.append("MERGE (s:Site:Individual { short_form : 'fu' }) ")
         statements.append("MATCH (s:Site:Individual { short_form : 'fu' }), "
                           "(i:Individual:Template { short_form: 'template_of_dave'}) "
@@ -252,6 +256,13 @@ class TestKBPatternWriter(unittest.TestCase):
         self.nc.commit_list(statements)
 
     def testAddAnatomyImageSet(self):
+
+        #TODO: These should really be split out into named tests with checks of loaded content.
+
+        # General positive test first
+
+        # As above, with test of anon_anatomical_types
+        
         t = self.kpw.add_anatomy_image_set(
             dataset='dosumis2020',
             imaging_type='computer graphic',
@@ -259,10 +270,13 @@ class TestKBPatternWriter(unittest.TestCase):
             template='template_of_dave',
             anatomical_type='lobulobus',
             dbxrefs={'fu': 'bar'},
+            anon_anatomical_types=([('part_of', 'brain')]),
             start=100
         )
         assert bool(t) is True
-        self.kpw.commit()
+        bool(self.kpw.commit())
+
+        # Some negative tests
 
         t = self.kpw.add_anatomy_image_set(
             dataset='asdf',
@@ -290,8 +304,9 @@ class TestKBPatternWriter(unittest.TestCase):
 
 
     def tearDown(self):
+        self.kpw.ni.nc.commit_list(statements=["MATCH (n) "
+                                               "DETACH DELETE n"])
         return
-
 
 class TestEntityChecker(unittest.TestCase):
 

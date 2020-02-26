@@ -694,6 +694,7 @@ class KB_pattern_writer(object):
                               start,
                               template,
                               anatomical_type='',
+                              anon_anatomical_types=None,
                               index=False,
                               center=(),
                               anatomy_attributes=None,
@@ -712,13 +713,18 @@ class KB_pattern_writer(object):
            - 'computer graphic' is used for painted domains.
            If your image does not fit into these types, please post a ticket to request
            the list of supported types be extended.
+        anatomical_type: classification of anatomical entity,
+        anon_anatomical_types: list of r,o) tuples specifying anon
+        anatomical types, where subject is the anatomical individual being created
         template: channel ID of the template to which the image is registered
         start: Start of range for generation of new accessions
         dbxrefs: dict of DB:accession pairs
-        anatomy_attribute = {}
+        anatomy_attributes: Dict of property:value for anatomy node
+
         hard_fail: Boolean.  If True, throw exception for uknown entitise referenced in args"""
 
         if anatomy_attributes is None: anatomy_attributes = {}
+        if anon_anatomical_types is None: anon_anatomical_types = []
         if dbxrefs is None: dbxrefs = {}
         if type_edge_annotations is None: type_edge_annotations = {}
 
@@ -741,10 +747,16 @@ class KB_pattern_writer(object):
                                       match_on=match_on,
                                       query=orcid)
 
+        for ax in anon_anatomical_types:
+            self.ec.roll_entity_check(labels=['Property'],
+                                      match_on=match_on,
+                                      query=ax[0])
+            self.ec.roll_entity_check(labels=['Class'],
+                                      match_on=match_on,
+                                      query=ax[1])
 
         if not self.ec.check(hard_fail=hard_fail):
             warnings.warn("Load fail: Unknown entities referenced.")
-
             return False
 
         if dbxrefs:
@@ -753,6 +765,7 @@ class KB_pattern_writer(object):
             if not self.ec.check(hard_fail=hard_fail):
                 warnings.warn("Load fail: Cross-referenced enties already exist.")
                 return False
+
 
 
         anat_id = self.anat_iri_gen.generate(start)
@@ -835,6 +848,14 @@ class KB_pattern_writer(object):
                          edge_annotations=edge_annotations,
                          match_on='short_form',
                          safe_label_edge=True)
+
+        for ax in anon_anatomical_types:
+            self.ew.add_anon_type_ax(s=anat_id[match_on],
+                                     r=ax[0],
+                                     o=ax[1],
+                                     match_on='short_form',
+                                     safe_label_edge=True)
+
         return {'channel': channel_id, 'anatomy': anat_id }
 
     def add_dataSet(self, name, license, short_form, pub='',
@@ -852,19 +873,19 @@ class KB_pattern_writer(object):
             site = short_form identifier for site.
         """
 
-        self.ec.roll_check(labels=['Individual'],
+        self.ec.roll_entity_check(labels=['Individual'],
                            match_on=match_on,
                            query=license)
         if pub:
-            self.ec.roll_check(labels=['Individual'],
+            self.ec.roll_entity_check(labels=['Individual'],
                                match_on=match_on,
                                query=pub)
         if site:
-            self.ec.roll_check(labels=['Individual'],
+            self.ec.roll_entity_check(labels=['Individual'],
                                match_on=match_on,
                                query=site)
 
-        if not self.ec.check_entities():
+        if not self.ec.check():
             return False
 
         self.ni.add_node(labels=['Individual', 'DataSet'],
@@ -893,6 +914,7 @@ class KB_pattern_writer(object):
                                          o=pub,
                                          match_on='short_form',
                                          safe_label_edge=True)
+
 
 
 
