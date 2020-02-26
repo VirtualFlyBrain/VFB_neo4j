@@ -712,8 +712,8 @@ class KB_pattern_writer(object):
            If your image does not fit into these types, please post a ticket to request
            the list of supported types be extended.
         anatomical_type: classification of anatomical entity,
-        anon_anatomical_types: list of (s,r,o) tuples specifying anon
-        anatomical types,
+        anon_anatomical_types: list of r,o) tuples specifying anon
+        anatomical types, where subject is the anatomical individual being created
         template: channel ID of the template to which the image is registered
         start: Start of range for generation of new accessions
         dbxrefs: dict of DB:accession pairs
@@ -745,12 +745,15 @@ class KB_pattern_writer(object):
                                       query=orcid)
 
         for ax in anon_anatomical_types:
-            for e in ax:
-                self.ec.roll_dbxref_check(e)
+            self.ec.roll_entity_check(labels=['Property'],
+                                      match_on=match_on,
+                                      query=ax[0])
+            self.ec.roll_entity_check(labels=['Class'],
+                                      match_on=match_on,
+                                      query=ax[1])
 
         if not self.ec.check(hard_fail=hard_fail):
             warnings.warn("Load fail: Unknown entities referenced.")
-
             return False
 
         if dbxrefs:
@@ -843,7 +846,11 @@ class KB_pattern_writer(object):
                          safe_label_edge=True)
 
         for ax in anon_anatomical_types:
-            self.ew.add_anon_type_ax(s=ax[0], r=ax[1], o=ax[2])
+            self.ew.add_anon_type_ax(s=anat_id[match_on],
+                                     r=ax[0],
+                                     o=ax[1],
+                                     match_on='short_form',
+                                     safe_label_edge=True)
 
         return {'channel': channel_id, 'anatomy': anat_id }
 
