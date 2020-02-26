@@ -308,8 +308,8 @@ class TestKBPatternWriter(unittest.TestCase):
         ## TODO: Add test using code in neo2neo.kb_tests - needs a little refactoring to make callable.
 
     def tearDown(self):
-        # self.kpw.ni.nc.commit_list(statements=["MATCH (n) "
-        #                                       "DETACH DELETE n"])
+        self.kpw.ni.nc.commit_list(statements=["MATCH (n) "
+                                               "DETACH DELETE n"])
         return
 
 class TestEntityChecker(unittest.TestCase):
