@@ -73,6 +73,7 @@ class kb_writer (object):
         self.nc = neo4j_connect(endpoint, usr, pwd)
         self.statements = []
         self.output = []
+        self.log = []
 
     def _commit(self, verbose=False, chunk_length=5000):
         """Commits Cypher statements stored in object.
@@ -166,14 +167,15 @@ class kb_owl_edge_writer(kb_writer):
     Constructor: kb_owl_edge_writer(endpoint, usr, pwd)
     """
 
-    def __init__(self, endpoint, usr, pwd, hard_fail = False):
+    def __init__(self, endpoint, usr, pwd, hard_fail=False):
         self.nc = neo4j_connect(endpoint, usr, pwd)
         self.statements = []
         self.output = []
         # An objecty representation of properties might be more easily maintainable.
-        self.properties = {} # Dict of properties.
-        self.triples = {} # Dict of lists of args to a triples method, keyed on op.
+        self.properties = {}  # Dict of properties.
+        self.triples = {}  # Dict of lists of args to a triples method, keyed on op.
         self.hard_fail = hard_fail
+        self.log = []
 
     def check_properties(self):
         """Check whether properties used in triples have a corresponding Property node.
@@ -201,7 +203,9 @@ class kb_owl_edge_writer(kb_writer):
                                                   'short_form': d['short_form'],
                                                   'label': d['label']})
                 if not d['iri']:
-                    warnings.warn('%s in KB but has no iri!' % d['key'])
+                    m = '%s in KB but has no iri!' % d['key']
+                    warnings.warn(m)
+                    self.log.append(m)
                 # Add checks for short_form and label?
             else:
                 w = "Not in KB! %s" % d['key']
@@ -213,10 +217,12 @@ class kb_owl_edge_writer(kb_writer):
     def _report_missing_property(self, prop):
         """Remove triples using specified prop and warn."""
         for t in self.triples.pop(prop):
-            warnings.warn("Unknown property %s: Can't add triple %s, %s, %s." % (prop,
+            m = "Unknown property %s: Can't add triple %s, %s, %s." % (prop,
                                                                               t['o'],
                                                                               prop,
-                                                                              t['s']))
+                                                                              t['s'])
+            self.log.append(m)
+            warnings.warn(m)
 
     def _add_triple(self, s, r, o, rtype, stype, otype,
                     edge_annotations=None, match_on="iri", safe_label_edge=False):
@@ -416,7 +422,9 @@ class kb_owl_edge_writer(kb_writer):
         missed_edges = [x['match_count'] for x in dc if x and (0 in x['match_count'].values())]
         if missed_edges:
             for e in missed_edges:
-                warnings.warn("No match found for %s" % str([k for k, v in e.items() if not v]))
+                m = "No match found for %s" % str([k for k, v in e.items() if not v])
+                self.log.append(m)
+                warnings.warn(m)
             return False
         else:
             return True
@@ -583,7 +591,6 @@ class EntityChecker(kb_writer):
         super(EntityChecker, self).__init__(endpoint, usr, pwd)
         self.should_exist = []
         self.should_not_exist = []
-        self.log = []
 
     def roll_entity_check(self, labels, query, match_on='short_form'):
 
@@ -663,6 +670,7 @@ class KB_pattern_writer(object):
         self.channel_iri_gen.configure(idp='VFBc',
                                        acc_length=8,
                                        base=map_iri('vfb'))
+        self.commit_log = []
 
         #  Adding a dict of common classes and properties. (Should really just use KB lookup...)
 
@@ -683,9 +691,21 @@ class KB_pattern_writer(object):
             }
 
     def commit(self, ni_chunk_length=5000, ew_chunk_length=2000, verbose=False):
+        """Commits nodes then edges. Populate commit_log, returns False if log has content,
+        otherwise returns True."""
 
         self.ni.commit(verbose=verbose, chunk_length=ni_chunk_length)
         self.ew.commit(verbose=verbose, chunk_length=ew_chunk_length)
+        self.commit_log.extend(self.ni.log + self.ew.log)
+        if self.commit_log:
+            return False
+        else:
+            return True
+
+    def get_log(self):
+        out = self.commit_log[:]
+        self.commit_log = []
+        return out
 
     def add_anatomy_image_set(self,
                               dataset,
