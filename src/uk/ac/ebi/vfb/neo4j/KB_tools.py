@@ -671,7 +671,8 @@ class KB_pattern_writer(object):
             'in register with': 'http://purl.obolibrary.org/obo/RO_0002026',
             'is specified output of': 'http://purl.obolibrary.org/obo/OBI_0000312',
             'hasDbXref': 'http://www.geneontology.org/formats/oboInOwl#hasDbXref',
-            'has_source': 'http://purl.org/dc/terms/source'
+            'has_source': 'http://purl.org/dc/terms/source',
+            'is exemplar of': 'http://purl.obolibrary.org/obo/c099d9d6-4ef3-11e3-9da7-b1ad5291e0b0'  # This really  needs  to be  using RO!!!
             }
 
         self.class_lookup = {
@@ -694,6 +695,7 @@ class KB_pattern_writer(object):
                               start,
                               template,
                               anatomical_type='',
+                              is_exemplar=False,
                               anon_anatomical_types=None,
                               index=False,
                               center=(),
@@ -714,6 +716,8 @@ class KB_pattern_writer(object):
            If your image does not fit into these types, please post a ticket to request
            the list of supported types be extended.
         anatomical_type: classification of anatomical entity,
+        if is_exemplar is True - then individual is registered as exemplar
+        of type specified in 'anatomical_type' arg.
         anon_anatomical_types: list of r,o) tuples specifying anon
         anatomical types, where subject is the anatomical individual being created
         template: channel ID of the template to which the image is registered
@@ -817,8 +821,9 @@ class KB_pattern_writer(object):
                                   o='VFBext_0000014',
                                   match_on='short_form')
 
+        # Imaging modality - currently works on internal lookup in script.
+        # Should probably be dynamic with DB
 
-        # Imaging modality - currently works on internal lookup in script.  Should probably be dynamic with DB
         self.ew.add_anon_type_ax(s=channel_id['iri'],
                                  r=self.relation_lookup['is specified output of'],
                                  o=self.class_lookup[imaging_type])
@@ -828,6 +833,14 @@ class KB_pattern_writer(object):
                                       o=anatomical_type,
                                       match_on=match_on,
                                       edge_annotations=type_edge_annotations)
+
+        if is_exemplar:
+            self.ew.add_anon_type_ax(s=anat_id['iri'],
+                                     r=self.relation_lookup['is exemplar of'],
+                                     o=anatomical_type,
+                                     match_on='iri',
+                                     )
+            # Also add reciprocal?
         # Add facts
 
         # This takes no vars so match_on can be fixed.
