@@ -656,7 +656,8 @@ class KB_pattern_writer(object):
         self.ni = node_importer(endpoint, usr, pwd)
         self.iri_gen = iri_generator(endpoint, usr, pwd)
         self.ec = EntityChecker(endpoint, usr, pwd)
-        # Hmmm - these look like they're needed for anat image set only.
+        # Hmmm - these look like they're needed for anat image set only,
+        # so add  to have at object leve.
         self.anat_iri_gen = iri_generator(endpoint, usr, pwd)
         self.anat_iri_gen.set_default_config()
         self.channel_iri_gen = iri_generator(endpoint, usr, pwd)
@@ -703,6 +704,7 @@ class KB_pattern_writer(object):
                               match_on='short_form',
                               orcid='',
                               type_edge_annotations=None,
+                              use_base36=False,
                               hard_fail=False):
         """Adds typed inds for an anatomical individual and channel, 
         linked to each other and to the specified template.
@@ -768,10 +770,10 @@ class KB_pattern_writer(object):
 
 
 
-        anat_id = self.anat_iri_gen.generate(start)
+        anat_id = self.anat_iri_gen.generate(start, use_base36=use_base36)
 
         anat_id['label'] = label
-        channel_id = self.channel_iri_gen.generate(start)
+        channel_id = self.channel_iri_gen.generate(start, use_base36=use_base36)
         channel_id['label'] = label + '_c'
 
         anatomy_attributes['label'] = label
