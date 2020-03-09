@@ -376,6 +376,13 @@ class kb_owl_edge_writer(kb_writer):
                                edge_annotations = edge_annotations, 
                                match_on = match_on,
                                safe_label_edge=safe_label_edge)
+        
+    def add_value_restriction(self, s, r, o, edge_annotations=None,
+                              match_on="iri", safe_label_edge=False):
+        self._add_related_edge(s, r, o, stype=":Class", otype=":Individual",
+                               edge_annotations=edge_annotations, 
+                               match_on=match_on,
+                               safe_label_edge=safe_label_edge)
 
     def add_named_subClassOf_ax(self, s, o, match_on="iri"):
         """Add OWL named type axiom to statement stack.
@@ -835,12 +842,18 @@ class KB_pattern_writer(object):
                                       edge_annotations=type_edge_annotations)
 
         if is_exemplar:
+            # Is this direction needed?
             self.ew.add_anon_type_ax(s=anat_id['iri'],
                                      r=self.relation_lookup['is exemplar of'],
                                      o=anatomical_type,
                                      match_on='iri',
                                      )
-            # Also add reciprocal?
+            self.ew.add_value_restriction(s=anatomical_type,
+                                          r=self.relation_lookup['has exemplar'],
+                                          o=anat_id[match_on],
+                                          match_on=match_on) # Relation lookup needs short_forms!
+
+                                          # Also add reciprocal?
         # Add facts
 
         # This takes no vars so match_on can be fixed.
