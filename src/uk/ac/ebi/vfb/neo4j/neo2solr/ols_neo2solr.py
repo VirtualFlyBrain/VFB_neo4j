@@ -47,5 +47,5 @@ q = nc.commit_list([query])
 if not isinstance(q, bool):
   r = results_2_dict_list(q)[0]
   print(json.dumps(r, indent=4))
-  solr.add(json.loads(json.dumps(r))['flat'], fieldUpdates={'facets':'set'})
+  solr.add(json.loads(json.dumps(r))['flat'], fieldUpdates={'facets_annotation':'set'})
 
