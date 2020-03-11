@@ -242,6 +242,7 @@ class TestKBPatternWriter(unittest.TestCase):
         statements.append("MERGE (p:Class { short_form: 'lobulobus', label: 'lobulobus' })")
         statements.append("MERGE (p:Class { short_form: 'brain', label: 'brain' })")
         statements.append("MERGE (p:Property { short_form: 'part_of', label: 'part of', iri: 'http://fubar/part_of' })")
+        statements.append("MERGE (p:Property { short_form: 'this_prop_has_no_iri', label: 'this_prop_has_no_iri' })")
 
         statements.append("MERGE (p:Individual:Template { short_form: 'template_of_dave',"
                           " label: 'template_of_dave' })")
@@ -274,7 +275,7 @@ class TestKBPatternWriter(unittest.TestCase):
             start=100
         )
         assert bool(t) is True
-        bool(self.kpw.commit())
+        assert bool(self.kpw.commit()) is True
 
         # Some negative tests
 
@@ -300,7 +301,34 @@ class TestKBPatternWriter(unittest.TestCase):
             start=100
         )
         assert t is False
-        self.kpw.commit()
+
+        t = self.kpw.add_anatomy_image_set(
+            dataset='dosumis2020',
+            imaging_type='computer graphic',
+            label='lobulobus of Dave',
+            template='template_of_dave',
+            anatomical_type='lobulobus',
+            dbxrefs={'fu': 'bar'},
+            anon_anatomical_types=([('part_of', 'brainz')]),
+            start=100
+        )
+        assert bool(t) is False
+
+        self.kpw.add_anatomy_image_set(
+            dataset='dosumis2020',
+            imaging_type='computer graphic',
+            label='lobulobus of Dave',
+            template='template_of_dave',
+            anatomical_type='lobulobus',
+            dbxrefs={'fu': 'bar'},
+            anon_anatomical_types=([('this_prop_has_no_iri', 'brain')]),
+            start=100
+        )
+        assert bool(self.kpw.commit()) is False
+        print(self.kpw.commit_log)
+
+
+
 
 
     def tearDown(self):
