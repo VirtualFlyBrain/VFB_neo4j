@@ -37,3 +37,15 @@ for m in matches.values():
       r = results_2_dict_list(q)[0]
       print(json.dumps(r, indent=4))
       solr.add(json.loads(json.dumps(r))['flat'])
+      
+# adding facets:
+with_file = open("uk/ac/ebi/vfb/neo4j/neo2solr/ols_solr_facets_query.cypher", 'r')
+with_clause = with_file.read()
+query = ' \n'.join(["MATCH (n:Entity) WHERE n.short_form starts with 'FBbt' OR (n.short_form starts with 'VFB_' AND NOT n.short_form starts with 'VFB_internal') ", with_clause])
+print(query)
+q = nc.commit_list([query])
+if not isinstance(q, bool):
+  r = results_2_dict_list(q)[0]
+  print(json.dumps(r, indent=4))
+  solr.add(json.loads(json.dumps(r))['flat'],fieldUpdates={'facets_annotation':'set'})
+
