@@ -674,20 +674,53 @@ class KB_pattern_writer(object):
         #  Adding a dict of common classes and properties. (Should really just use KB lookup...)
 
         self.relation_lookup = {
-            'depicts': 'http://xmlns.com/foaf/0.1/depicts',
-            'in register with': 'http://purl.obolibrary.org/obo/RO_0002026',
-            'is specified output of': 'http://purl.obolibrary.org/obo/OBI_0000312',
-            'hasDbXref': 'http://www.geneontology.org/formats/oboInOwl#hasDbXref',
-            'has_source': 'http://purl.org/dc/terms/source',
-            'is exemplar of': 'http://purl.obolibrary.org/obo/c099d9d6-4ef3-11e3-9da7-b1ad5291e0b0'  # This really  needs  to be  using RO!!!
+            'depicts': {
+                'iri': 'http://xmlns.com/foaf/0.1/depicts',
+                'short_form': 'depicts'
+                },
+            'in register with': {
+                'iri': 'http://purl.obolibrary.org/obo/RO_0002026',
+                'short_form': 'RO_0002026'
+                },
+            'is specified output of': {
+                'iri': 'http://purl.obolibrary.org/obo/OBI_0000312',
+                'short_form': 'OBI_0000312'
+                },
+            'hasDbXref': {
+                'iri': 'http://www.geneontology.org/formats/oboInOwl#hasDbXref',
+                'short_form': 'hasDbXref'
+                },
+            'has_source': {
+                'iri': 'http://purl.org/dc/terms/source',
+                'short_form': 'source'
+                },
+            'is exemplar of': {
+                'iri': 'http://purl.obolibrary.org/obo/c099d9d6-4ef3-11e3-9da7-b1ad5291e0b0',
+                'short_form' : 'c099d9d6-4ef3-11e3-9da7-b1ad5291e0b0' # This really  needs  to be  using RO!!!
+                }
             }
 
         self.class_lookup = {
-            'computer graphic': 'http://purl.obolibrary.org/obo/FBbi_00000224',
-            'channel': 'http://purl.obolibrary.org/obo/fbbt/vfb/VFBext_0000014',
-            'confocal microscopy': 'http://purl.obolibrary.org/obo/FBbi_00000251',
-            'SB-SEM': 'http://purl.obolibrary.org/obo/FBbi_00000585',
-            'TEM': 'http://purl.obolibrary.org/obo/FBbi_00000258'
+            'computer graphic': {
+                'iri': 'http://purl.obolibrary.org/obo/FBbi_00000224',
+                'short_form': 'FBbi_00000224'
+                },
+            'channel': {
+                'iri': 'http://purl.obolibrary.org/obo/fbbt/vfb/VFBext_0000014',
+                'short_form': 'VFBext_0000014'
+                },
+            'confocal microscopy': {
+                'iri': 'http://purl.obolibrary.org/obo/FBbi_00000251',
+                'short_form': 'FBbi_00000251'
+                },
+            'SB-SEM':  {
+                'iri': 'http://purl.obolibrary.org/obo/FBbi_00000585',
+                'short_form': 'FBbi_00000585'
+                },
+            'TEM': {
+                'iri': 'http://purl.obolibrary.org/obo/FBbi_00000258',
+                'short_form':  'FBbi_00000258'
+                }
             }
 
     def commit(self, ni_chunk_length=5000, ew_chunk_length=2000, verbose=False):
@@ -832,8 +865,8 @@ class KB_pattern_writer(object):
         # Should probably be dynamic with DB
 
         self.ew.add_anon_type_ax(s=channel_id['iri'],
-                                 r=self.relation_lookup['is specified output of'],
-                                 o=self.class_lookup[imaging_type])
+                                 r=self.relation_lookup['is specified output of']['iri'],
+                                 o=self.class_lookup[imaging_type]['iri'])
 
         if anatomical_type:
             self.ew.add_named_type_ax(s=anat_id[match_on],
@@ -844,21 +877,21 @@ class KB_pattern_writer(object):
         if is_exemplar:
             # Is this direction needed?
             self.ew.add_anon_type_ax(s=anat_id['iri'],
-                                     r=self.relation_lookup['is exemplar of'],
+                                     r=self.relation_lookup['is exemplar of']['iri'],
                                      o=anatomical_type,
                                      match_on='iri',
                                      )
             self.ew.add_value_restriction(s=anatomical_type,
-                                          r=self.relation_lookup['has exemplar'],
+                                          r=self.relation_lookup['has exemplar'][match_on],
                                           o=anat_id[match_on],
-                                          match_on=match_on) # Relation lookup needs short_forms!
+                                          match_on=match_on)  # Relation lookup needs short_forms!
 
                                           # Also add reciprocal?
         # Add facts
 
         # This takes no vars so match_on can be fixed.
         self.ew.add_fact(s=channel_id['iri'],
-                         r=self.relation_lookup['depicts'],
+                         r=self.relation_lookup['depicts']['iri'],
                          o=anat_id['iri'])
 
         edge_annotations = {}
@@ -869,7 +902,7 @@ class KB_pattern_writer(object):
         # if template == 'self':
         #    template = channel_iri
         self.ew.add_fact(s=channel_id['short_form'],
-                         r=get_sf(self.relation_lookup['in register with']),
+                         r=get_sf(self.relation_lookup['in register with']['iri']),
                          o=template,
                          edge_annotations=edge_annotations,
                          match_on='short_form',
