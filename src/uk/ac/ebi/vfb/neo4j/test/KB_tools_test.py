@@ -270,6 +270,7 @@ class TestKBPatternWriter(unittest.TestCase):
             template='template_of_dave',
             anatomical_type='lobulobus',
             dbxrefs={'fu': 'bar'},
+            is_exemplar=True,
             anon_anatomical_types=([('part_of', 'brain')]),
             start=100
         )
