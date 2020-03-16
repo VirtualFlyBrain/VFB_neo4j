@@ -696,6 +696,7 @@ class KB_pattern_writer(object):
         self.ec.log = []
         self.ni.commit(verbose=verbose, chunk_length=ni_chunk_length)
         self.ew.commit(verbose=verbose, chunk_length=ew_chunk_length)
+        self.commit_log = []
         self.commit_log.extend(self.ni.log + self.ew.log)
         if self.commit_log:
             return False
