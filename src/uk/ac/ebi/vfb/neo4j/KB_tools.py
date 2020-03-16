@@ -693,7 +693,7 @@ class KB_pattern_writer(object):
     def commit(self, ni_chunk_length=5000, ew_chunk_length=2000, verbose=False):
         """Commits nodes then edges. Populate commit_log, returns False if log has content,
         otherwise returns True."""
-
+        self.ec.log = []
         self.ni.commit(verbose=verbose, chunk_length=ni_chunk_length)
         self.ew.commit(verbose=verbose, chunk_length=ew_chunk_length)
         self.commit_log.extend(self.ni.log + self.ew.log)
