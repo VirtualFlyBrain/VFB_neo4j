@@ -215,8 +215,6 @@ class TestIriGenerator(unittest.TestCase):
         print(self.ig.generate('jhm00000', use_base36=True))
 
 
-
-
 class TestKBPatternWriter(unittest.TestCase):
 
     def setUp(self):
