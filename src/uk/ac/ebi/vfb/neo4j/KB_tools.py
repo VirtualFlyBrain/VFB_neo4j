@@ -936,6 +936,24 @@ class KB_pattern_writer(object):
                                          safe_label_edge=True)
 
 
+    def add_pub(self,
+                short_form,
+                iri,
+                label='',
+                title='',
+                DOI='',
+                PMID='',
+                year=''
+                ):
+        self.ni.add_node(labels=['pub', 'Individual'],
+                         IRI=iri,
+                         attribute_dict={
+
+                         })
+
+    def add_site(self):
+
+        self.ni.add_default_constraint_set(**locals())
 
 
 
