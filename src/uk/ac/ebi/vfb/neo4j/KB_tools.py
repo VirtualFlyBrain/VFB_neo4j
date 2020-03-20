@@ -694,9 +694,10 @@ class KB_pattern_writer(object):
     def commit(self, ni_chunk_length=5000, ew_chunk_length=2000, verbose=False):
         """Commits nodes then edges. Populate commit_log, returns False if log has content,
         otherwise returns True."""
-
+        self.ec.log = []
         self.ni.commit(verbose=verbose, chunk_length=ni_chunk_length)
         self.ew.commit(verbose=verbose, chunk_length=ew_chunk_length)
+        self.commit_log = []
         self.commit_log.extend(self.ni.log + self.ew.log)
         if self.commit_log:
             return False
@@ -750,9 +751,10 @@ class KB_pattern_writer(object):
         if dbxrefs is None: dbxrefs = {}
         if type_edge_annotations is None: type_edge_annotations = {}
 
-        self.ec.roll_entity_check(labels=['Individual'],
-                                  match_on=match_on,
-                                  query=template)
+        if not template == 'self':
+            self.ec.roll_entity_check(labels=['Individual'],
+                                      match_on=match_on,
+                                      query=template)
         self.ec.roll_entity_check(labels=['Class'],
                                   match_on=match_on,
                                   query=anatomical_type)
@@ -797,9 +799,12 @@ class KB_pattern_writer(object):
         channel_id['label'] = label + '_c'
 
         anatomy_attributes['label'] = label
+        self_labels = ["Individual"]
+        if template == 'self':
+            self_labels.append("Template")
 
 
-        self.ni.add_node(labels=['Individual'],
+        self.ni.add_node(labels=self_labels,
                          IRI=anat_id['iri'],
                          attribute_dict=anatomy_attributes)
         #dataset_short_form = self.ni.nc.commit_list(["MATCH (ds:DataSet) WHERE ds.label = %s RETURN ds.short_form" % dataset])
@@ -824,7 +829,7 @@ class KB_pattern_writer(object):
                                          o=orcid,
                                          match_on='short_form')  # This assumes matching on short form!
 
-        self.ni.add_node(labels=['Individual'],
+        self.ni.add_node(labels=self_labels,
                          IRI=channel_id['iri'],
                          attribute_dict={'label': label + '_c'}
                          )
@@ -862,8 +867,9 @@ class KB_pattern_writer(object):
         if center: edge_annotations['center'] = center
         if image_filename: edge_annotations['filename'] = image_filename
 
-        # if template == 'self':
-        #    template = channel_iri
+        if template == 'self':
+            template = channel_id['short_form']
+
         self.ew.add_fact(s=channel_id['short_form'],
                          r=get_sf(self.relation_lookup['in register with']),
                          o=template,
@@ -896,16 +902,16 @@ class KB_pattern_writer(object):
         """
 
         self.ec.roll_entity_check(labels=['Individual'],
-                           match_on=match_on,
-                           query=license)
+                                  match_on=match_on,
+                                  query=license)
         if pub:
             self.ec.roll_entity_check(labels=['Individual'],
-                               match_on=match_on,
-                               query=pub)
+                                      match_on=match_on,
+                                      query=pub)
         if site:
             self.ec.roll_entity_check(labels=['Individual'],
-                               match_on=match_on,
-                               query=site)
+                                      match_on=match_on,
+                                      query=site)
 
         if not self.ec.check():
             return False
@@ -918,11 +924,11 @@ class KB_pattern_writer(object):
                              'description': [description],
                              'dataset_spec_text': [dataset_spec_text],
                              'schema': schema})
-        self.ni.commit()
+#       self.ni.commit()
         self.ew.add_annotation_axiom(s=short_form,
                                      r='license',
                                      o=license,
-                                     match_on='short_form',
+                                     match_on=match_on,
                                      safe_label_edge=True)
         if site:
             self.ew.add_annotation_axiom(s=short_form,
