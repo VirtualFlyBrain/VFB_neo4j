@@ -659,12 +659,13 @@ class KB_pattern_writer(object):
     """
     
     def __init__(self, endpoint, usr, pwd):
+        self.connection = (endpoint, usr, pwd)
         self.ew = kb_owl_edge_writer(endpoint, usr, pwd)
         self.ni = node_importer(endpoint, usr, pwd)
         self.iri_gen = iri_generator(endpoint, usr, pwd)
         self.ec = EntityChecker(endpoint, usr, pwd)
         # Hmmm - these look like they're needed for anat image set only,
-        # so add  to have at object leve.
+        # so odd to have at object level.  OTOH - too slow to put on methods
         self.anat_iri_gen = iri_generator(endpoint, usr, pwd)
         self.anat_iri_gen.set_default_config()
         self.channel_iri_gen = iri_generator(endpoint, usr, pwd)
@@ -885,6 +886,44 @@ class KB_pattern_writer(object):
                                      safe_label_edge=True)
 
         return {'channel': channel_id, 'anatomy': anat_id }
+
+    def add_neuron_type(self,
+                        exemplars,
+                        label,
+                        synonyms=None,
+                        parent_class='',  # neuron
+                        match_on='short_form',
+                        start = 20000000
+                        ):
+        self.ec.roll_entity_check(labels=['Class'],
+                                  query=parent_class,
+                                  match_on=match_on)
+
+        for e in exemplars:
+            self.ec.roll_entity_check(labels=['Individual'],
+                                      query=e,
+                                      match_on=match_on)
+
+        self.ec.check()
+
+        fbbt_id_generator = iri_generator(**self.connection)
+        fbbt_id_generator.configure(idp='FBbt',
+                                    acc_length=8,
+                                    base='http://purl.obolibrary.org/obo/')
+        fbbt_id = fbbt_id_generator.generate(start, label=label)
+        self.ni.add_node(labels=['Class'],
+                         IRI=fbbt_id['iri'],
+                         attribute_dict={'label': label, 'synonyms': synonyms})
+        self.ew.add_named_subClassOf_ax(s=fbbt_id['short_form'],
+                                        o=parent_class,
+                                        match_on=match_on)
+        for e in exemplars:
+            self.ew.add_named_type_ax(s=e,
+                                      o=fbbt_id)
+            ### Add value restriction needed here.
+
+
+
 
     def add_dataSet(self, name, license, short_form, pub='',
                     description='', dataset_spec_text='', site='', schema='image', match_on='short_form'):
