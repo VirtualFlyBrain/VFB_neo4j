@@ -49,14 +49,11 @@ def gen_id(idp, ID, length, id_name, use_base36=False):
     ARG3, length of numeric portion ID, 
     ARG4 an id:name hash"""
     def gen_key(ID, length):  # This function is limited to the scope of the gen_id function.
-        dl = len(str(ID)) # coerce int to string.
+        dl = len(str(ID))  # coerce int to string.
         k = idp+'_'+(length - dl)*'0'+str(ID)
         return k
 
     k = gen_key(ID, length)
-
-
-
 
     while k in id_name:
         if use_base36:
@@ -64,7 +61,7 @@ def gen_id(idp, ID, length, id_name, use_base36=False):
         else:
             ID += 1
         k = gen_key(ID, length)
-    return {'short_form' : k, 'acc_int' : ID} # useful to return ID to use for next round.
+    return {'short_form': k, 'acc_int': ID}  # useful to return ID to use for next round.
 
 
 class kb_writer (object):
@@ -136,8 +133,8 @@ class iri_generator(kb_writer):
         self.id_name = {}
         self.base = base
         # Should I really be assuming everything has a short_form?
-        self.statements.append("MATCH (i:Individual) WHERE i.short_form =~ '%s_[0-9]{%d}' " \
-                               "RETURN i.short_form as short_form, i.label as label" % (idp, acc_length)) # Note POSIX regex rqd       
+        self.statements.append("MATCH (i:Individual) WHERE i.short_form =~ '%s_[0-9a-z]{%d}' " \
+                               "RETURN i.short_form as short_form, i.label as label" % (idp, acc_length))  # Note POSIX regex rqd
         r = self.commit()
         if r:
             results = results_2_dict_list(r)
@@ -155,11 +152,15 @@ class iri_generator(kb_writer):
         self.configure(idp='VFBc', acc_length = 8, base = map_iri('vfb'))
 
     def generate(self, start, label='', use_base36=False):
-        ID = gen_id(idp = self.idp, ID = start, length = self.acc_length, id_name = self.id_name,  use_base36=use_base36)
+        ID = gen_id(idp=self.idp,
+                    ID=start,
+                    length=self.acc_length,
+                    id_name=self.id_name,
+                    use_base36=use_base36)
         short_form = ID['short_form']
-        iri =  self.base + short_form
+        iri = self.base + short_form
         self.id_name[short_form] = label
-        return { 'iri': iri, 'short_form': short_form }
+        return {'iri': iri, 'short_form': short_form}
     
 
 class kb_owl_edge_writer(kb_writer):
