@@ -698,7 +698,7 @@ class KB_pattern_writer(object):
                 'iri': 'http://purl.obolibrary.org/obo/c099d9d6-4ef3-11e3-9da7-b1ad5291e0b0',
                 'short_form' : 'c099d9d6-4ef3-11e3-9da7-b1ad5291e0b0' # This really  needs  to be  using RO!!!
                 },
-            'has examplar': {
+            'has exemplar': {
                 'iri': 'http://purl.obolibrary.org/obo/C888C3DB-AEFA-447F-BD4C-858DFE33DBE7',
                 'short_form': 'C888C3DB-AEFA-447F-BD4C-858DFE33DBE7'
                 }
