@@ -129,14 +129,23 @@ class iri_generator(kb_writer):
     """
     A wrapper class for generating IRIs for *OWL individuals* that don't stomp on those already in the KB.
     """
+    def __init__(self, endpoint, usr, pwd,
+                 use_base36=False,
+                 idp='VFB',
+                 acc_length=8,
+                 base=map_iri('vfb')
+                 ):
+        super().__init__(endpoint, usr, pwd)
+        self.use_base36 = use_base36
+        self._configure(idp=idp,
+                        acc_length=acc_length,
+                        base=base)
 
-    def configure(self, idp, acc_length, base, use_base36=False):
+    def _configure(self, idp, acc_length, base):
         self.acc_length = acc_length
         self.idp = idp
         self.id_name = {}
         self.base = base
-        self.use_base36 = use_base36
-        # Should I really be assuming everything has a short_form?
         self.statements.append("MATCH (i:Individual) "
                                "WHERE i.short_form =~ '%s_[0-9a-z]{%d}' "  # Note POSIX regex rqd
                                "RETURN i.short_form as short_form, "
@@ -147,7 +156,7 @@ class iri_generator(kb_writer):
             results = results_2_dict_list(r)
             for res in results:
                 self.id_name[res['short_form']] = res['label']
-            if use_base36:
+            if self.use_base36:
                 self.lookup = [base36.loads(int(x.split('_')[1])) for x in self.id_name.keys()]
             else:
                 self.lookup = [int(x.split('_')[1]) for x in self.id_name.keys()]
@@ -156,13 +165,10 @@ class iri_generator(kb_writer):
             warnings.warn("No existing ids match the pattern %s_%s" % (idp, 'n'*acc_length))
             return False
 
-    def set_default_config(self):
-        self.configure(idp = 'VFB', acc_length=8, base=map_iri('vfb'), use_base36=self.use_base36)
-
     def set_channel_config(self):
-        self.configure(idp='VFBc', acc_length=8, base=map_iri('vfb'), use_base36=self.use_base36)
+        self._configure(idp='VFBc', acc_length=8, base=map_iri('vfb'), )
 
-    def generate(self, start, label='', use_base36=False):
+    def generate(self, start, label=''):
         acc = self._get_new_accession(start)
         short_form = self._gen_short_form(acc)
         iri = self.base + short_form
@@ -170,16 +176,20 @@ class iri_generator(kb_writer):
         return {'iri': iri, 'short_form': short_form}
 
     def _get_new_accession(self, start):
-        i = start
+        if self.use_base36:
+            i = base36.loads(start)
+        else:
+            i = int(start)  # casting just in case
         while i in self.lookup:
             i += 1
         self.lookup.append(i)
-        return i
+        if base36:
+            return base36.dumps(i)
+        else:
+            return i
 
     def _gen_short_form(self, accession):
-        if self.use_base36:
-            accession = base36.loads(accession)
-        return self.idp + '_' + str(accession)
+        return self.idp + '_' + str(accession).zfill(self.acc_length)
 
 class kb_owl_edge_writer(kb_writer):
     """A class wrapping methods for updating imported entities in the KB.
@@ -684,13 +694,9 @@ class KB_pattern_writer(object):
         self.ec = EntityChecker(endpoint, usr, pwd)
         # Hmmm - these look like they're needed for anat image set only,
         # so add  to have at object leve.
-        self.anat_iri_gen = iri_generator(endpoint, usr, pwd)
-        self.anat_iri_gen.set_default_config(use_base36=use_base36)
-        self.channel_iri_gen = iri_generator(endpoint, usr, pwd)
-        self.channel_iri_gen.configure(idp='VFBc',
-                                       acc_length=8,
-                                       base=map_iri('vfb'),
-                                       use_base36=use_base36)
+        self.anat_iri_gen = iri_generator(endpoint, usr, pwd, use_base36=use_base36)
+        self.channel_iri_gen = iri_generator(endpoint, usr, pwd, use_base36=use_base36)
+        self.channel_iri_gen.set_channel_config()
         self.commit_log = []
 
         #  Adding a dict of common classes and properties. (Should really just use KB lookup...)
@@ -812,10 +818,10 @@ class KB_pattern_writer(object):
 
 
 
-        anat_id = self.anat_iri_gen.generate(start, use_base36=use_base36)
+        anat_id = self.anat_iri_gen.generate(start)
 
         anat_id['label'] = label
-        channel_id = self.channel_iri_gen.generate(start, use_base36=use_base36)
+        channel_id = self.channel_iri_gen.generate(start)
         channel_id['label'] = label + '_c'
 
         anatomy_attributes['label'] = label
