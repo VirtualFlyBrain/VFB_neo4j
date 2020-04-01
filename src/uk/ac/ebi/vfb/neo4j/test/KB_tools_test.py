@@ -351,11 +351,24 @@ class TestEntityChecker(unittest.TestCase):
                                       match_on='short_form',
                                       query='Aya')
 
+
             self.ec.roll_entity_check(labels=['Individual'],
                                       match_on='iri',
                                       query='http://fu.bar/Aya')
 
             assert self.ec.check() is True
+            # check caching (kinda)
+            assert self.ec.roll_entity_check(labels=['Individual'],
+                                             match_on='short_form',
+                                             query='Aya') is True
+            assert 'Aya' in self.ec.cache
+            assert len(self.ec.should_exist) == 0
+
+
+
+
+            assert self.ec.check() is True
+
 
             self.ec.roll_entity_check(labels=['Individual'],
                                       match_on='label',
