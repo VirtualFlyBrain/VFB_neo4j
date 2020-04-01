@@ -751,7 +751,6 @@ class KB_pattern_writer(object):
                               match_on='short_form',
                               orcid='',
                               type_edge_annotations=None,
-                              use_base36=False,
                               hard_fail=False):
         """Adds typed inds for an anatomical individual and channel, 
         linked to each other and to the specified template.
