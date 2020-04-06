@@ -250,7 +250,10 @@ class kb_owl_edge_writer(kb_writer):
         for t in flat_list_triples:
             rel_map = self.properties[t['r']]
             if t['safe_label_edge']:
-                rel = re.sub(' ', '_', rel_map['label'])
+                if 'label' in rel_map.keys() and rel_map['label']:
+                    rel = re.sub(' ', '_', rel_map['label'])
+                else:
+                    rel = rel_map[t['match_on']]
             else:
                     rel = rel_map[t['match_on']]
 
