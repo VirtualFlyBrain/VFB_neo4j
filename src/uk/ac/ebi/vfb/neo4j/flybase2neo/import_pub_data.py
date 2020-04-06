@@ -1,7 +1,7 @@
 import sys
-from uk.ac.ebi.vfb.neo4j.flybase2neo.fb_tools import dict_cursor, get_fb_conn
-from uk.ac.ebi.vfb.neo4j.neo4j_tools import neo4j_connect
-import re
+from uk.ac.ebi.vfb.neo4j.flybase2neo.pub_tools import pubMover
+from uk.ac.ebi.vfb.neo4j.neo4j_tools import neo4j_connect, results_2_dict_list, chunks
+import warnings
 
 """Populate pub data.  Should be run as a final step, once all content added."""
 
@@ -14,61 +14,27 @@ usr = sys.argv[2]
 pwd = sys.argv[3]
 
 nc = neo4j_connect(base_uri, usr, pwd)
+pm = pubMover(base_uri, usr, pwd)
 
 # Pull all pub FBrfs from graph
-statements = ['MATCH (pub) RETURN DISTINCT pub.FlyBase']
-pub_list_results = nc.commit_list(statements)
-pub_list = [str(x['row'][0]) for x in pub_list_results[0]['data']] # Parsing returned Json for results.
-
-c = get_fb_conn()
-cursor=c.cursor()
-
-statements = []    
-    # Pull basic pub data
-cursor.execute("SELECT pub.title, pub.miniref, pub.pyear, pub.pages, " \
-            "pub.volume, typ.name, pub.uniquename as fbrf " \
-            "FROM pub JOIN cvterm typ on typ.cvterm_id = pub.type_id " \
-            "WHERE pub.uniquename = ANY(%s)", (pub_list,))  # Odd syntax necessary for cast
-
-    
-dc = dict_cursor(cursor)
-for d in dc:
-    if d['title']:
-        title = re.sub('"', "\\'", d['title'])
+statements = ['MATCH (pub) RETURN DISTINCT pub.short_form'] # Needs to be shifted to short_form - coord with KB.
+results = nc.commit_list(statements)
+if results:
+    dc = results_2_dict_list(results)
+    pub_list = [d['pub.short_form'] for d in dc if d['pub.short_form']]
+    if pub_list:
+        print("Importing details for %d pubs." % len(pub_list))
+        pub_chunks = chunks(pub_list, 1000)
+        for pc in pub_chunks:
+            pm.move(pc)
     else:
-        title = ''
-    statements.append("MATCH (p:pub) WHERE p.FlyBase = '%s' " \
-                      "SET p.title = \"%s\", p.miniref = \"%s\", " \
-                      "p.volume = '%s', p.year = '%s', p.pages = '%s'" \
-                      % (d['fbrf'], title, d['miniref'], d['volume'], d['pyear'], d['pages']))
-    # Note on quoting: Double quotes safer for longer text which may have single quotes internally
-    # Titles occasionally have double quotes in.  These are escaped via re.sub  
+        warnings.warn("No pubs found in %s" % base_uri)
+else:
+    warnings.warn("No pubs found in %s" % base_uri)
 
-cursor.execute("SELECT pub.uniquename as fbrf, db.name AS db_name, dbx.accession AS acc FROM pub " \
-               "JOIN pub_dbxref pdbx on pdbx.pub_id=pub.pub_id " \
-               "JOIN dbxref dbx on pdbx.dbxref_id=dbx.dbxref_id " \
-               "JOIN db on dbx.db_id=db.db_id " \
-               "WHERE pub.uniquename = ANY(%s)", (pub_list,)) 
-    
-for d in dict_cursor(cursor): 
-    if d['db_name'] == 'pubmed':
-        statements.append("MATCH (p:pub) WHERE p.FlyBase = '%s' " \
-                  "SET p.PMID = '%s'" % (d['fbrf'],d['acc']))
-    if d['db_name'] == 'PMCID':
-        statements.append("MATCH (p:pub) WHERE p.FlyBase = '%s' " \
-                  "SET p.PMCID = '%s'" % (d['fbrf'],d['acc']))
-    if d['db_name'] == 'ISBN':
-        statements.append("MATCH (p:pub) WHERE p.FlyBase = '%s' " \
-                  "SET p.PMID = '%s'" % (d['fbrf'],d['acc']))
-    if d['db_name'] == 'DOI':
-        statements.append("MATCH (p:pub) WHERE p.FlyBase = '%s' " \
-                  "SET p.DOI = '%s'" % (d['fbrf'],d['acc']))
-# Generate microref from miniref and append as label
-statements.append("MATCH (n:pub) where has(n.miniref) SET n.label=split(n.miniref,',')[0] + ', ' + split(n.miniref,',')[1]")
-        
-        
-nc.commit_list_in_chunks(statements, verbose = True, chunk_length = 1)
-c.close()
+
+
+
 # Ways to extend:  
 ##  Add authors
 ##  Add pub relationships, pub types... (via FBcv typing)

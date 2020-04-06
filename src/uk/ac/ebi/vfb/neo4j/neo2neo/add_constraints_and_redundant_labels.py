@@ -1,80 +1,111 @@
 #!/usr/bin/env python3
-import sys
 from uk.ac.ebi.vfb.neo4j.neo4j_tools import neo4j_connect
+import argparse
 
-nc = neo4j_connect(base_uri = sys.argv[1], usr = sys.argv[2], pwd = sys.argv[3])
+parser = argparse.ArgumentParser()
+parser.add_argument('--test', help='Run in test mode. ' \
+                    'runs with limits on cypher queries and additions.',
+                    action="store_true")
+parser.add_argument("endpoint",
+                    help="Endpoint for connection to neo4J prod")
+parser.add_argument("usr",
+                    help="username")
+parser.add_argument("pwd",
+                    help="password")
+args = parser.parse_args()
+
+nc = neo4j_connect(base_uri=args.endpoint,
+                   usr=args.usr, pwd=args.pwd)
+
+limit = ''
+if args.test:
+    limit = ' with n limit 5 '
 
 # Some AP deletions required for uniqueness constraints.  Needed due to quirks of OLS import.
 
 deletions = ["MATCH (n:VFB { short_form: 'deprecated' })-[r]-(m) DELETE r, n;"]
 nc.commit_list(deletions)
-
-## Run tests prior to adding uniqueness constraints:
-
-#test = ["MATCH (n:VFB) with n.short_form as prop, collect(n) as nodelist, count(*) as count where count > 1 return prop, nodelist, count"]
-
-#test_results = nc.commit_list(test)
-
-# Some processing
-# If test results have contents then die.
-
-## Add constraints
-
-
-# Commenting for now. constraints = ['CREATE CONSTRAINT ON (c:VFB) ASSERT c.short_form IS UNIQUE', 
-#               'CREATE CONSTRAINT ON (c:VFB) ASSERT c.short_form IS UNIQUE']
-# nc.commit_list(constraints)
-# 
-# Should really give up if constraints fail.
-
-### Cypher query to find dups.
-# "MATCH (n:VFB)
-# WITH n.short_form AS prop, collect(n) AS nodelist, count(*) AS COUNT
-# WHERE count > 1
-# RETURN prop, nodelist, count;"
-
-## Denormalise - adding labels for major categories:
-
-# probably better to do by ID...
-# A more flexible structure would use lists in values to allow labels from unions
-# Also add label type for FlyBase feature?
+uri2iri_hack = ["MATCH ()-[x]-() WHERE exists(x.uri) AND NOT exists(x.iri) SET x.iri = x.uri"]
+nc.commit_list(uri2iri_hack)
 
 
 label_types = {
-   'Neuron': 'neuron',
-   'Sensory_neuron': 'sensory neuron',
-   'Motor_neuron' : 'motor neuron',
-   'Peptidergic_neuron' : 'peptidergic neuron', 
-   'Neuron_projection_bundle' : 'neuron projection bundle',
-   'Synaptic_neuropil': 'synaptic neuropil',
-   'Synaptic_neuropil_domain': 'synaptic neuropil domain',
-   'Synaptic_neuropil_subdomain': 'synaptic neuropil subdomain',
-   'Synaptic_neuropil_block': 'synaptic neuropil block',   
-   'Clone': 'neuroblast lineage clone',
-   'Cluster': 'cluster',
-   'Neuroblast': 'neuroblast',
-   'GMC': 'ganglion_mother_cell',
-   'Anatomy': 'material anatomical entity',
-   'Cell': 'cell',
-   'Glial_cell': 'glial cell',
-   'Expression_pattern': 'expression_pattern',
-   'Ganglion': 'ganglion',
-   'Cholinergic': 'cholinergic neuron',
-   'Glutamatergic': 'glutamatergic neuron',
-   'GABAergic': 'GABAergic neuron',
-   'Octopaminergic': 'octopaminergic neuron',
-   'Dopaminergic': 'dopaminergic neuron',
-   'Serotonergic': 'serotonergic neuron',
+   'Neuron': ['neuron'],
+   'Sensory_neuron': ['sensory neuron'],
+   'Motor_neuron' : ['motor neuron'],
+   'Peptidergic_neuron' : ['peptidergic neuron'],
+   'Neuron_projection_bundle' : ['neuron projection bundle'],
+   'Synaptic_neuropil': ['synaptic neuropil'],
+   'Synaptic_neuropil_domain': ['synaptic neuropil domain'],
+   'Synaptic_neuropil_subdomain': ['synaptic neuropil subdomain'],
+   'Synaptic_neuropil_block': ['synaptic neuropil block'],
+   'Clone': ['neuroblast lineage clone'],
+   'Cluster': ['cluster'],
+   'Neuroblast': ['neuroblast'],
+   'GMC': ['ganglion_mother_cell'],
+   'Anatomy': ['anatomical entity'],
+   'Cell': ['cell'],
+   'Glial_cell': ['glial cell'],
+   'Expression_pattern': ['expression pattern', 'intersectional expression pattern'],
+   'Split': ['intersectional expression pattern'],
+   'Ganglion': ['ganglion'],
+   'Cholinergic': ['cholinergic neuron'],
+   'Glutamatergic': ['glutamatergic neuron'],
+   'GABAergic': ['GABAergic neuron'],
+   'Octopaminergic': ['octopaminergic neuron'],
+   'Dopaminergic': ['dopaminergic neuron'],
+   'Serotonergic': ['serotonergic neuron'],
+   'Expression_pattern_fragment': ['expression pattern fragment'],
+   'Neuromere': ['neuromere'],
+   'Muscle': ['Muscle cell']
    }
 
 label_additions = []
-for k,v in label_types.items():
-    label_additions.append("MATCH (n)-[r:SUBCLASSOF|INSTANCEOF*]->(n2:Class) " \
-                           "WHERE n2.label = '%s' SET n:%s, n2:%s" % (v, k, k))
+limit2 = ''
+if args.test:
+   limit = ' with n limit 5 '
+   limit2 = ' with n, n2 limit 5 '
+for k, v in label_types.items():
+    label_additions.append("MATCH (n)-[r:SUBCLASSOF|INSTANCEOF*]->(n2:Class) "
+                           "WHERE n2.label in %s %s  SET n:%s, n2:%s" % (str(v),
+                                                                         limit2,
+                                                                         k,
+                                                                         k))  # Relies on coincidence of Python/Cypher list syntax
 
-label_additions.append("MATCH (a:Individual)<-[d:Related]-(ch:Individual)-[r:Related]->(fbbi:Class) " \
-                       "WHERE fbbi.label = 'computer graphic' and d.short_form = 'depicts' " \
-                       "SET a:Painted_domain;")
+label_additions.append("MATCH (n:Individual)<-[d:Related]-(ch:Individual)-[r:Related]->(fbbi:Class) "
+                       "WHERE fbbi.label = 'computer graphic' and d.short_form = 'depicts' "
+                       + limit +
+                       "SET n:Painted_domain;")
+
+label_additions.append("MATCH (n:pub) WHERE NOT n:Individual SET n:Individual")
+
+label_additions.extend(["MATCH (n:Class) " + limit + "SET n:Entity",
+                        "MATCH (n:Individual) " + limit + "SET n:Entity"])  # Entity excludes Property. Not queried
+
+label_additions.append("MATCH (n:Feature) SET n.self_xref = 'FlyBase'")
+
+label_additions.append("MATCH (c:Class) WHERE c.iri =~ 'http://flybase.org/reports/FB.+' SET c.self_xref = 'FlyBase'")
+
+# Add Cluster label to all INSTANCES OF Cell Cluster
+label_additions.append("MATCH (:Class {short_form:'VFB_10000005'})<-[:INSTANCEOF]-(n:Individual) SET n:Cluster")
 
 nc.commit_list(label_additions)
+
+# Adding leaf nodes after other classifications in place. Also needs WITH otherwise hangs.  
+nc.commit_list(["MATCH (n:Class:Cell) WHERE NOT (n)<-[:SUBCLASSOF]-() "
+                + limit + " WITH n SET n:Leaf_node"])
+
+# Remove Anatomy label from Expression_pattern classes - bit hacky, but needed for correct queries in current schema
+
+nc.commit_list(["MATCH (n:Expression_pattern:Class:Anatomy) REMOVE n:Anatomy"])
+
+# Indexing - leaving off Class and Individual as these are indexed by default on OLS.
+index_labels = ['Entity', 'DataSet', 'pub', 'Site', 'Expression_pattern', 'License', 'Template'] 
+
+index_additions = []
+
+for il in index_labels:
+    index_additions.append("CREATE INDEX ON :%s(short_form)" % (il))
+
+nc.commit_list(index_additions)
 

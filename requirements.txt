@@ -1,5 +1,7 @@
-neo4j-driver
 requests
 pymysql
-psycopg2
+psycopg2-binary
 pandas
+pandasql
+pysolr
+base36

@@ -2,6 +2,7 @@
 import psycopg2
 from ..KB_tools import KB_pattern_writer
 import pandas as pd
+from operator import itemgetter
 
 '''
 Created on 4 Feb 2016
@@ -38,6 +39,37 @@ def get_fb_conn():
                             user='flybase')
 
 
+def dict_list_2_dict(key, dict_list, pfunc, sort = True):
+    """Processes a list of dicts to produce a single dict.
+    key = key of output dict.  Must be present in dict in dict_list
+    dict_list = a list of dicts.
+    pfunc = a function applied to all dicts in dict_list sharing the same key
+            to produce a value for the output dict.  The type of this value is
+            specified by what the function returns. This function must take 2 args:
+                First arg: input dict
+                Second arg: output datastructure (or False)
+            If the output datastructure is (inrepreted as) False
+            it must generate new one otherwise it should generate a new output
+            datastructure
+    sort = Boolean to set sorting of the input dict_list on value of output key.
+    The default = True as this sorting is required for the function to work, but it can be set to False for purposes of efficiency if the input is already pre-sorted.
+    """
+    if sort:
+        dict_list = sorted(dict_list, key=itemgetter(key))
+    result = {}
+    out = False
+    old_key = ''
+    while dict_list:
+        d = dict_list.pop()
+        current_key = d[key]
+        if not current_key == old_key:
+            out = False
+        out = pfunc(d, out)
+        result[current_key] = out # We can reassign every time as out is mutating.
+        old_key = current_key
+    return result
+
+
 class FB2Neo(object):
     """A general class for moving content between FB and Neo.
     Includes connections to FB and neo4J and a generic method for running queries
@@ -46,16 +78,17 @@ class FB2Neo(object):
     def __init__(self, endpoint, usr, pwd, file_path=''):
         """Specify Neo4J server endpoint, username and password"""
         self._init(endpoint, usr, pwd)
-        self.file_path = file_path  # A path for temp csv files
-        self.fb_base_URI = 'http://www.flybase.org/reports/' # Should use curie_tools
+        self.file_path = file_path  # A path for temp csv files  # This really should be pushed up to neo4J connect (via KB tools)
 
 
     def _init(self, endpoint, usr, pwd):
         self.conn = get_fb_conn()
-        pattern_writer = KB_pattern_writer(endpoint, usr, pwd)
-        self.ew = pattern_writer.ew
-        self.ni = pattern_writer.ni
-        self.nc = pattern_writer.ni.nc
+        self.pattern_writer = KB_pattern_writer(endpoint, usr, pwd)
+        self.ew = self.pattern_writer.ew
+        self.ni = self.pattern_writer.ni
+        self.nc = self.pattern_writer.ni.nc
+        self.fb_base_URI = 'http://www.flybase.org/reports/' # Should use curie_tools
+
 
     def query_fb(self, query):
         """Runs a query of public Flybase, 
@@ -76,7 +109,7 @@ class FB2Neo(object):
 
         
     def close(self):
-        self.close()  # Investigate implementing using with statement.  Then method not required.
+        self.conn.close()  # Investigate implementing using with statement.  Then method not required.
 
 
 
