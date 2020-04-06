@@ -592,6 +592,7 @@ class EntityChecker(kb_writer):
         super(EntityChecker, self).__init__(endpoint, usr, pwd)
         self.should_exist = []
         self.should_not_exist = []
+        self.cache = []
 
     def roll_entity_check(self, labels, query, match_on='short_form'):
 
@@ -600,6 +601,8 @@ class EntityChecker(kb_writer):
         match_on = property to match_on (default = short_form)
         query = Value of property matched on for target entity.
         """
+        if query in self.cache:
+            return True
         lstring = ':'.join(labels)
         self.should_exist.append("OPTIONAL MATCH (n:%s { %s : '%s'})"
                                  " return n.short_form as result, "
@@ -609,6 +612,8 @@ class EntityChecker(kb_writer):
                                                     query))
 
     def roll_dbxref_check(self, db, acc):
+        if ':'.join([db, str(acc)]) in self.cache:
+            return True
         self.should_not_exist.append(
             "OPTIONAL MATCH (s:Site { short_form: '%s' } )"
             "<-[r:hasDbXref { acc: '%s' }]-(i:Individual) "
@@ -640,6 +645,8 @@ class EntityChecker(kb_writer):
         dc = results_2_dict_list(self.commit())
         out = {}
         for d in dc:
+            # Everything checked goes in the cache, no matter the result.
+            self.cache.append(d['query'])
             if bool(d['result']) is exists:
                 out[d['query']] = True
             else:
