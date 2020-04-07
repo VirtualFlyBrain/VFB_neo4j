@@ -200,19 +200,18 @@ class TestIriGenerator(unittest.TestCase):
     
     def setUp(self):
         self.ig = iri_generator('http://localhost:7474', 'neo4j', 'neo4j')
+        self.ig_b36 = iri_generator('http://localhost:7474', 'neo4j', 'neo4j', use_base36=True)
 
     def test_default_id_gen(self):
-        self.ig.set_default_config()
         i = self.ig.generate(1)
         print(i['short_form'])
         assert i['short_form'] == 'VFB_00000001'
 
     def test_base36_id_gen(self):
-        self.ig.set_default_config()
-        print(self.ig.generate('9999', use_base36=True))
-        print(self.ig.generate('9999', use_base36=True))
-        print(self.ig.generate('jhm00000', use_base36=True))
-        print(self.ig.generate('jhm00000', use_base36=True))
+        print(self.ig_b36.generate('9999'))
+        print(self.ig_b36.generate('9999'))
+        print(self.ig_b36.generate('jhm00000'))
+        print(self.ig_b36.generate('jhm00000'))
 
 
 class TestKBPatternWriter(unittest.TestCase):
@@ -351,11 +350,24 @@ class TestEntityChecker(unittest.TestCase):
                                       match_on='short_form',
                                       query='Aya')
 
+
             self.ec.roll_entity_check(labels=['Individual'],
                                       match_on='iri',
                                       query='http://fu.bar/Aya')
 
             assert self.ec.check() is True
+            # check caching (kinda)
+            assert self.ec.roll_entity_check(labels=['Individual'],
+                                             match_on='short_form',
+                                             query='Aya') is True
+            assert 'Aya' in self.ec.cache
+            assert len(self.ec.should_exist) == 0
+
+
+
+
+            assert self.ec.check() is True
+
 
             self.ec.roll_entity_check(labels=['Individual'],
                                       match_on='label',
