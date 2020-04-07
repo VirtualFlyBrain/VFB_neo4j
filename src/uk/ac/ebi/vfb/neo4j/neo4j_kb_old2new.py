@@ -141,12 +141,12 @@ query('MATCH (n)-[r:SUBCLASSOF]->(m) CREATE (n)-[r2:SubClassOf]->(m) SET r2 = r 
 print('Transforming properties and relations: Correct edge typing, set qsl, change edges to qsls')
 transform_properties_and_relations_set_types_qsl(nc)
 
-print('Making sure that all annotation properties are represented as arrays on nodes rather than string values. Note that this query will fail hard if the property in question is already an array')
-transform_annotation_properties_on_nodes_to_array(nc)
-##
 print('Rewrite property keys to qsl according to map')
 mapping = propNotNull[propNotNull.keytype=='node']
 rewrite_property_keys_on_nodes_to_qsl(nc,mapping)
+
+print('Making sure that all annotation properties are represented as arrays on nodes rather than string values. Note that this query will fail hard if the property in question is already an array')
+transform_annotation_properties_on_nodes_to_array(nc)
 
 print('Collecting original database state indicators')
 ct_nodes_after = query(q_node_count % '',nc)[0]['ct']
