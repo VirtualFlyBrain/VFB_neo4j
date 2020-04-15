@@ -156,10 +156,8 @@ class iri_generator(kb_writer):
             results = results_2_dict_list(r)
             for res in results:
                 self.id_name[res['short_form']] = res['label']
-            if self.use_base36:
-                self.lookup = [base36.loads(int(x.split('_')[1])) for x in self.id_name.keys()]
-            else:
-                self.lookup = [int(x.split('_')[1]) for x in self.id_name.keys()]
+            self.lookup = [base36.loads(str(x.split('_')[1]))
+                           for x in self.id_name.keys()]  # This is slow and will not scale well!
             return True
         else:
             warnings.warn("No existing ids match the pattern %s_%s" % (idp, 'n'*acc_length))
