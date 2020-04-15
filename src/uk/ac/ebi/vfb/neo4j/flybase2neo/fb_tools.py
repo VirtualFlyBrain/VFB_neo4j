@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import psycopg2
-from ..KB_tools import KB_pattern_writer
+from ..KB_tools import KB_pattern_writer, node_importer, kb_owl_edge_writer
 import pandas as pd
 from operator import itemgetter
 
@@ -83,10 +83,9 @@ class FB2Neo(object):
 
     def _init(self, endpoint, usr, pwd):
         self.conn = get_fb_conn()
-        self.pattern_writer = KB_pattern_writer(endpoint, usr, pwd, use_base36=True)
-        self.ew = self.pattern_writer.ew
-        self.ni = self.pattern_writer.ni
-        self.nc = self.pattern_writer.ni.nc
+        self.ew = kb_owl_edge_writer(endpoint, usr, pwd)
+        self.ni = node_importer(endpoint, usr, pwd)
+        self.nc = self.ni.nc
         self.fb_base_URI = 'http://www.flybase.org/reports/' # Should use curie_tools
 
 
