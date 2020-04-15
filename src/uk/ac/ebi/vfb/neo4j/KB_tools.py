@@ -700,7 +700,7 @@ class KB_pattern_writer(object):
     def __init__(self, endpoint, usr, pwd, use_base36=False):
         self.ew = kb_owl_edge_writer(endpoint, usr, pwd)
         self.ni = node_importer(endpoint, usr, pwd)
-        self.iri_gen = iri_generator(endpoint, usr, pwd)
+        self.iri_gen = iri_generator(endpoint, usr, pwd, use_base36=use_base36)
         self.ec = EntityChecker(endpoint, usr, pwd)
         # Hmmm - these look like they're needed for anat image set only,
         # so add  to have at object leve.
