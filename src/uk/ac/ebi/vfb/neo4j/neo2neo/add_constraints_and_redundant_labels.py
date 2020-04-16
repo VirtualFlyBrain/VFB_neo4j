@@ -105,6 +105,7 @@ index_labels = ['Entity', 'DataSet', 'pub', 'Site', 'Expression_pattern', 'Licen
 index_additions = []
 
 for il in index_labels:
+    index_additions.append("DROP INDEX ON :%s(short_form)" % (il))
     index_additions.append("CREATE INDEX ON :%s(short_form)" % (il))
 
 nc.commit_list(index_additions)
