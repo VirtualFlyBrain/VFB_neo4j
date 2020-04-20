@@ -986,7 +986,7 @@ class KB_pattern_writer(object):
                                          match_on='short_form',
                                          safe_label_edge=True)
 
-        return {dataset_id}
+        return dataset_id
 
 
 
