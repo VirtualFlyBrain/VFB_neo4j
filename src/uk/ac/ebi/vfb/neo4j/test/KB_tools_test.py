@@ -10,6 +10,7 @@ from ..KB_tools import kb_owl_edge_writer, node_importer, gen_id, iri_generator,
 from ...curie_tools import map_iri
 from ..neo4j_tools import results_2_dict_list, neo4j_connect
 import re
+import time
 
 def get_file_path(qualified_path):
     """Takes the fully qualified path of a file as the input.  Checks the current working directory.
@@ -197,21 +198,27 @@ class TestGenId(unittest.TestCase):
         assert r['short_form'] == 'HSNT_00000104'
         
 class TestIriGenerator(unittest.TestCase):
-    
-    def setUp(self):
-        self.ig = iri_generator('http://localhost:7474', 'neo4j', 'neo4j')
-        self.ig_b36 = iri_generator('http://localhost:7474', 'neo4j', 'neo4j', use_base36=True)
 
     def test_default_id_gen(self):
-        i = self.ig.generate(1)
+        start_time = time.time()
+        ig = iri_generator('http://localhost:7474', 'neo4j', 'neo4j')
+        print("iri_generator init time = " + str(time.time() - start_time))
+        start_time = time.time()
+        i = ig.generate(1)
+        print("ig_generate time = " + str(time.time()-start_time))
         print(i['short_form'])
         assert i['short_form'] == 'VFB_00000001'
 
     def test_base36_id_gen(self):
-        print(self.ig_b36.generate('9999'))
-        print(self.ig_b36.generate('9999'))
-        print(self.ig_b36.generate('jhm00000'))
-        print(self.ig_b36.generate('jhm00000'))
+        start_time = time.time()
+        ig_b36 = iri_generator('http://localhost:7474', 'neo4j', 'neo4j', use_base36=True)
+        print("b36_iri_generator init time = " + str(time.time() - start_time))
+        start_time = time.time()
+        print(ig_b36.generate('99999'))
+        print(ig_b36.generate('99999'))
+        print(ig_b36.generate('jhm00000'))
+        print(ig_b36.generate('jhm00000'))
+        print("b36_ig_generate time *4 = " + str(time.time()-start_time))
 
 
 class TestKBPatternWriter(unittest.TestCase):
