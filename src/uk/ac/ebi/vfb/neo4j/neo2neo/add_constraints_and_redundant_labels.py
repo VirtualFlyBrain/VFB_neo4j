@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 from uk.ac.ebi.vfb.neo4j.neo4j_tools import neo4j_connect
-from vfb_connect.owl.owlery_query_tools import OWLeryConnect
-from vfb_connect.cross_server_tools import get_lookup
+from uk.ac.ebi.vfb.neo4j.owl2neo.owl2neo_tools import OWLery2Neo
 import argparse
 
 parser = argparse.ArgumentParser()
@@ -63,6 +62,7 @@ label_types = {
     'Muscle': ['Muscle cell']
 }
 
+
 label_additions = []
 limit2 = ''
 if args.test:
@@ -76,9 +76,9 @@ for k, v in label_types.items():
                                                                          k))  # Relies on coincidence of Python/Cypher list syntax
 
 label_additions.append("MATCH (n:Individual)<-[d:Related]-(ch:Individual)-[r:Related]->(fbbi:Class) "
-                       "WHERE fbbi.label = 'computer graphic' and d.short_form = 'depicts' "
-                       + limit +
-                       "SET n:Painted_domain;")
+                   "WHERE fbbi.label = 'computer graphic' and d.short_form = 'depicts' "
+                   + limit +
+                   "SET n:Painted_domain;")
 
 label_additions.append("MATCH (n:pub) WHERE NOT n:Individual SET n:Individual")
 
@@ -95,20 +95,6 @@ label_additions.append("MATCH (:Class {short_form:'VFB_10000005'})<-[:INSTANCEOF
 # Add labels from OWLery queries
 
 nc.commit_list(label_additions)
-label_additions = []
-queries = {
-    'Nervous_system': "'overlaps' some 'nervous system'",
-    'Larval': "'overlaps' some 'nervous system'",
-    'Adult': "'overlaps' some 'nervous system'"
-}
-
-lookup = get_lookup(limit_by_prefix=['FBbt'], credentials=(args.endpoint, args.usr, args.pwd))
-oc = OWLeryConnect(lookup=lookup)
-
-for l, q in queries.items():
-    qr = oc.get_subclasses(q)
-    # Add in something here to check for query errors
-    label_additions.append("MATCH (e:Entity) WHERE e.iri IN %s" % str(qr))
 
 # Adding leaf nodes after other classifications in place. Also needs WITH otherwise hangs.
 nc.commit_list(["MATCH (n:Class:Cell) WHERE NOT (n)<-[:SUBCLASSOF]-() "
