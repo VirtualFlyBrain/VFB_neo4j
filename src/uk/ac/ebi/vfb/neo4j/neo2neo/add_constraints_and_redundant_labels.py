@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
 from uk.ac.ebi.vfb.neo4j.neo4j_tools import neo4j_connect
-<<<<<<< HEAD
-from uk.ac.ebi.vfb.neo4j.owl2neo.owl2neo_tools import OWLery2Neo
-=======
->>>>>>> master
 import argparse
 
 parser = argparse.ArgumentParser()
@@ -98,10 +94,6 @@ label_additions.append("MATCH (:Class {short_form:'VFB_10000005'})<-[:INSTANCEOF
 # Add labels from OWLery queries
 
 nc.commit_list(label_additions)
-<<<<<<< HEAD
-=======
-
->>>>>>> master
 
 # Adding leaf nodes after other classifications in place. Also needs WITH otherwise hangs.
 nc.commit_list(["MATCH (n:Class:Cell) WHERE NOT (n)<-[:SUBCLASSOF]-() "
