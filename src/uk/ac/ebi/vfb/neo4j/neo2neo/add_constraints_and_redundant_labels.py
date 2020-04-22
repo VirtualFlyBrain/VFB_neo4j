@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 from uk.ac.ebi.vfb.neo4j.neo4j_tools import neo4j_connect
-from vfb_connect.owl.owlery_query_tools import OWLeryConnect
-from vfb_connect.cross_server_tools import get_lookup
 import argparse
 
 parser = argparse.ArgumentParser()
@@ -95,20 +93,7 @@ label_additions.append("MATCH (:Class {short_form:'VFB_10000005'})<-[:INSTANCEOF
 # Add labels from OWLery queries
 
 nc.commit_list(label_additions)
-label_additions = []
-queries = {
-    'Nervous_system': "'overlaps' some 'nervous system'",
-    'Larval': "'overlaps' some 'nervous system'",
-    'Adult': "'overlaps' some 'nervous system'"
-}
 
-lookup = get_lookup(limit_by_prefix=['FBbt'], credentials=(args.endpoint, args.usr, args.pwd))
-oc = OWLeryConnect(lookup=lookup)
-
-for l, q in queries.items():
-    qr = oc.get_subclasses(q)
-    # Add in something here to check for query errors
-    label_additions.append("MATCH (e:Entity) WHERE e.iri IN %s" % str(qr))
 
 # Adding leaf nodes after other classifications in place. Also needs WITH otherwise hangs.
 nc.commit_list(["MATCH (n:Class:Cell) WHERE NOT (n)<-[:SUBCLASSOF]-() "
