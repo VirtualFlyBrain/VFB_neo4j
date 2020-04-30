@@ -139,7 +139,7 @@ http://purl.obolibrary.org/obo/fbbt#cur,AnnotationProperty,cur_fbbthash
 http://purl.obolibrary.org/obo/RO_0002484,AnnotationProperty,curator_guidance_link
 http://purl.obolibrary.org/obo/IAO_0000232,AnnotationProperty,curator_note
 http://xmlns.com/foaf/0.1/currentProject,ObjectProperty,current_project
-http://www.geneontology.org/formats/oboInOwl#hasDbXref,AnnotationProperty,database_cross_reference+c332
+http://www.geneontology.org/formats/oboInOwl#hasDbXref,AnnotationProperty,database_cross_reference
 http://www.geneontology.org/formats/oboInOwl#date,AnnotationProperty,date
 http://purl.org/oban/date_association_created,DataProperty,date_association_created_oban
 http://purl.org/dc/elements/1.1/date,AnnotationProperty,date_dce
