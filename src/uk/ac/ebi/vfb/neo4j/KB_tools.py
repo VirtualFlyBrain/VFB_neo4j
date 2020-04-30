@@ -133,19 +133,21 @@ class iri_generator(kb_writer):
                  use_base36=False,
                  idp='VFB',
                  acc_length=8,
-                 base=map_iri('vfb')
-                 ):
+                 base=map_iri('vfb'),
+                 start=0):
         super().__init__(endpoint, usr, pwd)
         self.use_base36 = use_base36
         self._configure(idp=idp,
                         acc_length=acc_length,
                         base=base)
 
+
     def _configure(self, idp, acc_length, base):
         self.acc_length = acc_length
         self.idp = idp
         self.id_name = {}
         self.base = base
+        self.lookup = set()
         self.statements.append("MATCH (i:Individual) "
                                "WHERE i.short_form =~ '%s_[0-9a-z]{%d}' "  # Note POSIX regex rqd
                                "RETURN i.short_form as short_form, "
@@ -156,10 +158,15 @@ class iri_generator(kb_writer):
             results = results_2_dict_list(r)
             for res in results:
                 self.id_name[res['short_form']] = res['label']
-            if self.use_base36:
-                self.lookup = [base36.loads(int(x.split('_')[1])) for x in self.id_name.keys()]
-            else:
-                self.lookup = [int(x.split('_')[1]) for x in self.id_name.keys()]
+                acc = res['short_form'].split('_')[1]
+                # This does not scale well.  Better to roll lookup from some designated start?
+                if not self.use_base36:
+                    try:
+                        self.lookup.add(int(acc))
+                    except:
+                        self.lookup.add(base36.loads(acc))
+                else:
+                    self.lookup.add(base36.loads(acc))
             return True
         else:
             warnings.warn("No existing ids match the pattern %s_%s" % (idp, 'n'*acc_length))
@@ -182,8 +189,8 @@ class iri_generator(kb_writer):
             i = int(start)  # casting just in case
         while i in self.lookup:
             i += 1
-        self.lookup.append(i)
-        if base36:
+        self.lookup.add(i)
+        if self.use_base36:
             return base36.dumps(i)
         else:
             return i
@@ -700,7 +707,7 @@ class KB_pattern_writer(object):
     def __init__(self, endpoint, usr, pwd, use_base36=False):
         self.ew = kb_owl_edge_writer(endpoint, usr, pwd)
         self.ni = node_importer(endpoint, usr, pwd)
-        self.iri_gen = iri_generator(endpoint, usr, pwd)
+        self.iri_gen = iri_generator(endpoint, usr, pwd, use_base36=use_base36)
         self.ec = EntityChecker(endpoint, usr, pwd)
         # Hmmm - these look like they're needed for anat image set only,
         # so add  to have at object leve.
@@ -986,7 +993,7 @@ class KB_pattern_writer(object):
                                          match_on='short_form',
                                          safe_label_edge=True)
 
-        return {dataset_id}
+        return dataset_id
 
 
 

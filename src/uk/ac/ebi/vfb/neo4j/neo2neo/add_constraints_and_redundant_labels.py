@@ -4,7 +4,7 @@ import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--test', help='Run in test mode. ' \
-                    'runs with limits on cypher queries and additions.',
+                                   'runs with limits on cypher queries and additions.',
                     action="store_true")
 parser.add_argument("endpoint",
                     help="Endpoint for connection to neo4J prod")
@@ -28,43 +28,44 @@ nc.commit_list(deletions)
 uri2iri_hack = ["MATCH ()-[x]-() WHERE exists(x.uri) AND NOT exists(x.iri) SET x.iri = x.uri"]
 nc.commit_list(uri2iri_hack)
 
-
 label_types = {
-   'Neuron': ['neuron'],
-   'Sensory_neuron': ['sensory neuron'],
-   'Motor_neuron' : ['motor neuron'],
-   'Peptidergic_neuron' : ['peptidergic neuron'],
-   'Neuron_projection_bundle' : ['neuron projection bundle'],
-   'Synaptic_neuropil': ['synaptic neuropil'],
-   'Synaptic_neuropil_domain': ['synaptic neuropil domain'],
-   'Synaptic_neuropil_subdomain': ['synaptic neuropil subdomain'],
-   'Synaptic_neuropil_block': ['synaptic neuropil block'],
-   'Clone': ['neuroblast lineage clone'],
-   'Cluster': ['cluster'],
-   'Neuroblast': ['neuroblast'],
-   'GMC': ['ganglion_mother_cell'],
-   'Anatomy': ['anatomical entity'],
-   'Cell': ['cell'],
-   'Glial_cell': ['glial cell'],
-   'Expression_pattern': ['expression pattern', 'intersectional expression pattern'],
-   'Split': ['intersectional expression pattern'],
-   'Ganglion': ['ganglion'],
-   'Cholinergic': ['cholinergic neuron'],
-   'Glutamatergic': ['glutamatergic neuron'],
-   'GABAergic': ['GABAergic neuron'],
-   'Octopaminergic': ['octopaminergic neuron'],
-   'Dopaminergic': ['dopaminergic neuron'],
-   'Serotonergic': ['serotonergic neuron'],
-   'Expression_pattern_fragment': ['expression pattern fragment'],
-   'Neuromere': ['neuromere'],
-   'Muscle': ['Muscle cell']
-   }
+    'Neuron': ['neuron'],
+    'Sensory_neuron': ['sensory neuron'],
+    'Sense_organ': ['sense organ'],
+    'Nervous_system': ['sense organ'],  # Fudging classification for broader search
+    'Motor_neuron': ['motor neuron'],
+    'Peptidergic_neuron': ['peptidergic neuron'],
+    'Neuron_projection_bundle': ['neuron projection bundle'],
+    'Synaptic_neuropil': ['synaptic neuropil'],
+    'Synaptic_neuropil_domain': ['synaptic neuropil domain'],
+    'Synaptic_neuropil_subdomain': ['synaptic neuropil subdomain'],
+    'Synaptic_neuropil_block': ['synaptic neuropil block'],
+    'Clone': ['neuroblast lineage clone'],
+    'Cluster': ['cluster'],
+    'Neuroblast': ['neuroblast'],
+    'GMC': ['ganglion_mother_cell'],
+    'Anatomy': ['anatomical entity'],
+    'Cell': ['cell'],
+    'Glial_cell': ['glial cell'],
+    'Expression_pattern': ['expression pattern', 'intersectional expression pattern'],
+    'Split': ['intersectional expression pattern'],
+    'Ganglion': ['ganglion'],
+    'Cholinergic': ['cholinergic neuron'],
+    'Glutamatergic': ['glutamatergic neuron'],
+    'GABAergic': ['GABAergic neuron'],
+    'Octopaminergic': ['octopaminergic neuron'],
+    'Dopaminergic': ['dopaminergic neuron'],
+    'Serotonergic': ['serotonergic neuron'],
+    'Expression_pattern_fragment': ['expression pattern fragment'],
+    'Neuromere': ['neuromere'],
+    'Muscle': ['Muscle cell']
+}
 
 label_additions = []
 limit2 = ''
 if args.test:
-   limit = ' with n limit 5 '
-   limit2 = ' with n, n2 limit 5 '
+    limit = ' with n limit 5 '
+    limit2 = ' with n, n2 limit 5 '
 for k, v in label_types.items():
     label_additions.append("MATCH (n)-[r:SUBCLASSOF|INSTANCEOF*]->(n2:Class) "
                            "WHERE n2.label in %s %s  SET n:%s, n2:%s" % (str(v),
@@ -89,9 +90,12 @@ label_additions.append("MATCH (c:Class) WHERE c.iri =~ 'http://flybase.org/repor
 # Add Cluster label to all INSTANCES OF Cell Cluster
 label_additions.append("MATCH (:Class {short_form:'VFB_10000005'})<-[:INSTANCEOF]-(n:Individual) SET n:Cluster")
 
+# Add labels from OWLery queries
+
 nc.commit_list(label_additions)
 
-# Adding leaf nodes after other classifications in place. Also needs WITH otherwise hangs.  
+
+# Adding leaf nodes after other classifications in place. Also needs WITH otherwise hangs.
 nc.commit_list(["MATCH (n:Class:Cell) WHERE NOT (n)<-[:SUBCLASSOF]-() "
                 + limit + " WITH n SET n:Leaf_node"])
 
@@ -100,7 +104,7 @@ nc.commit_list(["MATCH (n:Class:Cell) WHERE NOT (n)<-[:SUBCLASSOF]-() "
 nc.commit_list(["MATCH (n:Expression_pattern:Class:Anatomy) REMOVE n:Anatomy"])
 
 # Indexing - leaving off Class and Individual as these are indexed by default on OLS.
-index_labels = ['Entity', 'DataSet', 'pub', 'Site', 'Expression_pattern', 'License', 'Template'] 
+index_labels = ['Entity', 'DataSet', 'pub', 'Site', 'Expression_pattern', 'License', 'Template']
 
 index_additions = []
 
@@ -108,4 +112,3 @@ for il in index_labels:
     index_additions.append("CREATE INDEX ON :%s(short_form)" % (il))
 
 nc.commit_list(index_additions)
-
