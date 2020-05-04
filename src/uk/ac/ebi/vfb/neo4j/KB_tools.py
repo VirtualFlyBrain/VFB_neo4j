@@ -764,6 +764,7 @@ class KB_pattern_writer(object):
                               center=(),
                               anatomy_attributes=None,
                               dbxrefs=None,
+                              dbxref_strings=None,
                               image_filename='',
                               match_on='short_form',
                               orcid='',
@@ -791,6 +792,8 @@ class KB_pattern_writer(object):
         if anatomy_attributes is None: anatomy_attributes = {}
         if anon_anatomical_types is None: anon_anatomical_types = []
         if dbxrefs is None: dbxrefs = {}
+        if dbxref_strings is None: dbxref_strings = []
+
         if type_edge_annotations is None: type_edge_annotations = {}
 
         if not template == 'self':
@@ -803,6 +806,10 @@ class KB_pattern_writer(object):
         self.ec.roll_entity_check(labels=['DataSet'],
                                   match_on=match_on,
                                   query=dataset)
+        if dbxref_strings:
+            # Add checking dbxref strings for ':'
+            dbxrefs.update({x.split(':')[0]:x.split(':')[1] for x in dbxrefs})
+
         for k in dbxrefs.keys():
             self.ec.roll_entity_check(labels=['Site'],
                                       match_on=match_on,
