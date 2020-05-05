@@ -828,10 +828,6 @@ class KB_pattern_writer(object):
                                       match_on=match_on,
                                       query=ax[1])
 
-        if not self.ec.check(hard_fail=hard_fail):
-            warnings.warn("Load fail: Unknown entities referenced.")
-            return False
-
         if dbxrefs:
             for db, acc in dbxrefs.items():
                 self.ec.roll_dbxref_check(db, acc)
@@ -839,6 +835,9 @@ class KB_pattern_writer(object):
                 warnings.warn("Load fail: Cross-referenced enties already exist.")
                 return False
 
+        if not self.ec.check(hard_fail=hard_fail):
+            warnings.warn("Load fail: Unknown entities referenced.")
+            return False
 
 
         anat_id = self.anat_iri_gen.generate(start)
