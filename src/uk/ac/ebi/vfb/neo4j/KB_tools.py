@@ -418,7 +418,7 @@ class kb_owl_edge_writer(kb_writer):
 
         if edge_annotations is None: edge_annotations = {}
         self._add_related_edge(s, r, o, stype = ":Class", otype = ":Class",
-                               edge_annotations = edge_annotations, 
+                               edge_annotations = edge_annotations,
                                match_on = match_on,
                                safe_label_edge=safe_label_edge)
 
@@ -512,7 +512,7 @@ class node_importer(kb_writer):
         self.statements.append(statement)
 
     
-    def update_from_obograph(self, file_path = '', url = ''):
+    def update_from_obograph(self, file_path = '', url = '', include_properties=False):
         """Update property and class nodes from an OBOgraph file
         (currently does not distinguish OPs from APs!)
         Only updates from pimary graph (i.e. ignores imports)
@@ -543,7 +543,7 @@ class node_importer(kb_writer):
             if 'type' in node.keys():
                 if node['type'] == 'CLASS':
                     labels = ['Class']
-                elif node['type'] == 'PROPERTY':
+                elif node['type'] == 'PROPERTY' and include_properties:
                     labels = ['Property']
                 else:
                     continue
@@ -624,7 +624,7 @@ class node_importer(kb_writer):
 
 class EntityChecker(kb_writer):
 
-    """Check for the existance of nodes or dbxrefs"""
+    """Check for the existence of nodes or dbxrefs"""
 
     def __init__(self, endpoint, usr, pwd):
         super(EntityChecker, self).__init__(endpoint, usr, pwd)
@@ -654,8 +654,8 @@ class EntityChecker(kb_writer):
             return True
         self.should_not_exist.append(
             "OPTIONAL MATCH (s:Site { short_form: '%s' } )"
-            "<-[r:hasDbXref { acc: '%s' }]-(i:Individual) "
-            "RETURN s.short_form + ':' + r.acc AS result, "
+            "<-[r:hasDbXref { accession: '%s' }]-(i:Individual) "
+            "RETURN s.short_form + ':' + r.accession AS result, "
             "'%s:%s' AS query" % (db, acc, db, acc))
 
     def _check_should_not_exist(self, hard_fail=False):
@@ -764,6 +764,7 @@ class KB_pattern_writer(object):
                               center=(),
                               anatomy_attributes=None,
                               dbxrefs=None,
+                              dbxref_strings=None,
                               image_filename='',
                               match_on='short_form',
                               orcid='',
@@ -791,6 +792,8 @@ class KB_pattern_writer(object):
         if anatomy_attributes is None: anatomy_attributes = {}
         if anon_anatomical_types is None: anon_anatomical_types = []
         if dbxrefs is None: dbxrefs = {}
+        if dbxref_strings is None: dbxref_strings = []
+
         if type_edge_annotations is None: type_edge_annotations = {}
 
         if not template == 'self':
@@ -803,6 +806,10 @@ class KB_pattern_writer(object):
         self.ec.roll_entity_check(labels=['DataSet'],
                                   match_on=match_on,
                                   query=dataset)
+        if dbxref_strings:
+            # Add checking dbxref strings for ':'
+            dbxrefs.update({x.split(':')[0]:x.split(':')[1] for x in dbxref_strings})
+
         for k in dbxrefs.keys():
             self.ec.roll_entity_check(labels=['Site'],
                                       match_on=match_on,
@@ -821,10 +828,6 @@ class KB_pattern_writer(object):
                                       match_on=match_on,
                                       query=ax[1])
 
-        if not self.ec.check(hard_fail=hard_fail):
-            warnings.warn("Load fail: Unknown entities referenced.")
-            return False
-
         if dbxrefs:
             for db, acc in dbxrefs.items():
                 self.ec.roll_dbxref_check(db, acc)
@@ -832,6 +835,9 @@ class KB_pattern_writer(object):
                 warnings.warn("Load fail: Cross-referenced enties already exist.")
                 return False
 
+        if not self.ec.check(hard_fail=hard_fail):
+            warnings.warn("Load fail: Unknown entities referenced.")
+            return False
 
 
         anat_id = self.anat_iri_gen.generate(start)

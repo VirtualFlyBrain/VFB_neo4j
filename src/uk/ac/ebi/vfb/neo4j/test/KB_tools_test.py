@@ -169,7 +169,7 @@ class TestNodeImporter(unittest.TestCase):
         # Adding this to cope with odd issues with file_path when running python modules on different systems
         p = get_file_path("uk/ac/ebi/vfb/neo4j/test/resources/vfb_ext.json")
         print(p)
-        self.ni.update_from_obograph(file_path=p)
+        self.ni.update_from_obograph(file_path=p, include_properties=True)
         self.ni.commit()
         result = self.ni.nc.commit_list(["MATCH (p:Property) WHERE p.iri = 'http://purl.obolibrary.org/obo/RO_0002350' RETURN p.label as label"])
         dc = results_2_dict_list(result)
@@ -253,7 +253,7 @@ class TestKBPatternWriter(unittest.TestCase):
         statements.append("MERGE (s:Site:Individual { short_form : 'fu' }) ")
         statements.append("MATCH (s:Site:Individual { short_form : 'fu' }), "
                           "(i:Individual:Template { short_form: 'template_of_dave'}) "
-                          "MERGE (i)-[:hasDbXref { acc: 'GMR_fubar_23'}]->(s)")
+                          "MERGE (i)-[:hasDbXref { accession: 'GMR_fubar_23'}]->(s)")
 
         statements.append("MERGE (ds:DataSet:Individual { short_form : 'dosumis2020' }) ")
 
@@ -295,6 +295,7 @@ class TestKBPatternWriter(unittest.TestCase):
         assert t is False
         self.kpw.commit()
 
+        # This should  fail because xref doesn't exist.
         t = self.kpw.add_anatomy_image_set(
             dataset='dosumis2020',
             imaging_type='computer graphic',
@@ -348,7 +349,7 @@ class TestEntityChecker(unittest.TestCase):
                  "MERGE (s:Site { short_form: 'FlyLight' })",
                  "MATCH (i:Individual { label: 'Aya' }), "
                  "(s:Site { short_form: 'FlyLight' })"
-                 " MERGE (i)-[:hasDbXref { acc: 'GMR_fubar_23'}]->(s)"]
+                 " MERGE (i)-[:hasDbXref { accession: 'GMR_fubar_23'}]->(s)"]
             self.ec = EntityChecker('http://localhost:7474', 'neo4j', 'neo4j')
             self.ec.nc.commit_list(s)
 
