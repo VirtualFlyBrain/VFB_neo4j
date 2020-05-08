@@ -1,3 +1,4 @@
+import warnings
 from vfb_connect.owl.owlery_query_tools import OWLeryConnect
 from ..neo4j_tools import neo4j_connect, chunks
 from vfb_connect.cross_server_tools import get_lookup
@@ -23,7 +24,9 @@ class OWLery2Neo:
             if qr:
                 qr_chunks = chunks(qr, 500)
                 for c in qr_chunks:
+                    label_additions.append("MATCH (e:Entity) WHERE e.iri IN %s SET e:%s" % (str(c), nl))
+            else:
+                warnings.warn("No results for '%s' returned" % q)
             # Add in something here to check for query errors
             # Should we be chunking in-clause marches strings?
-                    label_additions.append("MATCH (e:Entity) WHERE e.iri IN %s SET e:%s" % (str(c), nl))
         self.nc.commit_list(label_additions)
