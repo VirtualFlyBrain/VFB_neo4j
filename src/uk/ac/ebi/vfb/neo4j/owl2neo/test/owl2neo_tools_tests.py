@@ -14,7 +14,7 @@ class OWLery2NeoTest(unittest.TestCase):
             'ALG': "'glomerulus' that 'part of' some 'antennal lobe'"
         }
         self.o2n.owl_query_2_neo_labels(queries)
-        q = "MATCH (alg:ALG) return alg limit 1"
+        q = "MATCH (alg:ALG) return alg limit 1;"
         qr = self.o2n.nc.commit_list(q)
         if qr:
             self.assertAlmostEquals(results_2_dict_list(qr.items()), 1)
