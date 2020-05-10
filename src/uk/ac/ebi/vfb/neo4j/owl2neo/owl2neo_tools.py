@@ -21,7 +21,6 @@ class OWLery2Neo:
         label_additions = []
         for nl, q in queries.items():
             qr = self.oc.get_subclasses(q, query_by_label=query_by_label)
-            print(str(qr))
             if qr:
                 qr_chunks = chunks(qr, 500)
                 for c in qr_chunks:
