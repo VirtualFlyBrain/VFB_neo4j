@@ -16,7 +16,6 @@ class OWLery2NeoTest(unittest.TestCase):
         self.o2n.owl_query_2_neo_labels(queries)
         q = ["MATCH (alg:ALG) return alg limit 1;"]
         qr = self.o2n.nc.commit_list(q)
-        print(str(qr))
         if qr:
             self.assertAlmostEquals(results_2_dict_list(qr.items()), 1)
         else:
