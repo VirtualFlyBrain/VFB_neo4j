@@ -84,6 +84,7 @@ class neo4j_connect():
         response = requests.post(url = "%s/db/data/transaction/commit" 
                                  % self.base_uri, auth = (self.usr, self.pwd) ,
                                   data = json.dumps(payload))
+        print(json.dumps(payload, indent=4, sort_keys=False))
         print("Commit list response: " + str(response.json()))
         if self.rest_return_check(response):
             return response.json()['results']
