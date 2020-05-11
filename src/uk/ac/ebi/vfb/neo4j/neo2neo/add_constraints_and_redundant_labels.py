@@ -61,6 +61,7 @@ label_types = {
     'Muscle': ['Muscle cell']
 }
 
+
 label_additions = []
 limit2 = ''
 if args.test:
@@ -74,9 +75,9 @@ for k, v in label_types.items():
                                                                          k))  # Relies on coincidence of Python/Cypher list syntax
 
 label_additions.append("MATCH (n:Individual)<-[d:Related]-(ch:Individual)-[r:Related]->(fbbi:Class) "
-                       "WHERE fbbi.label = 'computer graphic' and d.short_form = 'depicts' "
-                       + limit +
-                       "SET n:Painted_domain;")
+                   "WHERE fbbi.label = 'computer graphic' and d.short_form = 'depicts' "
+                   + limit +
+                   "SET n:Painted_domain;")
 
 label_additions.append("MATCH (n:pub) WHERE NOT n:Individual SET n:Individual")
 
@@ -93,7 +94,6 @@ label_additions.append("MATCH (:Class {short_form:'VFB_10000005'})<-[:INSTANCEOF
 # Add labels from OWLery queries
 
 nc.commit_list(label_additions)
-
 
 # Adding leaf nodes after other classifications in place. Also needs WITH otherwise hangs.
 nc.commit_list(["MATCH (n:Class:Cell) WHERE NOT (n)<-[:SUBCLASSOF]-() "
