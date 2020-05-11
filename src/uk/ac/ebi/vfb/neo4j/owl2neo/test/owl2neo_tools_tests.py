@@ -17,8 +17,8 @@ class OWLery2NeoTest(unittest.TestCase):
         q = ["MATCH (alg:ALG) return alg limit 1;"]
         qr = self.o2n.nc.commit_list(q)
         if qr:
-            print("Results for query '" + q + "': " + str(qr))
-            self.assertAlmostEquals(len(qr), 1)
+            for r in qr:
+                self.assertAlmostEquals(results_2_dict_list(r.items()), 1)
         else:
             warnings.warn("Error '" + q + "' returned no valid results")
 if __name__ == '__main__':
