@@ -18,8 +18,8 @@ class OWLery2NeoTest(unittest.TestCase):
         qr = self.o2n.nc.commit_list(q)
         if qr:
             for r in qr:
-                print(str(r))
-                self.assertAlmostEquals(results_2_dict_list(r.items()), 1)
+                print(str(results_2_dict_list(r)))
+                self.assertAlmostEquals(results_2_dict_list(r), 1)
         else:
             warnings.warn("Error '" + q + "' returned no valid results")
 if __name__ == '__main__':
