@@ -19,7 +19,10 @@ class OWLery2Neo:
 
     def owl_query_2_neo_labels(self, queries, query_by_label=True):
         label_additions = []
+        label_additions.append("CREATE INDEX ON :Entity(iri)")
+        self.nc.commit_list(label_additions)
         for nl, q in queries.items():
+            label_additions = []
             print("Adding label '" + nl + "' using query: " + q)
             qr = self.oc.get_subclasses(q, query_by_label=query_by_label)
             if qr:
@@ -32,6 +35,7 @@ class OWLery2Neo:
                 warnings.warn("No results for '%s' returned" % q)
             # Add in something here to check for query errors
             # Should we be chunking in-clause marches strings?
-        print("Running label additions for '" + nl)
-        self.nc.commit_list(label_additions)
+            print("Running label additions for '" + nl)
+            self.nc.commit_list(label_additions)
+            print("Finished label additions for '" + nl)
         
