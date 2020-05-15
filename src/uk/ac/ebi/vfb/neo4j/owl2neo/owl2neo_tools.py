@@ -24,7 +24,7 @@ class OWLery2Neo:
             qr = self.oc.get_subclasses(q, query_by_label=query_by_label)
             if qr:
                 print("Results found...")
-                qr_chunks = chunks(qr, 500)
+                qr_chunks = chunks(qr, 100)
                 for c in qr_chunks:
                     print("Adding label '" + nl + "' to: " + str(c))
                     label_additions.append("MATCH (e:Entity) WHERE e.iri IN %s SET e:%s" % (str(c), nl))
@@ -32,4 +32,6 @@ class OWLery2Neo:
                 warnings.warn("No results for '%s' returned" % q)
             # Add in something here to check for query errors
             # Should we be chunking in-clause marches strings?
+        print("Running label additions for '" + nl)
         self.nc.commit_list(label_additions)
+        
