@@ -1,6 +1,6 @@
 import warnings
 from vfb_connect.owl.owlery_query_tools import OWLeryConnect
-from ..neo4j_tools import neo4j_connect, chunks
+from ..neo4j_tools import neo4j_connect, chunks, commit_list_in_chunks
 from vfb_connect.cross_server_tools import get_lookup
 
 
@@ -36,6 +36,6 @@ class OWLery2Neo:
             # Add in something here to check for query errors
             # Should we be chunking in-clause marches strings?
             print("Running label additions for '" + nl)
-            self.nc.commit_list(label_additions)
+            commit_list_in_chunks(self.nc, label_additions, verbose=True, chunk_length=100)
             print("Finished label additions for '" + nl)
         
