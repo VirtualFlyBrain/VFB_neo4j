@@ -22,12 +22,14 @@ if args.test:
     limit = ' with n limit 5 '
 
 # Some AP deletions required for uniqueness constraints.  Needed due to quirks of OLS import.
-
+print("Deleting depreciated...")
 deletions = ["MATCH (n:VFB { short_form: 'deprecated' })-[r]-(m) DELETE r, n;"]
 nc.commit_list(deletions)
+print("uri2iri...")
 uri2iri_hack = ["MATCH ()-[x]-() WHERE exists(x.uri) AND NOT exists(x.iri) SET x.iri = x.uri"]
 nc.commit_list(uri2iri_hack)
 
+print("Adding Labels...")
 label_types = {
     'Neuron': ['neuron'],
     'Sensory_neuron': ['sensory neuron'],
@@ -95,14 +97,17 @@ label_additions.append("MATCH (:Class {short_form:'VFB_10000005'})<-[:INSTANCEOF
 
 nc.commit_list(label_additions)
 
+print("Adding Leaf Nodes...")
+
 # Adding leaf nodes after other classifications in place. Also needs WITH otherwise hangs.
 nc.commit_list(["MATCH (n:Class:Cell) WHERE NOT (n)<-[:SUBCLASSOF]-() "
                 + limit + " WITH n SET n:Leaf_node"])
 
 # Remove Anatomy label from Expression_pattern classes - bit hacky, but needed for correct queries in current schema
-
+print("Removinf Anatomy from ExpPatterns...")
 nc.commit_list(["MATCH (n:Expression_pattern:Class:Anatomy) REMOVE n:Anatomy"])
 
+print("Adding Indexes...")
 # Indexing - leaving off Class and Individual as these are indexed by default on OLS.
 index_labels = ['Entity', 'DataSet', 'pub', 'Site', 'Expression_pattern', 'License', 'Template']
 
