@@ -99,7 +99,7 @@ http://purl.obolibrary.org/obo/fbbt/vfb#clone,AnnotationProperty,clone_fvfbh
 http://purl.obolibrary.org/obo/RO_0002008,ObjectProperty,coincident_with
 http://purl.obolibrary.org/obo/RO_0002325,ObjectProperty,colocalizes_with
 http://purl.obolibrary.org/obo/RO_0002441,ObjectProperty,commensually_interacts_with
-http://www.w3.org/2000/01/rdf-schema#comment,AnnotationProperty,comment_rdfs
+http://www.w3.org/2000/01/rdf-schema#comment,AnnotationProperty,comment
 http://purl.obolibrary.org/obo/so#complete_evidence_for_feature,ObjectProperty,complete_evidence_for_feature_so
 http://purl.obolibrary.org/obo/RO_0002473,ObjectProperty,composed_primarily_of
 http://purl.obolibrary.org/obo/RO_0000059,ObjectProperty,concretizes
@@ -631,7 +631,7 @@ http://purl.obolibrary.org/obo/RO_0002302,ObjectProperty,is_treated_by_substance
 http://purl.obolibrary.org/obo/RO_0002482,ObjectProperty,is_ubiquitination
 http://purl.obolibrary.org/obo/RO_0002528,ObjectProperty,is_upstream_of_sequence_of
 http://purl.obolibrary.org/obo/RO_0002459,ObjectProperty,is_vector_for
-http://www.w3.org/2000/01/rdf-schema#isDefinedBy,AnnotationProperty,isdefinedby_rdfs
+http://www.w3.org/2000/01/rdf-schema#isDefinedBy,AnnotationProperty,is_defined_by
 http://swrl.stanford.edu/ontologies/3.3/swrla.owl#isRuleEnabled,AnnotationProperty,isruleenabled_swrl
 http://purl.obolibrary.org/obo/fbbt#IUPAC_NAME,AnnotationProperty,iupac_name_fbbthash
 http://xmlns.com/foaf/0.1/jabberID,DataProperty,jabber_id
@@ -640,12 +640,12 @@ http://purl.obolibrary.org/obo/RO_0008503,ObjectProperty,kleptoparasite_of
 http://purl.obolibrary.org/obo/RO_0008504,ObjectProperty,kleptoparasitized_by
 http://xmlns.com/foaf/0.1/knows,ObjectProperty,knows
 http://purl.obolibrary.org/obo/fbbt#syngo_official_label,AnnotationProperty,label_approved_by_the_syngo_project_fbbthash
-http://www.w3.org/2000/01/rdf-schema#label,AnnotationProperty,label_rdfs
+http://www.w3.org/2000/01/rdf-schema#label,AnnotationProperty,label
 http://purl.obolibrary.org/obo/fbbt#larval_OF,AnnotationProperty,larval_of_fbbthash
 http://xmlns.com/foaf/0.1/lastName,DataProperty,lastname
 http://purl.obolibrary.org/obo/RO_0002624,ObjectProperty,lays_eggs_in
 http://purl.obolibrary.org/obo/RO_0008507,ObjectProperty,lays_eggs_on
-http://www.w3.org/2000/01/rdf-schema#Literal,Datatype,literal_rdfs
+http://www.w3.org/2000/01/rdf-schema#Literal,Datatype,literal
 http://purl.obolibrary.org/obo/RO_0001025,ObjectProperty,located_in
 http://purl.obolibrary.org/obo/RO_0001015,ObjectProperty,location_of
 http://purl.obolibrary.org/obo/RO_0002416,AnnotationProperty,logical_macro_assertion
@@ -812,7 +812,7 @@ http://www.geneontology.org/formats/oboInOwl#saved-by,AnnotationProperty,savedby
 http://purl.obolibrary.org/obo/pato#scalar_slim,AnnotationProperty,scalar_slim_pato
 http://xmlns.com/foaf/0.1/schoolHomepage,ObjectProperty,schoolhomepage
 http://purl.obolibrary.org/obo/fbbt#secretes_hormone,ObjectProperty,secretes_hormone_fbbthash
-http://www.w3.org/2000/01/rdf-schema#seeAlso,AnnotationProperty,seealso_rdfs
+http://www.w3.org/2000/01/rdf-schema#seeAlso,AnnotationProperty,see_also
 http://purl.obolibrary.org/obo/RO_0002486,ObjectProperty,sends_output_to
 http://purl.obolibrary.org/obo/so#sequence_of,ObjectProperty,sequence_of_so
 http://purl.obolibrary.org/obo/RO_0002515,ObjectProperty,sequentially_adjacent_to
