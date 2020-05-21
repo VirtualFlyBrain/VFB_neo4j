@@ -23,7 +23,7 @@ if args.test:
 
 # Some AP deletions required for uniqueness constraints.  Needed due to quirks of OLS import.
 print("Deleting depreciated...")
-deletions = ["MATCH (n:VFB { short_form: 'deprecated' })-[r]-(m) DELETE r, n;"]
+deletions = ["MATCH (n:VFB { short_form: 'deprecated' })-[r]-(m) DETACH DELETE n;"]
 nc.commit_list(deletions)
 print("uri2iri...")
 uri2iri_hack = ["MATCH ()-[x]-() WHERE exists(x.uri) AND NOT exists(x.iri) SET x.iri = x.uri"]
@@ -71,27 +71,28 @@ if args.test:
     limit2 = ' with n, n2 limit 5 '
 for k, v in label_types.items():
     label_additions.append("MATCH (n)-[r:SUBCLASSOF|INSTANCEOF*]->(n2:Class) "
-                           "WHERE n2.label in %s %s  SET n:%s, n2:%s" % (str(v),
+                           "WHERE n2.label in %s AND NOT n:%s %s SET n:%s, n2:%s" % (str(v),
+                                                                         k,
                                                                          limit2,
                                                                          k,
                                                                          k))  # Relies on coincidence of Python/Cypher list syntax
 
-label_additions.append("MATCH (n:Individual)<-[d:Related]-(ch:Individual)-[r:Related]->(fbbi:Class) "
-                   "WHERE fbbi.label = 'computer graphic' and d.short_form = 'depicts' "
+label_additions.append("MATCH (n:Individual)<-[d:Related {short_form:'depicts'}]-(ch:Individual)-[r:Related]->(fbbi:Class {label:'computer graphic'}) "
+                   "WHERE NOT n:Painted_domain "
                    + limit +
                    "SET n:Painted_domain;")
 
 label_additions.append("MATCH (n:pub) WHERE NOT n:Individual SET n:Individual")
 
-label_additions.extend(["MATCH (n:Class) " + limit + "SET n:Entity",
-                        "MATCH (n:Individual) " + limit + "SET n:Entity"])  # Entity excludes Property. Not queried
+label_additions.extend(["MATCH (n:Class) WHERE NOT n:Entity " + limit + "SET n:Entity",
+                        "MATCH (n:Individual) WHERE NOT n:Entity " + limit + "SET n:Entity"])  # Entity excludes Property. Not queried
 
-label_additions.append("MATCH (n:Feature) SET n.self_xref = 'FlyBase'")
+label_additions.append("MATCH (n:Feature) WHERE NOT n.self_xref='FlyBase' SET n.self_xref = 'FlyBase'")
 
-label_additions.append("MATCH (c:Class) WHERE c.iri =~ 'http://flybase.org/reports/FB.+' SET c.self_xref = 'FlyBase'")
+label_additions.append("MATCH (c:Class) WHERE c.iri STARTS WITH 'http://flybase.org/reports/FB' AND NOT c.self_xref = 'FlyBase' SET c.self_xref = 'FlyBase'")
 
 # Add Cluster label to all INSTANCES OF Cell Cluster
-label_additions.append("MATCH (:Class {short_form:'VFB_10000005'})<-[:INSTANCEOF]-(n:Individual) SET n:Cluster")
+label_additions.append("MATCH (:Class {short_form:'VFB_10000005'})<-[:INSTANCEOF]-(n:Individual) WHERE NOT n:Cluster SET n:Cluster")
 
 # Add labels from OWLery queries
 
@@ -100,7 +101,7 @@ nc.commit_list(label_additions)
 print("Adding Leaf Nodes...")
 
 # Adding leaf nodes after other classifications in place. Also needs WITH otherwise hangs.
-nc.commit_list(["MATCH (n:Class:Cell) WHERE NOT (n)<-[:SUBCLASSOF]-() "
+nc.commit_list(["MATCH (n:Class:Cell) WHERE NOT n:Leaf_node AND NOT (n)<-[:SUBCLASSOF]-() "
                 + limit + " WITH n SET n:Leaf_node"])
 
 # Remove Anatomy label from Expression_pattern classes - bit hacky, but needed for correct queries in current schema
