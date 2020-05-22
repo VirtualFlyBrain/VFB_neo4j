@@ -132,11 +132,11 @@ ct_undefined = query('MATCH (n) WHERE NOT n:Class AND NOT n:Individual AND NOT n
 print('Make all entities of type :Entity')
 query('MATCH (n) SET n:Entity',nc)
 
-print('Make all INSTANCEOF relations Type')
-query('MATCH (n)-[r:INSTANCEOF]->(m) CREATE (n)-[r2:Type]->(m) SET r2 = r WITH r DELETE r', nc)
+#print('Make all INSTANCEOF relations Type')
+#query('MATCH (n)-[r:INSTANCEOF]->(m) CREATE (n)-[r2:Type]->(m) SET r2 = r WITH r DELETE r', nc)
 
-print('Make all SUBCLASSOF relations SubClassOf')
-query('MATCH (n)-[r:SUBCLASSOF]->(m) CREATE (n)-[r2:SubClassOf]->(m) SET r2 = r WITH r DELETE r', nc)
+#print('Make all SUBCLASSOF relations SubClassOf')
+#query('MATCH (n)-[r:SUBCLASSOF]->(m) CREATE (n)-[r2:SubClassOf]->(m) SET r2 = r WITH r DELETE r', nc)
 
 print('Transforming properties and relations: Correct edge typing, set qsl, change edges to qsls')
 transform_properties_and_relations_set_types_qsl(nc)
