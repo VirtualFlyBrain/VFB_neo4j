@@ -36,6 +36,6 @@ class OWLery2Neo:
             # Add in something here to check for query errors
             # Should we be chunking in-clause marches strings?
             print("Running label additions for '" + nl)
-            self.nc.commit_list_in_chunks(self.nc, label_additions, verbose=True, chunk_length=100)
+            self.nc.commit_list_in_chunks(label_additions, verbose=True, chunk_length=100)
             print("Finished label additions for '" + nl)
         
