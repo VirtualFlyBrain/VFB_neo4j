@@ -929,8 +929,7 @@ class KB_pattern_writer(object):
             self.ew.add_anon_type_ax(s=anat_id[match_on],
                                      r=ax[0],
                                      o=ax[1],
-                                     match_on='short_form',
-                                     safe_label_edge=True)
+                                     match_on='short_form')
 
         return {'channel': channel_id, 'anatomy': anat_id }
 
