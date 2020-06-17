@@ -67,6 +67,7 @@ nc = neo4j_connect(base_uri = args.endpoint, usr = args.usr, pwd = args.pwd)
 
 
 def make_name_edges(typ, delete_old=True, test_mode = False):
+    print("Pulling labels...")
     if test_mode:
         test = " limit 10"
     else:
@@ -78,6 +79,7 @@ def make_name_edges(typ, delete_old=True, test_mode = False):
     statements = ["MATCH (n)-[r:%s]->(m) RETURN  collect(distinct r.label) as labels" % (typ)]
     print("processing %s %s statements" % (len(statements), typ))
     r = nc.commit_list(statements)
+    print("Flipping edges...")
     statements = []
     # Iterate over, making named edges for labels (sub space for _)
     labels = r[0]['data'][0]['row'][0]
