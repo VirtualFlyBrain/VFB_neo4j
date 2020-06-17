@@ -83,7 +83,7 @@ def make_name_edges(typ, delete_old=True, test_mode = False):
     labels = r[0]['data'][0]['row'][0]
     for label in labels:
         rel = re.sub(' ', '_', label) # In case any labels have spaces
-        statements.append("MATCH (n)-[r:%s {label:'%s'}]->(m) MERGE (n)-[r2:%s]->(m) SET r2=r,r2.type='%s' %s%s" % (typ, label, rel, typ, delete, test))
+        statements.append("MATCH (n)-[r:%s {label:'%s'}]->(m) MERGE (n)-[r2:%s]->(m) ON CREATE SET r2=r,r2.type='%s' %s%s" % (typ, label, rel, typ, delete, test))
     print("processing %s %s statements" % (len(statements), typ))
     with Pool(5) as p:
         print(p.map(neo4j_commit_list, statements))
