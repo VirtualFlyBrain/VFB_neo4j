@@ -4,6 +4,7 @@ import sys
 import re
 from uk.ac.ebi.vfb.neo4j.neo4j_tools import neo4j_connect
 import argparse
+from multiprocessing import Pool
 """A simple script to make edges named (typed) for relations from all edges of of type :Related.
 Arg1 = base_uri or neo4J server
 Arg2 = usr
@@ -36,7 +37,9 @@ args = parser.parse_args()
 # Use REST calls to /db/data/schema/
 
 
-
+def neo4j_commit_list(statements):
+  nc = neo4j_connect(base_uri = args.endpoint, usr = args.usr, pwd = args.pwd)
+  nc.commit_list_in_chunks(statements, verbose=True, chunk_length=1000)
 
 nc = neo4j_connect(base_uri = args.endpoint, 
                    usr = args.usr, pwd = args.pwd)
@@ -74,6 +77,7 @@ def make_name_edges(typ, delete_old=True, test_mode = False):
     else:
         delete = ""
     statements = ["MATCH (n)-[r:%s]->(m) RETURN  collect(distinct r.label) as labels" % (typ)]    
+    print("processing %s %s statements" % (len(statements), typ))    
     r = nc.commit_list(statements)  
     statements = []
     # Iterate over, making named edges for labels (sub space for _)
@@ -82,7 +86,10 @@ def make_name_edges(typ, delete_old=True, test_mode = False):
         rel = re.sub(' ', '_', label) # In case any labels have spaces
         statements.append("MATCH (n)-[r:%s {label:'%s'}]->(m) MERGE (n)-[r2:%s]->(m) SET r2=r,r2.type='%s' %s%s" % (typ, label, rel, typ, delete, test))    
     print("processing %s %s statements" % (len(statements), typ))    
-    nc.commit_list_in_chunks(statements, verbose = True, chunk_length = 1)
+    with Pool(5) as p:
+        print(p.map(neo4j_commit_list, statements, chunksize=1)
+    # nc.commit_list_in_chunks(statements, verbose = True, chunk_length = 1)
+
     
 make_name_edges(typ='Related', test_mode = args.test)
 
