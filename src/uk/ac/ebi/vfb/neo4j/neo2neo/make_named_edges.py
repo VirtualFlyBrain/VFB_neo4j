@@ -41,8 +41,7 @@ def neo4j_commit_list(statements):
   nc = neo4j_connect(base_uri = args.endpoint, usr = args.usr, pwd = args.pwd)
   nc.commit_list_in_chunks(statements, verbose=True, chunk_length=1000)
 
-nc = neo4j_connect(base_uri = args.endpoint, 
-                   usr = args.usr, pwd = args.pwd)
+nc = neo4j_connect(base_uri = args.endpoint, usr = args.usr, pwd = args.pwd)
 
 # def make_name_edges(typ, s='', o='', test_mode = False):
 #     if test_mode:
@@ -87,7 +86,7 @@ def make_name_edges(typ, delete_old=True, test_mode = False):
         statements.append("MATCH (n)-[r:%s {label:'%s'}]->(m) MERGE (n)-[r2:%s]->(m) SET r2=r,r2.type='%s' %s%s" % (typ, label, rel, typ, delete, test))
     print("processing %s %s statements" % (len(statements), typ))
     with Pool(5) as p:
-        print(p.map(neo4j_commit_list, statements, chunksize=1)
+        print(p.map(neo4j_commit_list, statements))
     # nc.commit_list_in_chunks(statements, verbose = True, chunk_length = 1)
 
 
