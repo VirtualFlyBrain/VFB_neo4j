@@ -18,8 +18,8 @@ args = parser.parse_args()
 label_additions = []
 queries = {
     'Nervous_system': "'overlaps' some 'nervous system'",
-    'Larval': "'overlaps' some 'nervous system'",
-    'Adult': "'overlaps' some 'nervous system'"
+    'Larval': "'part of' some 'larva'",
+    'Adult': "'part of' some 'adult'"
 }
 
 o2n = OWLery2Neo(neo=(args.neo_endpoint, args.neo_usr, args.neo_pwd),
