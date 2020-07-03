@@ -94,11 +94,7 @@ def transform_annotation_properties_on_nodes_to_array(nc):
     q_transform = 'MATCH (p) WHERE EXISTS(p.%s) SET p.%s=[] + p.%s'
     
     r = query(q,nc)
-    print(r)
-    for i in r:
-        print(i)
-        qsl = i['key']
-        print(qsl)
+    for qsl in r[0]['key']:
         if qsl not in ["label", "iri", "short_form"]:
             print("in")
             query(q_transform % (qsl,qsl,qsl),nc)
@@ -109,8 +105,7 @@ def transform_annotation_properties_on_relations_to_array(nc):
     q_transform = 'MATCH ()-[p]-() WHERE EXISTS(p.%s) SET p.%s=[] + p.%s'
     
     r = query(q,nc)
-    for i in r:
-        qsl = i['key']
+    for qsl in r[0]['key']:
         if qsl not in ["label", "iri", "short_form", "type"]:
             query(q_transform % (qsl,qsl,qsl),nc)
         
