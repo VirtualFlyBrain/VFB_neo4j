@@ -89,12 +89,26 @@ def transform_properties_and_relations_set_types_qsl(nc):
 
 
 def transform_annotation_properties_on_nodes_to_array(nc):
-    q = 'MATCH (n:AnnotationProperty) RETURN DISTINCT n.qsl'
+    #q = 'MATCH (n:AnnotationProperty) RETURN DISTINCT n.qsl'
+    q = 'MATCH (a) UNWIND keys(a) AS key RETURN collect(distinct key) as key'
     q_transform = 'MATCH (p) WHERE EXISTS(p.%s) SET p.%s=[] + p.%s'
+    
     r = query(q,nc)
     for i in r:
-        qsl = i['n.qsl']
-        query(q_transform % (qsl,qsl,qsl),nc)
+        qsl = i['key']
+        if qsl not in ["label", "iri", "short_form"]:
+            query(q_transform % (qsl,qsl,qsl),nc)
+
+def transform_annotation_properties_on_relations_to_array(nc):
+    #q = 'MATCH (n:AnnotationProperty) RETURN DISTINCT n.qsl'
+    q = 'MATCH ()-[a]-() UNWIND keys(a) AS key RETURN collect(distinct key) as key'
+    q_transform = 'MATCH ()-[p]-() WHERE EXISTS(p.%s) SET p.%s=[] + p.%s'
+    
+    r = query(q,nc)
+    for i in r:
+        qsl = i['key']
+        if qsl not in ["label", "iri", "short_form", "type"]:
+            query(q_transform % (qsl,qsl,qsl),nc)
         
 def rewrite_property_keys_on_nodes_to_qsl(nc,mapping):
     q = 'MERGE (n:%s {iri: \'%s\', qsl: \'%s\'}) RETURN n'
@@ -147,6 +161,8 @@ rewrite_property_keys_on_nodes_to_qsl(nc,mapping)
 
 print('Making sure that all annotation properties are represented as arrays on nodes rather than string values. Note that this query will fail hard if the property in question is already an array')
 transform_annotation_properties_on_nodes_to_array(nc)
+print('Making sure that all annotation properties are represented as arrays on relations rather than string values. Note that this query will fail hard if the property in question is already an array')
+transform_annotation_properties_on_relations_to_array(nc)
 
 print('Collecting original database state indicators')
 ct_nodes_after = query(q_node_count % '',nc)[0]['ct']
