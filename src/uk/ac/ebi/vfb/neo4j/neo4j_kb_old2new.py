@@ -95,7 +95,7 @@ def transform_annotation_properties_on_nodes_to_array(nc):
     
     r = query(q,nc)
     for qsl in r[0]['key']:
-        if qsl not in ["label", "iri", "short_form"]:
+        if qsl not in ["label", "iri", "short_form", "qsl"]:
             print("in")
             query(q_transform % (qsl,qsl,qsl),nc)
 
@@ -106,7 +106,7 @@ def transform_annotation_properties_on_relations_to_array(nc):
     
     r = query(q,nc)
     for qsl in r[0]['key']:
-        if qsl not in ["label", "iri", "short_form", "type"]:
+        if qsl not in ["label", "iri", "short_form", "type", "qsl"]:
             query(q_transform % (qsl,qsl,qsl),nc)
         
 def rewrite_property_keys_on_nodes_to_qsl(nc,mapping):
