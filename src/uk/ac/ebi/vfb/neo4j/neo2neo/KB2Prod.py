@@ -75,9 +75,10 @@ ncm.move_edges(match="MATCH (:Class { label: 'channel'})<-[:INSTANCEOF]-(o:Indiv
 non_owl_node_match = "MATCH (n) " \
         "WHERE ('DataSet' IN labels(n)) " \
         "OR ('License' IN labels(n)) " \
-        "OR ('Person' IN labels(n))" \
-        "OR ('Site' IN labels(n))" \
-        "OR ('pub' IN labels(n))"
+        "OR ('Person' IN labels(n)) " \
+        "OR ('Site' IN labels(n)) " \
+        "OR ('pub' IN labels(n)) " \
+        "OR ('API' IN labels(n)) "
            
 ncm.move_nodes(match=non_owl_node_match, key='iri', test_mode=False)
  
