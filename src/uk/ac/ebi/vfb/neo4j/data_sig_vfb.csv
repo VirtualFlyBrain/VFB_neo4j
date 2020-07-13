@@ -640,7 +640,7 @@ http://purl.obolibrary.org/obo/RO_0008503,ObjectProperty,kleptoparasite_of
 http://purl.obolibrary.org/obo/RO_0008504,ObjectProperty,kleptoparasitized_by
 http://xmlns.com/foaf/0.1/knows,ObjectProperty,knows
 http://purl.obolibrary.org/obo/fbbt#syngo_official_label,AnnotationProperty,label_approved_by_the_syngo_project_fbbthash
-http://www.w3.org/2000/01/rdf-schema#label,AnnotationProperty,label_rdfs
+http://www.w3.org/2000/01/rdf-schema#label,AnnotationProperty,label
 http://purl.obolibrary.org/obo/fbbt#larval_OF,AnnotationProperty,larval_of_fbbthash
 http://xmlns.com/foaf/0.1/lastName,DataProperty,lastname
 http://purl.obolibrary.org/obo/RO_0002624,ObjectProperty,lays_eggs_in
