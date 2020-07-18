@@ -25,6 +25,11 @@ supported_xrefs = {'FlyBase': 'FlyBase:FBrf\d{7}',
                    'PMID': 'PMID:\d+',
                    'DOI': 'DOI:.+'}
 
+test = '{ "value": "Second born ganglion mother cell of neuroblast NB4-2.", "annotations": {"database_cross_reference": [ "FlyBase:FBrf0055900","FlyBase:FBrf0064795" ]}}'
+
+
+def unpack(ann_ax):
+    json.loads(ann_ax)
 
 # obo_definition_citation:{"definition":"Any sense organ (FBbt:00005155) that is part of some adult (FBbt:00003004).",
 # "oboXrefs":[{"database":"FlyBase","id":"FBrf0031004","description":null,"url":null},
@@ -39,6 +44,8 @@ supported_xrefs = {'FlyBase': 'FlyBase:FBrf\d{7}',
 #               "description":null,"url":null}]}
 # ,{"name":"vmpr","scope":"hasRelatedSynonym","type":null,"xrefs":[{"database":"FlyBase","id":"FBrf0193607","description":null,"url":null}]},{"name":"LAL","scope":"hasExactSynonym","type":"BrainName official abbreviation","xrefs":[{"database":"FlyBase","id":"FBrf0224194","description":null,"url":null}]}
 
+
+# ["{ "value": "First born ganglion mother cell of neuroblast NB4-2.", "annotations": {"database_cross_reference": [ "FlyBase:FBrf0055900","FlyBase:FBrf0064795" ]}}"]
 
 def proc_xrefs(dbxrefs):
     if not dbxrefs:
@@ -55,6 +62,9 @@ def proc_xrefs(dbxrefs):
     return out
 
 
+
+
+
 def clean_pub_id_typ(sfid, pub_id_typ):
     pub_id_typ = str(pub_id_typ).replace('.', '_')  # replace invalid dots from DB types such as 'answers.com'
     pub_id_typ = pub_id_typ.replace(' ', '_')  # replace invalid spaces
@@ -64,7 +74,7 @@ def clean_pub_id_typ(sfid, pub_id_typ):
     return pub_id_typ
 
 
-def roll_cypher_add_def_pub_link(sfid, pub_id_typ, pub_id):
+def roll_cypher_add_def_pub_link(sfid, pub_id):
     """Generates a Cypher statement that links an existing class
     to a pub node with the specified attribute.  Generates a new pub node
      if none exists."""
@@ -86,24 +96,24 @@ def roll_cypher_add_syn_pub_link(sfid, s, pub_id_typ, pub_id):
 
 nc.commit_list(["MERGE (:pub:Individual { short_form: 'Unattributed', "
                 "iri: 'http://virtualflybrain.org/reports/Unattributed'})"])
-q = nc.commit_list(["MATCH (c) where c:Class or c:Individual "
-                    "RETURN c.short_form as short_form, "
-                    "c.synonym as slist, c.obo_synonym as refd_syns,"
-                    " c.obo_definition_citation as def"])
+
+q = nc.commit_list(["MATCH (c:Class) "  # do we need inds?
+                    "RETURN d.short_form as short_form"
+                    "COALESCE(c.definition, []) as def, "
+                    "COALESCE(c.has_exact_synonym, []) as esyn, "
+                    "COALESCE(c.has_broad_synonym, []) as bsyn, "
+                    "COALESCE(c.has_narrow_synonym, []) as nsyn"])
+
 dc = results_2_dict_list(q)
 statements = []
 for d in dc:
     if d['def']:
-        for cit in d['def']:
-            if cit:
-                def_cit = json.loads(cit)
-                for ref in def_cit['oboXrefs']:
-                    if ref['id'] and ref['database'] == 'FlyBase':
-                        statements.append(roll_cypher_add_def_pub_link(
-                            sfid=d['short_form'],
-                            pub_id=ref['id'],
-                            pub_id_typ=ref['database'],
-                        ))
+        def_cit = json.loads(d['def'][0])
+        drefs = proc_xrefs(def_cit['annotations']['database_cross_reference'])
+        for dref in drefs.values():
+            statements.append(roll_cypher_add_def_pub_link(
+            sfid=d['short_form'],
+            pub_id=dref))
     # slist = simple list of strings containing all all synonyms
     # refd_synse = list of JSON strings for all_synonyms with xrefs (may be subset of slist)
     # generate a dict of in refd syns keyd on name
