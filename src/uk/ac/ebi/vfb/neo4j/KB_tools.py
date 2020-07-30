@@ -261,7 +261,7 @@ class kb_owl_edge_writer(kb_writer):
             warnings.warn(m)
 
     def _add_triple(self, s, r, o, rtype, stype, otype,
-                    edge_annotations=None, match_on="iri", safe_label_edge=False):
+                    edge_annotations=None, match_on="iri", safe_label_edge=True):
         # Private method to set up data structures required for checking properties
         # prior to constructing cypher specifying triples for addition.
 
@@ -285,8 +285,8 @@ class kb_owl_edge_writer(kb_writer):
         for t in flat_list_triples:
             rel_map = self.properties[t['r']]
             if t['safe_label_edge']:
-                if 'label' in rel_map.keys() and rel_map['label']:
-                    rel = re.sub(' ', '_', rel_map['label'])
+                if 'sl' in rel_map.keys() and rel_map['sl']:
+                    rel = rel_map['sl']
                 else:
                     rel = rel_map[t['match_on']]
             else:
@@ -318,14 +318,14 @@ class kb_owl_edge_writer(kb_writer):
 
 
     def _add_related_edge(self, s, r, o, stype, otype,
-                          edge_annotations=None, match_on="iri", safe_label_edge=False):
+                          edge_annotations=None, match_on="iri", safe_label_edge=True):
         if edge_annotations is None:
             edge_annotations = {}
         rtype = 'Related'
         self._add_triple(s, r, o, rtype, stype, otype,
                          edge_annotations, match_on, safe_label_edge=safe_label_edge)
 
-    def add_annotation_axiom(self, s, r, o, stype='', otype=':Individual', edge_annotations=None, match_on="iri", safe_label_edge=False):
+    def add_annotation_axiom(self, s, r, o, stype='', otype=':Individual', edge_annotations=None, match_on="iri", safe_label_edge=True):
         """Link an OWL entity to an Individual via an annotation axiom.
         s = property identifying subject entity ,
         r = property identifying relation (AnnotationProperty) ,
@@ -340,8 +340,8 @@ class kb_owl_edge_writer(kb_writer):
         self._add_triple(s, r, o, rtype, stype, otype,
                          edge_annotations, match_on, safe_label_edge=safe_label_edge)
 
-    def add_fact(self, s, r, o, edge_annotations = None,
-                 match_on="iri", safe_label_edge=False):
+    def add_fact(self, s, r, o, edge_annotations=None,
+                 match_on="iri", safe_label_edge=True):
 
         """Add OWL fact to statement stack.
         s = property identifying subject individual ,
@@ -372,7 +372,7 @@ class kb_owl_edge_writer(kb_writer):
 
                 
     def add_anon_type_ax(self, s, r, o, edge_annotations=None,
-                         match_on="iri", safe_label_edge=False):
+                         match_on="iri", safe_label_edge=True):
         """Add OWL anonymous type axiom to statement stack.
         s = property identifying subject individual ,
         r = property identifying relation (ObjectProperty) ,
@@ -406,7 +406,7 @@ class kb_owl_edge_writer(kb_writer):
         self.statements.append(out)
 
     def add_anon_subClassOf_ax(self, s, r, o, edge_annotations=None,
-                               match_on="iri", safe_label_edge=False):
+                               match_on="iri", safe_label_edge=True):
         """Add OWL anonymous subClassOf axiom to statement stack.
         s = property identifying subject Class ,
         r = property identifying relation (ObjectProperty) ,
