@@ -84,7 +84,7 @@ class pubLink():
         try:
             j = json.loads(json_string)
         except ValueError:
-            warnings.warn("Expected JSON string, got %s" % str(json_string))
+            warnings.warn("Expected JSON string, got '%s'" % str(json_string))
         try:
             assert(type in supported_types)
         except ValueError:
@@ -109,16 +109,17 @@ class pubLink():
             for x in xrefs_proc:
                 print(subject)
                 print(x['acc'])
-                self.node_writer.add_node(labels=['pub', 'Individual', 'Entity'], IRI=map_iri(x['db']) + x['acc'])
-                self.edge_witer.add_annotation_axiom(s=subject,
-                                                     r='references',
-                                                     o=x['acc'],
-                                                     edge_annotations=edge_annotations,
-                                                     match_on='short_form',
-                                                     safe_label_edge=True)
+                if x['db'] and x['acc']:
+                    self.node_writer.add_node(labels=['pub', 'Individual', 'Entity'], IRI=map_iri(x['db']) + x['acc'])
+                    self.edge_witer.add_annotation_axiom(s=subject,
+                                                         r='references',
+                                                         o=x['acc'],
+                                                         edge_annotations=edge_annotations,
+                                                         match_on='short_form',
+                                                         safe_label_edge=True)
 
     def gen_pub_links(self):
-        q = ["MATCH (c:Class) "  # do we need inds?
+        q = ["MATCH (c:Class)"  # do we need inds?
             "RETURN c.short_form AS short_form, "
             "{ definition: COALESCE(c.definition, []), "
             "has_exact_synonym: COALESCE(c.has_exact_synonym, []), "
