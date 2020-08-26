@@ -134,12 +134,13 @@ class FeatureMover(FB2Neo):
             return False
         feats = self.name_synonym_lookup(fbids)
         proc_names = [f.__dict__ for f in feats.values()]
+
         for d in proc_names:
             d['synonyms'] = '|'.join(d['synonyms'])
         statement = "MERGE (n:Class { short_form : line.short_form } ) " \
                     "SET n.label = line.label SET n.synonyms = split(line.synonyms, '|') " \
                     "SET n.iri = 'http://flybase.org/reports/' + line.short_form " \
-                    "SET n:Feature SET self_xref = True"
+                    "SET n:Feature SET n.self_xref = True"
 
         if commit:
             self.commit_via_csv(statement, proc_names)
