@@ -114,12 +114,18 @@ class pubLink():
                     self.edge_witer.add_annotation_axiom(s=subject,
                                                          r='references',
                                                          o=x['acc'],
+                                                         stype=':Class',
                                                          edge_annotations=edge_annotations,
                                                          match_on='short_form',
                                                          safe_label_edge=True)
 
     def gen_pub_links(self):
-        q = ["MATCH (c:Class)"  # do we need inds?
+        q = ["MATCH (c:Class) "  # do we need inds?
+             "WHERE exists(c.definition)"
+             "OR exists(c.has_exact_synonym) "  
+             "OR exists(c.has_broad_synonym) "  
+             "OR exists(c.has_narrow_synonym) "  
+             "OR exists(c.has_related_synonym) "
             "RETURN c.short_form AS short_form, "
             "{ definition: COALESCE(c.definition, []), "
             "has_exact_synonym: COALESCE(c.has_exact_synonym, []), "
@@ -131,17 +137,17 @@ class pubLink():
         r = self.node_writer.nc.commit_list(q)
         dc = results_2_dict_list(r)
         for d in dc:
-            for k,v in d['annotated_axioms'].items():
+            for k, v in d['annotated_axioms'].items():
                 if v:
                     if k == 'definition':
                         self.write_pub_link(d['short_form'], v[0], type=k)
                     else:
                         for s in v:
-                            self.write_pub_link(d['short_form'],s, type=k)
+                            self.write_pub_link(d['short_form'], s, type=k)
 
     def commit(self):
-        self.node_writer.commit(chunk_length=1000)
-        self.edge_witer.commit(chunk_length=1000)
+        self.node_writer.commit(chunk_length=1000, verbose=True)
+        self.edge_witer.commit(chunk_length=1000, verbose=True)
 
 def __main__():
     pl = pubLink(endpoint=args.endpoint,
