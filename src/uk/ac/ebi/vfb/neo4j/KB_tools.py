@@ -869,6 +869,7 @@ class KB_pattern_writer(object):
                                              r='hasDbXref',
                                              o=db,
                                              stype=':Individual',
+                                             otype=':Individual:DataSet',
                                              match_on='short_form',
                                              edge_annotations={'accession': acc},
                                              safe_label_edge=True
@@ -987,6 +988,7 @@ class KB_pattern_writer(object):
                                      r='license',
                                      o=license,
                                      stype=':Individual',
+                                     otype=':Individual:License',
                                      match_on=match_on,
                                      safe_label_edge=True)
         if site:
@@ -994,6 +996,7 @@ class KB_pattern_writer(object):
                                          r='hasDbXref',
                                          o=site,
                                          stype=':Individual',
+                                         otype=':Individual:Site',
                                          match_on='short_form',
                                          safe_label_edge=True)
         if pub:
@@ -1001,6 +1004,7 @@ class KB_pattern_writer(object):
                                          r='references',
                                          o=pub,
                                          stype=':Individual',
+                                         otype=':Individual:pub',
                                          match_on='short_form',
                                          safe_label_edge=True)
 
