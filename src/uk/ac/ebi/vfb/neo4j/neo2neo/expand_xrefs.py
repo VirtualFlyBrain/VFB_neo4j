@@ -61,6 +61,7 @@ for d in dc:
             ew.add_annotation_axiom(s=c,
                                     r='hasDbXref',
                                     o=db,
+                                    stype=':Entity',
                                     edge_annotations={
                                         "accession": acc,
                                     },
