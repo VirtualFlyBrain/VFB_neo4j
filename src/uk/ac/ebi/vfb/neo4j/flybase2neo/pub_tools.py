@@ -32,10 +32,10 @@ class pubMover(FB2Neo):
             else:
                 title = ''
             statements.append("MERGE (p:pub:Individual { short_form: '%s' } ) "
-                              "SET p.iri = '%s', p.FlyBase = '%s', "
-                              "p.title = \"%s\", p.label = \"%s\","
-                              "p.miniref = \"%s\", "
-                              "p.volume = '%s', p.year = '%s', p.pages = '%s'"
+                              "SET p.iri = '%s', p.FlyBase = ['%s'], "
+                              "p.title = ['%s'], p.label = '%s',"
+                              "p.miniref = ['%s'], "
+                              "p.volume = ['%s'], p.year = ['%s'], p.pages = ['%s']'"
                               % (d['fbrf'], map_iri('fb') + d['fbrf'], d['fbrf'],
                                  title, d['miniref'],  d['miniref'], d['volume'],
                                  d['year'], d['pages']))
@@ -56,16 +56,16 @@ class pubMover(FB2Neo):
         for d in xrefs:
             if d['db_name'] == 'pubmed':
                 statements.append("MATCH (p:pub) WHERE p.short_form = '%s' "
-                                  "SET p.PMID = '%s'" % (d['fbrf'], d['acc']))
+                                  "SET p.PMID = ['%s']" % (d['fbrf'], d['acc']))
             if d['db_name'] == 'PMCID':
                 statements.append("MATCH (p:pub) WHERE p.short_form = '%s' "
-                                  "SET p.PMCID = '%s'" % (d['fbrf'], d['acc']))
+                                  "SET p.PMCID = ['%s']" % (d['fbrf'], d['acc']))
             if d['db_name'] == 'ISBN':
                 statements.append("MATCH (p:pub) WHERE p.short_form = '%s' "
-                                  "SET p.PMID = '%s'" % (d['fbrf'], d['acc']))
+                                  "SET p.PMID = ['%s']" % (d['fbrf'], d['acc']))
             if d['db_name'] == 'DOI':
                 statements.append("MATCH (p:pub) WHERE p.short_form = '%s' "
-                                  "SET p.DOI = '%s'" % (d['fbrf'], d['acc']))
+                                  "SET p.DOI = ['%s']" % (d['fbrf'], d['acc']))
 
         self.nc.commit_list(statements)
 
@@ -73,8 +73,7 @@ class pubMover(FB2Neo):
         return "MATCH (p:pub), (s:Site) WHERE p.short_form = '%s' " \
                 "AND s.label = '%s' " \
                 "MERGE (p)-[dbx :hasDbXref]->(s) " \
-                "SET dbx.accession = '%s'" % (pub, db, acc)
-
+                "SET dbx.accession = ['%s']" % (pub, db, acc)
 
     def set_pub_xrefs(self, pub_list):
         xrefs = self.get_pub_xrefs(pub_list)
@@ -90,7 +89,7 @@ class pubMover(FB2Neo):
 
     def generate_microref_labels(self):
         ### Needs some work
-        self.nc.commit_list(["MATCH (n:pub) where has(n.miniref) SET n.label=split(n.miniref,',')[0] + ', ' + split(n.miniref,',')[1]"])
+        self.nc.commit_list(["MATCH (n:pub) where has(n.miniref) SET n.label=[split(n.miniref,',')[0] + ', ' + split(n.miniref,',')[1]]"])
 
 
     def get_pub_type(self, pub_list):
