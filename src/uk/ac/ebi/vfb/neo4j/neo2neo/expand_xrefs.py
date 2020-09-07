@@ -62,11 +62,13 @@ for d in dc:
             ew.add_annotation_axiom(s=c,
                                     r='hasDbXref',
                                     o=db,
+                                    stype=':Entity',
                                     edge_annotations={
                                         "accession": acc,
                                     },
                                     match_on='short_form',
                                     safe_label_edge=True
+
                                     )
 
 ew.commit(chunk_length=1000)
