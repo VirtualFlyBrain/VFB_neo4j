@@ -859,6 +859,7 @@ class KB_pattern_writer(object):
         self.ew.add_annotation_axiom(s=anat_id[match_on],
                                      r='source',
                                      o=dataset,
+                                     stype=':Individual',
                                      match_on=match_on,
                                      safe_label_edge=True)
 
@@ -867,6 +868,8 @@ class KB_pattern_writer(object):
                 self.ew.add_annotation_axiom(s=anat_id['short_form'],
                                              r='hasDbXref',
                                              o=db,
+                                             stype=':Individual',
+                                             otype=':Individual:Site',
                                              match_on='short_form',
                                              edge_annotations={'accession': acc},
                                              safe_label_edge=True
@@ -875,6 +878,7 @@ class KB_pattern_writer(object):
             self.ew.add_annotation_axiom(s=anat_id['short_form'],
                                          r='contributor',
                                          o=orcid,
+                                         stype=':Individual',
                                          match_on='short_form')  # This assumes matching on short form!
 
         self.ni.add_node(labels=self_labels,
@@ -983,18 +987,24 @@ class KB_pattern_writer(object):
         self.ew.add_annotation_axiom(s=short_form,
                                      r='license',
                                      o=license,
+                                     stype=':Individual',
+                                     otype=':Individual:License',
                                      match_on=match_on,
                                      safe_label_edge=True)
         if site:
             self.ew.add_annotation_axiom(s=short_form,
                                          r='hasDbXref',
                                          o=site,
+                                         stype=':Individual',
+                                         otype=':Individual:Site',
                                          match_on='short_form',
                                          safe_label_edge=True)
         if pub:
             self.ew.add_annotation_axiom(s=short_form,
                                          r='references',
                                          o=pub,
+                                         stype=':Individual',
+                                         otype=':Individual:pub',
                                          match_on='short_form',
                                          safe_label_edge=True)
 
