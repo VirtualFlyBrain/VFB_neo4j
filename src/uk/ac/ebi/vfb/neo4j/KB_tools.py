@@ -869,7 +869,7 @@ class KB_pattern_writer(object):
                                              r='hasDbXref',
                                              o=db,
                                              stype=':Individual',
-                                             otype=':Individual:DataSet',
+                                             otype=':Individual:Site',
                                              match_on='short_form',
                                              edge_annotations={'accession': acc},
                                              safe_label_edge=True

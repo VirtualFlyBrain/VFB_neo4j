@@ -136,6 +136,7 @@ class TestEdgeWriter(unittest.TestCase):
         self.edge_writer.add_annotation_axiom(s='David',
                                               r='has license',
                                               o='Drivers license asdfadf',
+                                              stype=':Individual',
                                               match_on='label',
                                               safe_label_edge=True)
         self.edge_writer.commit()
