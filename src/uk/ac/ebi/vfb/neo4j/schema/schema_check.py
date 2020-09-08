@@ -54,6 +54,7 @@ def compare(label, description, query1, query2, verbose = False, write_reports =
     else:
         if verbose:
             print("Testing assertion:" + description)
+            print(query1)
             print(query2)
             print("Result: inds_in_datset: %d ; Compliant with pattern: %d" % (r1['ind_count'],  r2['ind_count']))
         # Should probably turn this into a report
