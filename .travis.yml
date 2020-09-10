@@ -2,8 +2,8 @@ sudo: required
 dist: xenial
 
 before_install:
-  - docker run -d --name kb_p2 -p 7474:7474 -p 7687:7687 --env=NEO4J_AUTH=none --env=NEO4J_dbms_read__only=false --env=NEO4J_dbms_memory_heap_maxSize=2G --env=BACKUPFILE=VFB-KB2 --volume=/Users/davidos:/import/ virtualflybrain/vfb-prod:kb
-  - docker run -d --name pdb_p2 -p 7475:7474 -p 7688:7687 --env=NEO4J_AUTH=none --env=NEO4J_dbms_read__only=false --env=NEO4J_dbms_memory_heap_maxSize=2G --env=BACKUPFILE=VFB-PDB2 --volume=/Users/davidos:/import/ virtualflybrain/vfb-prod:pdb
+  - docker run -d --name db -p 7474:7474 -p 7687:7687 --env=NEO4J_AUTH=none --env=NEO4J_dbms_read__only=false --env=NEO4J_dbms_memory_heap_maxSize=2G --env=BACKUPFILE=VFB-KB2 --volume=/Users/davidos:/import/ virtualflybrain/vfb-prod:kb
+  - docker run -d --name pdb -p 7475:7474 -p 7688:7687 --env=NEO4J_AUTH=none --env=NEO4J_dbms_read__only=false --env=NEO4J_dbms_memory_heap_maxSize=2G --env=BACKUPFILE=VFB-PDB2 --volume=/Users/davidos:/import/ virtualflybrain/vfb-prod:pdb
   - sleep 50s
   - git clone https://github.com/VirtualFlyBrain/VFB_connect.git
 
