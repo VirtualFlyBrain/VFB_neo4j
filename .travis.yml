@@ -4,7 +4,6 @@ dist: xenial
 before_install:
   - docker run -d --name db -p 7474:7474 -p 7687:7687 --env=NEO4J_AUTH=none --env=NEO4J_dbms_read__only=false --env=NEO4J_dbms_memory_heap_maxSize=2G --env=BACKUPFILE=VFB-KB2 --volume=/Users/davidos:/import/ virtualflybrain/vfb-prod:kb
   - docker run -d --name pdb -p 7475:7474 -p 7688:7687 --env=NEO4J_AUTH=none --env=NEO4J_dbms_read__only=false --env=NEO4J_dbms_memory_heap_maxSize=2G --env=BACKUPFILE=VFB-PDB2 --volume=/Users/davidos:/import/ virtualflybrain/vfb-prod:pdb
-  - sleep 2m
   - git clone https://github.com/VirtualFlyBrain/VFB_connect.git
 
 services:
@@ -22,7 +21,7 @@ install:
   - pip install -r requirements.txt
   - pip install -r VFB_connect/requirements.txt
   
-script:
+before_script:
   - export PYTHONPATH=$PYTHONPATH":/"$TRAVIS_BUILD_DIR/VFB_connect/src
   - export KB=http://localhost:7474/
   - export PDB=http://localhost:7475/
@@ -30,14 +29,15 @@ script:
   - export PWD=neo4j
   - export FILEPATH=$TRAVIS_BUILD_DIR/src/
   - export ENDPOINT=$PDB
-  - echo -e "travis_fold:start:db-log"
+  - export LANDING_PAGE=http://localhost:7475/db/data/
+  - Test () { export http_status=$(curl -s -i $LANDING_PAGE | grep HTTP/1.1 | awk {'print $2'}); echo "Returned status \"$http_status\""; if [ "$http_status" != "200" ]; then echo "Waiting for neo4j to finish loading..."; iterations=$((iterations+1)); if [ "$iterations" != "100" ]; then sleep 1; Test; fi; else echo "$(date) - connected successfully"; fi; }
+  - Test
   - curl -sSf -u neo4j:neo4j "http://localhost:7474/db/data/"
   - docker logs --tail 10 db
-  - echo -e "travis_fold:end:db-log"
-  - echo -e "travis_fold:start:pdb-log"
   - curl -sSf -u neo4j:neo4j "http://localhost:7475/db/data/"
   - docker logs --tail 10 pdb
-  - echo -e "travis_fold:end:pdb-log"
+  
+script:
   - echo $VN
   - cd src
   - python -m $VN.test.KB_tools_test
