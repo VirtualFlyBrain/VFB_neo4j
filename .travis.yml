@@ -34,10 +34,12 @@ script:
   - echo $VN
   - cd src
   - docker run -d --name kb -p 7474:7474 -p 7687:7687 --env=NEO4J_AUTH=none --env=NEO4J_dbms_read__only=false --env=NEO4J_dbms_memory_heap_maxSize=2G --env=BACKUPFILE=VFB-KB2 --volume=/Users/davidos:/import/ virtualflybrain/vfb-prod:kb
+  - sleep 4m
   - Test
   - python -m $VN.test.KB_tools_test
   - docker stop kb
   - docker run -d --name pdb -p 7474:7474 -p 7687:7687 --env=NEO4J_AUTH=none --env=NEO4J_dbms_read__only=false --env=NEO4J_dbms_memory_heap_maxSize=2G --env=BACKUPFILE=VFB-PDB2 --volume=/Users/davidos:/import/ virtualflybrain/vfb-prod:pdb
+  - sleep 4m
   - Test
   - python -m $VN.test.neo_tools_tests
   - python -m $VN.flybase2neo.test.feature_tools_tests
