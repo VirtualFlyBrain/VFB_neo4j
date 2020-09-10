@@ -33,9 +33,9 @@ class pubMover(FB2Neo):
                 title = ''
             statements.append("MERGE (p:pub:Individual { short_form: '%s' } ) "
                               "SET p.iri = '%s', p.FlyBase = ['%s'], "
-                              "p.title = ['%s'], p.label = '%s',"
+                              "p.title = ['%s'], p.label = '%s', "
                               "p.miniref = ['%s'], "
-                              "p.volume = ['%s'], p.year = ['%s'], p.pages = ['%s']'"
+                              "p.volume = ['%s'], p.year = ['%s'], p.pages = ['%s']"
                               % (d['fbrf'], map_iri('fb') + d['fbrf'], d['fbrf'],
                                  title, d['miniref'],  d['miniref'], d['volume'],
                                  d['year'], d['pages']))
