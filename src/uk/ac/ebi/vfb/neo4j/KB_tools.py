@@ -287,8 +287,10 @@ class kb_owl_edge_writer(kb_writer):
             if t['safe_label_edge']:
                 if 'sl' in rel_map.keys() and rel_map['sl']:
                     rel = rel_map['sl']
+                elif 'label' in rel_map.keys() and rel_map['label']:
+                    rel = re.sub('\W', '_', rel_map['label'])
                 else:
-                    rel = rel_map[t['match_on']]
+                    rel = rel_map['short_form']
             else:
                 rel = rel_map[t['match_on']]
 
@@ -297,7 +299,7 @@ class kb_owl_edge_writer(kb_writer):
             out += "FOREACH (a IN CASE WHEN s IS NOT NULL THEN [s] ELSE [] END | " \
                    "FOREACH (b IN CASE WHEN o IS NOT NULL THEN [o] ELSE [] END | "
             if t['safe_label_edge']:
-                out += "MERGE (a)-[re:%s]->(b) SET re.type = '%s'" % (rel, t['rtype'])  # Might need work?
+                out += "MERGE (a)-[re:%s]->(b) SET re.type = '%s' " % (rel, t['rtype'])  # Might need work?
             else:
                 out += "MERGE (a)-[re:%s { %s: '%s' }]->(b) " % (t['rtype'],
                                                                 t['match_on'],
