@@ -48,6 +48,7 @@ script:
   - python -m $VN.flybase2neo.expression_runner --test $PDB $USR $PWD $TRAVIS_BUILD_DIR/src/ # Really more or an intgration test - consider splitting out.
   - python -m $VN.flybase2neo.add_refs_for_anat $PDB $USR $PWD # Integration test.
   - python -m $VN.neo2neo.expand_xrefs $PDB $USR $PWD
+  - python -m $VN.flybase2neo.import_pub_data --test $PDB $USR $PWD
 
 
 
