@@ -231,16 +231,14 @@ class TestKBPatternWriter(unittest.TestCase):
             'http://localhost:7474', 'neo4j', 'neo4j')
         statements = []
         for k,v in self.kpw.relation_lookup.items():
-            short_form = re.split('[/#]', v)[-1]
             statements.append("MERGE (p:Property { iri : '%s', label: '%s', "
                               "short_form : '%s' }) " %
-                              (v, k, short_form))
+                              (v['iri'], k, v['short_form']))
 
         for k,v in self.kpw.class_lookup.items():
-            short_form = re.split('[/#]', v)[-1]
             statements.append("MERGE (p:Class { iri : '%s', "
                               "label: '%s', short_form : '%s' }) " %
-                              (v, k, short_form))
+                              (v['iri'], k, v['short_form']))
 
         self.nc.commit_list(statements)
         statements = []
@@ -276,6 +274,7 @@ class TestKBPatternWriter(unittest.TestCase):
             template='template_of_dave',
             anatomical_type='lobulobus',
             dbxrefs={'fu': 'bar'},
+            is_exemplar=True,
             anon_anatomical_types=([('part_of', 'brain')]),
             start=100
         )
