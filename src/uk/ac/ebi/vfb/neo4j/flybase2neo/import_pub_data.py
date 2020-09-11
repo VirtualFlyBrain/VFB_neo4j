@@ -17,7 +17,7 @@ nc = neo4j_connect(base_uri, usr, pwd)
 pm = pubMover(base_uri, usr, pwd)
 
 # Pull all pub FBrfs from graph
-statements = ['MATCH (pub) RETURN DISTINCT pub.short_form'] # Needs to be shifted to short_form - coord with KB.
+statements = ['MATCH (pub:pub) WHERE pub.short_form =~ "FBrf[0-9]{7}" RETURN DISTINCT pub.short_form']
 results = nc.commit_list(statements)
 if results:
     dc = results_2_dict_list(results)

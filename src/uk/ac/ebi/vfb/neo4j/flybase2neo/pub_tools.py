@@ -31,11 +31,12 @@ class pubMover(FB2Neo):
                 title = re.sub('"', "\\'", d['title'])
             else:
                 title = ''
-            statements.append("MERGE (p:pub:Individual { short_form: '%s' } ) "
-                              "SET p.iri = '%s', p.FlyBase = ['%s'], "
-                              "p.title = ['%s'], p.label = '%s', "
-                              "p.miniref = ['%s'], "
-                              "p.volume = ['%s'], p.year = ['%s'], p.pages = ['%s']"
+            statements.append('MERGE (p:pub:Individual { short_form: "%s" } ) '
+                              'SET p.iri = "%s" SET p.FlyBase = ["%s"] '
+                              'SET p.title = ["%s"] SET p.label = "%s" '
+                              'SET p.miniref = ["%s"] '
+                              'SET p.volume = ["%s"] SET p.year = ["%s"] '
+                              'SET p.pages = ["%s"]'
                               % (d['fbrf'], map_iri('fb') + d['fbrf'], d['fbrf'],
                                  title, d['miniref'],  d['miniref'], d['volume'],
                                  d['year'], d['pages']))

@@ -5,6 +5,7 @@ import json
 import warnings
 import argparse
 from uk.ac.ebi.vfb.neo4j.KB_tools import kb_owl_edge_writer, node_importer
+import re
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--test', help='Run in test mode. '
@@ -100,16 +101,17 @@ class pubLink():
                 xrefs_proc = [{'db': xref.split(':')[0], 'acc':  xref.split(':')[1]}
                                 for xref in a["database_cross_reference"]
                                 if xref.split(':')[0] in supported_xrefs]
-            edge_annotations = {'value': j['value'],
-                                    'typ': type}
+            edge_annotations = {'value': [j['value']],
+                                    'typ': [type]}
             if 'has_synonym_type' in a.keys():
-                edge_annotations['has_synonym_type'] = a['has_synonym_type']
+                edge_annotations['has_synonym_type'] = a['has_synonym_type']  # This is category! e.g. plural, not scope
                 if not xrefs_proc:
                     xrefs_proc = [{'db': 'FlyBase', 'acc': 'Unattributed'}]
             for x in xrefs_proc:
                 print(subject)
                 print(x['acc'])
-                if x['db'] and x['acc']:
+                # Currently only expanding FlyBase references
+                if x['db'] and x['acc'] and x['db'] == 'FlyBase' and re.match('FBrf\d{7}', x['acc']):
                     self.node_writer.add_node(labels=['pub', 'Individual', 'Entity'], IRI=map_iri(x['db']) + x['acc'])
                     self.edge_witer.add_annotation_axiom(s=subject,
                                                          r='references',
