@@ -5,6 +5,7 @@ import warnings
 from dataclasses import dataclass, field
 from typing import List, Dict, Set
 import collections
+import json
 
 
 def clean_sgml_tags(sgml_string):
@@ -81,7 +82,9 @@ class FeatureRelation:
 
 
 
-
+def generate_synonym_json(value, xrefs):
+    xrefs = [ { 'database_cross_reference': x } for x in xrefs]
+    return json.dumps({'value': value,  'annotations': xrefs})
 
 
 class FeatureMover(FB2Neo):
@@ -114,14 +117,17 @@ class FeatureMover(FB2Neo):
             warnings.warn("Empty fbid list provided to name_synonym_lookup")
             return False
         # stypes: symbol nickname synonym fullname
-        query = "SELECT f.uniquename as fbid, s.name as ascii_name, " \
-                "stype.name AS stype, " \
+        query = "SELECT distinct f.uniquename as fbid, s.name as ascii_name, " \
+                "stype.name AS stype, pub.uniquename as FBrf" \
                 "fs.is_current, s.synonym_sgml as unicode_name " \
+                "string_agg(pub.uniquename, ',') as FBrf" \
                 "FROM feature f " \
                 "LEFT OUTER JOIN feature_synonym fs on (f.feature_id=fs.feature_id) " \
                 "JOIN synonym s on (fs.synonym_id=s.synonym_id) " \
                 "JOIN cvterm stype on (s.type_id=stype.cvterm_id) " \
-                "WHERE f.uniquename IN ('%s') ORDER BY fbid"
+                "JOIN pub on fs.pub_id=pub.pub_id " \
+                "WHERE f.uniquename IN ('%s') " \
+                "GROUP BY fbid,  ascii_name, stype, fs.is_current, unicode_name "
         dc = self.query_fb(query % "','".join(fbids))
 
         return dict_list_2_dict(key='fbid', dict_list=dc, pfunc=proc_feature, sort=False)
