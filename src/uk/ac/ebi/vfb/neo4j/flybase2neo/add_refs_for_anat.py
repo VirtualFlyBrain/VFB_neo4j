@@ -69,9 +69,7 @@ class pubLink():
     def __init__(self, endpoint, usr, pwd, test_mode=False):
         self.edge_witer = kb_owl_edge_writer(endpoint, usr, pwd)
         self.node_writer = node_importer(endpoint, usr, pwd)
-        self.limit = ''
-        if test_mode:
-            self.limit =' limit 10 '
+        self.test_mode=test_mode
 
 
  # TODO: support unnatributed for synonyms by adding a link to 'unattributed'
@@ -107,9 +105,10 @@ class pubLink():
                 edge_annotations['has_synonym_type'] = a['has_synonym_type']  # This is category! e.g. plural, not scope
                 if not xrefs_proc:
                     xrefs_proc = [{'db': 'FlyBase', 'acc': 'Unattributed'}]
+            i = 0
             for x in xrefs_proc:
-                print(subject)
-                print(x['acc'])
+ #               print(subject)
+ #               print(x['acc'])
                 # Currently only expanding FlyBase references
                 if x['db'] and x['acc'] and x['db'] == 'FlyBase' and re.match('FBrf\d{7}', x['acc']):
                     self.node_writer.add_node(labels=['pub', 'Individual', 'Entity'], IRI=map_iri(x['db']) + x['acc'])
@@ -120,6 +119,9 @@ class pubLink():
                                                          edge_annotations=edge_annotations,
                                                          match_on='short_form',
                                                          safe_label_edge=True)
+                i += 1
+                if self.test_mode and i > 99:
+                    break
 
     def gen_pub_links(self):
         q = ["MATCH (c:Class) "  # do we need inds?
@@ -134,8 +136,7 @@ class pubLink():
             "has_broad_synonym: COALESCE(c.has_broad_synonym, []), "
             "has_narrow_synonym: COALESCE(c.has_narrow_synonym, []), "
             "has_related_synonym: COALESCE(c.has_related_synonym, [])} "
-             "AS annotated_axioms" 
-             + self.limit]
+             "AS annotated_axioms"]
         r = self.node_writer.nc.commit_list(q)
         dc = results_2_dict_list(r)
         for d in dc:
