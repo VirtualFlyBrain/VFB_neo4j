@@ -1,4 +1,4 @@
-from uk.ac.ebi.vfb.neo4j.neo4j_tools import results_2_dict_list
+from uk.ac.ebi.vfb.neo4j.neo4j_tools import results_2_dict_list, escape_string
 from uk.ac.ebi.vfb.curie_tools import map_iri
 import sys
 import json
@@ -103,13 +103,13 @@ class pubLink():
             warnings.warn("Unsupported type '%s'" % str(type))
 
         try:
-            assert("value" in j['keys'])
+            assert("value" in j.keys())
         except ValueError:
             warnings.warn("JSON has no value key. Not loading")
             # might be better to make this a soft warning
 
         # Start building edge annotations - all have value
-        edge_annotations = {"value":  j['value']}
+        edge_annotations = {"value":  escape_string(j['value'])}
 
         ### Set typ (def or syn) + scope for syn
 
@@ -146,7 +146,7 @@ class pubLink():
             if not xrefs_proc:
                 xrefs_proc = [{'db': 'FlyBase', 'acc': 'Unattributed'}]
             # Loop over xrefs adding edges to pub
-            i = 0 # for break in test mode
+            i = 0  # for break in test mode
             for x in xrefs_proc:
                 # This won't work for unattributed !
                 if x['db'] and x['acc'] and x['db'] == 'FlyBase':
