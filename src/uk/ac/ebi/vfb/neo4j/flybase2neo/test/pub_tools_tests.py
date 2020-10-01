@@ -6,7 +6,7 @@ from ...neo4j_tools import results_2_dict_list
 class TestPubMover(unittest.TestCase):
 
     def setUp(self):
-        self.pm = pubMover('http://localhost:7475', 'neo4j', 'neo4j')
+        self.pm = pubMover('http://localhost:7474', 'neo4j', 'neo4j')
 
 
     def testMove(self):
