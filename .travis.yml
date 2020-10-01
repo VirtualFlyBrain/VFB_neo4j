@@ -22,7 +22,7 @@ install:
 before_script:
   - export PYTHONPATH=$PYTHONPATH":/"$TRAVIS_BUILD_DIR/VFB_connect/src
   - export KB=http://localhost:7474
-  - export PDB=http://localhost:7474
+  - export PDB=http://localhost:7475
   - export USR=neo4j
   - export PWD=neo4j
   - export FILEPATH=$TRAVIS_BUILD_DIR/src/
