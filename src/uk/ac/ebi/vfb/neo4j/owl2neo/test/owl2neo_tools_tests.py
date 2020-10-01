@@ -7,7 +7,7 @@ from ...neo4j_tools import results_2_dict_list
 class OWLery2NeoTest(unittest.TestCase):
     
     def setUp(self):
-        self.o2n = OWLery2Neo(neo=('http://localhost:7475', 'neo4j', 'neo4j'))
+        self.o2n = OWLery2Neo(neo=('http://localhost:7474', 'neo4j', 'neo4j'))
 
     def test_owl_query_2_neo_labels(self):
         queries = {
