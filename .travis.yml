@@ -40,7 +40,7 @@ script:
   - docker stop kb
   - docker run -d --name pdb -p 7474:7475 -p 7687:7687 --env=NEO4J_AUTH=none --env=NEO4J_dbms_read__only=false --env=NEO4J_dbms_memory_heap_maxSize=2G --env=BACKUPFILE=VFB-PDB2 --volume=$TRAVIS_BUILD_DIR/src/:/import/ virtualflybrain/vfb-prod:pdb
   - Test
-  - sleep 50s
+  - sleep 100s
   - python -m $VN.test.neo_tools_tests
   - python -m $VN.flybase2neo.test.feature_tools_tests
   - python -m $VN.flybase2neo.test.pub_tools_tests
