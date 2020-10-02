@@ -108,14 +108,15 @@ class pubLink():
             warnings.warn("JSON has no value key. Not loading")
             # might be better to make this a soft warning
 
-        # Start building edge annotations - all have value
-        edge_annotations = {"value":  escape_string(j['value'])}
+        # Start building edge annotations
+        edge_annotations = {}  #{"value":  escape_string(j['value'])} # switched to only put value on syn edges.
 
         ### Set typ (def or syn) + scope for syn
 
         if type in synonym_types:
             edge_annotations['typ'] = 'syn'
             edge_annotations['scope'] = type
+            edge_annotations['value'] = escape_string(j['value'])
         else:
             edge_annotations['typ'] = 'def'
 
