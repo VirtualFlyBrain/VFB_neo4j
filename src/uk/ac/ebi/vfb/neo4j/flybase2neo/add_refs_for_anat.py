@@ -1,4 +1,4 @@
-from uk.ac.ebi.vfb.neo4j.neo4j_tools import results_2_dict_list
+from uk.ac.ebi.vfb.neo4j.neo4j_tools import results_2_dict_list, escape_string
 from uk.ac.ebi.vfb.curie_tools import map_iri
 import sys
 import json
@@ -76,10 +76,23 @@ class pubLink():
 
 
     def write_pub_link(self, subject, json_string, type, supported_xrefs = ('FlyBase')):
+
+        """Exapands a JSON string corresponding to a single annotated annotation axiom that is one of:
+        definition, obo synonyms type (has_exact_synonym etc) into a set of annotation edges to pubs
+        in xref annotations. Sets the following edge values:
+
+        value -> value
+        scope -> type (if synonym)
+        synonym_type -> has_synonym_type
+        typ -> def or syn
+        """
         supported_types = ['definition']
         synonym_types = ['has_exact_synonym', 'has_narrow_synonym',
                          'has_related_synonym', 'has_broad_synonym']
         supported_types.extend(synonym_types)
+
+        ### Some input tests
+
         try:
             j = json.loads(json_string)
         except ValueError:
@@ -87,30 +100,57 @@ class pubLink():
         try:
             assert(type in supported_types)
         except ValueError:
-            pass  # stub
-        j = json.loads(json_string)
+            warnings.warn("Unsupported type '%s'" % str(type))
+
+        try:
+            assert("value" in j.keys())
+        except ValueError:
+            warnings.warn("JSON has no value key. Not loading")
+            # might be better to make this a soft warning
+
+        # Start building edge annotations
+        edge_annotations = {}  #{"value":  escape_string(j['value'])} # switched to only put value on syn edges.
+
+        ### Set typ (def or syn) + scope for syn
+
         if type in synonym_types:
-            if not ('annotations' in j.keys()):
-                j['annotations'] = {"database_cross_reference": ['FlyBase:Unattributed']}
+            edge_annotations['typ'] = 'syn'
+            edge_annotations['scope'] = type
+            edge_annotations['value'] = escape_string(j['value'])
+        else:
+            edge_annotations['typ'] = 'def'
+
+        # If no xrefs, add a fake one to FlyBase
+
+
+        if not ('annotations' in j.keys()):
+            j['annotations'] = {"database_cross_reference": ['FlyBase:Unattributed']}
+
+
+        # Loop over annotations, rolling edges to FlyBase pubs
+
         if 'annotations' in j.keys():
             a = j['annotations']
+
+            # add synonym category if present
+            if 'has_synonym_type' in a.keys():
+                edge_annotations['has_synonym_type'] = a['has_synonym_type']  # This is category! e.g. plural, not scope
+
+            # process xrefs:
             xrefs_proc = []
             if "database_cross_reference" in a.keys():
                 xrefs_proc = [{'db': xref.split(':')[0], 'acc':  xref.split(':')[1]}
                                 for xref in a["database_cross_reference"]
                                 if xref.split(':')[0] in supported_xrefs]
-            edge_annotations = {'value': [j['value']],
-                                    'typ': [type]}
-            if 'has_synonym_type' in a.keys():
-                edge_annotations['has_synonym_type'] = a['has_synonym_type']  # This is category! e.g. plural, not scope
-                if not xrefs_proc:
-                    xrefs_proc = [{'db': 'FlyBase', 'acc': 'Unattributed'}]
-            i = 0
+
+            # If no supported xrefs are present, add a fake one to FB:Unattributed
+            if not xrefs_proc:
+                xrefs_proc = [{'db': 'FlyBase', 'acc': 'Unattributed'}]
+            # Loop over xrefs adding edges to pub
+            i = 0  # for break in test mode
             for x in xrefs_proc:
- #               print(subject)
- #               print(x['acc'])
-                # Currently only expanding FlyBase references
-                if x['db'] and x['acc'] and x['db'] == 'FlyBase' and re.match('FBrf\d{7}', x['acc']):
+                # This won't work for unattributed !
+                if x['db'] and x['acc'] and x['db'] == 'FlyBase':
                     self.node_writer.add_node(labels=['pub', 'Individual', 'Entity'], IRI=map_iri(x['db']) + x['acc'])
                     self.edge_witer.add_annotation_axiom(s=subject,
                                                          r='references',
