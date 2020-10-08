@@ -1,6 +1,6 @@
 WITH collect(DISTINCT {
      id: coalesce(n.iri,n.short_form,"XXX"), 
-     iri: coalesce(n.iri,n.short_form,"XXX"), 
+     iri: [coalesce(n.iri,n.short_form,"XXX")], 
      short_form: coalesce(n.short_form,"XXX"), 
      shortform_autosuggest:[n.short_form, replace(n.short_form,'_',':'), replace(n.short_form,'_',' ')], 
      obo_id: replace(n.short_form,'_',':'), 
