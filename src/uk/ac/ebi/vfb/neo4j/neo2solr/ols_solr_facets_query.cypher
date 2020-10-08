@@ -1,6 +1,7 @@
-WITH n, CASE labels(n)[0] WHEN "Individual" THEN "vfb:individual:" ELSE "vfb:class:" END as type 
+WITH n 
 WITH collect(DISTINCT {
-     id: coalesce(type + n.iri,"XXX"),
+     id: coalesce(n.iri,"XXX"),
+     short_form: coalesce(n.short_form,"XXX")
      facets_annotation: labels(n)
 	}) AS doc
 RETURN REDUCE(output = [], r IN doc | output + r) AS flat
