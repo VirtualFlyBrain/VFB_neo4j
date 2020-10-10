@@ -506,7 +506,7 @@ class node_importer(kb_writer):
         """
         if attribute_dict is None: attribute_dict = {}
         short_form = re.split('[#/]', IRI)[-1]
-        statement = "MERGE (n:%s { iri: '%s' }) set n.short_form = '%s' set n:Entity" % (
+        statement = "MERGE (n:%s { iri: '%s' }) set n.short_form = '%s' set n:Entity " % (
                     (':'.join(labels)),
                      IRI, short_form)
         statement += self._set_attributes_from_dict(var='n',

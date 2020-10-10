@@ -3,7 +3,6 @@ from ...curie_tools import map_iri
 import re
 
 class pubMover(FB2Neo):
-  # STATUS - IN TESTING
 
     def move(self, pub_list):
         self.set_pub_details(pub_list)
@@ -20,28 +19,21 @@ class pubMover(FB2Neo):
                 "WHERE pub.uniquename IN ('%s') " % "', '".join(pub_list)
         return self.query_fb(query)
 
-    def set_pub_details(self, pub_list):
+    def set_pub_details(self, pub_list, commit=True):
         """Takes list of Fbrfs as input,
         sets these in target Neo DB, returns ... """
 
         details = self.get_pub_details(pub_list)
-        statements = []
         for d in details:
-            if d['title']:
-                title = re.sub('"', "\\'", d['title'])
-            else:
-                title = ''
-            statements.append('MERGE (p:pub:Individual { short_form: "%s" } ) '
-                              'SET p.iri = "%s" SET p.FlyBase = ["%s"] '
-                              'SET p.title = ["%s"] SET p.label = "%s" '
-                              'SET p.miniref = ["%s"] '
-                              'SET p.volume = ["%s"] SET p.year = ["%s"] '
-                              'SET p.pages = ["%s"]'
-                              % (d['fbrf'], map_iri('fb') + d['fbrf'], d['fbrf'],
-                                 title, d['miniref'],  d['miniref'], d['volume'],
-                                 d['year'], d['pages']))
-            # Generate microref from miniref and append as label
-        self.nc.commit_list(statements)
+            attribute_dict = dict()
+            for k in d.keys():
+                if d[k] and not (k in ['fbrf', 'type']):
+                    attribute_dict[k] = d[k]
+            self.ni.add_node(labels=['pub', 'Individual'],
+                             IRI=map_iri('fb') + d['fbrf'],
+                             attribute_dict=attribute_dict)
+        if commit:
+            self.ni.commit()
 
     def get_pub_xrefs(self, pub_list):
         query = "SELECT pub.uniquename as fbrf, db.name AS db_name, dbx.accession AS acc FROM pub " \
@@ -120,7 +112,8 @@ class pubMover(FB2Neo):
         return rpubs
 
     def get_authors(self, pub_list):
-        query = "SELECT pub.uniquename as fbrf, pa.rank AS rank, pa.surname as surname, pa.givennames as givennames, " \
+        query = "SELECT pub.uniquename as fbrf, pa.rank AS rank, " \
+                "pa.surname as surname, pa.givennames as givennames, " \
                 "a.pubauthor_id as paid FROM pub " \
                 "JOIN pubauthor pa on pa.pub_id=pub.pub_id " \
                 "WHERE pub.uniquename IN ('%s')" % "', '".join(pub_list)

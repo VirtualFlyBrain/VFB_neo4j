@@ -137,7 +137,7 @@ class FeatureMover(FB2Neo):
 
         for d in proc_names:
             d['synonyms'] = '|'.join(d['synonyms'])
-        statement = "MERGE (n:Class { short_form : line.short_form } ) " \
+        statement = "MERGE (n:Class:Entity { short_form : line.short_form } ) " \
                     "SET n.label = line.label SET n.synonyms = split(line.synonyms, '|') " \
                     "SET n.iri = 'http://flybase.org/reports/' + line.short_form " \
                     "SET n:Feature SET n.self_xref = True"
