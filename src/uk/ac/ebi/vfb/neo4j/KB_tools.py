@@ -90,13 +90,10 @@ class kb_writer (object):
 
     def commit(self, verbose=False, chunk_length=5000):
         return self._commit(verbose, chunk_length)
-    
 
-    def escape_string(self, strng):
-        if type(strng) == str:
-            strng = re.sub("'", "\\'", strng)
-            strng = re.sub(r'\\', r'\\\\', strng)
-        return strng
+    def escape_string(self, strng:str):
+        # backslashes need special escaping to be treated literally
+        return re.sub(r'\\', r'\\\\', strng)
   
     def _add_textual_attribute(self, var, key, value):
         return 'SET %s.%s = "%s" ' % (var, key, self.escape_string(value)) # Note arrangement single and double quotes
