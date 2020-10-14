@@ -519,6 +519,22 @@ class node_importer(kb_writer):
         """
         ## Get JSON, assuming only primary graph should be used for updating
         ## ie: imports ignored.
+
+        def obs_check(nod):
+            obs_stat = False
+            if 'meta' in nod.keys():
+                if 'deprecated' in nod['meta'].keys():
+                    obs_stat = nod['meta']['deprecated']
+                elif 'basicPropertyValues' in nod['meta'].keys():
+                    x = [ax['val'] for ax in nod['meta']['basicPropertyValues']
+                         if ax['pred'] == 'http://www.w3.org/2002/07/owl#deprecated']
+                    if x:
+                        obs_stat = x[0]
+            if obs_stat is True or obs_stat == 'true':
+                return True
+            else:
+                return False
+
         if file_path:   
             f = open(file_path, 'r')
             obographs = json.loads(f.read())
@@ -552,8 +568,8 @@ class node_importer(kb_writer):
             attribute_dict['short_form'] =  m[0][1]
             if 'lbl' in node.keys(): attribute_dict['label']=  node['lbl']
             if 'meta' in node.keys():
-                if 'deprecated' in node['meta'].keys():
-                    attribute_dict['is_obsolete'] = node['meta']['deprecated']
+                if obs_check(node):
+                    attribute_dict['is_obsolete'] = obs_check(node)
             ## Update nodes.
             self.add_node(labels, IRI, attribute_dict)
         self.check_for_obsolete_nodes_in_use()
