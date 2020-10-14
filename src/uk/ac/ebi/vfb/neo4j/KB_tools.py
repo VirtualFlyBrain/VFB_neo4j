@@ -509,7 +509,7 @@ class node_importer(kb_writer):
         self.statements.append(statement)
 
     
-    def update_from_obograph(self, file_path = '', url = '', include_properties=False):
+    def update_from_obograph(self, file_path = '', url = '', include_properties=False, commit=True):
         """Update property and class nodes from an OBOgraph file
         (currently does not distinguish OPs from APs!)
         Only updates from pimary graph (i.e. ignores imports)
@@ -553,7 +553,9 @@ class node_importer(kb_writer):
                     attribute_dict['is_obsolete'] = node['meta']['deprecated']
             ## Update nodes.
             self.add_node(labels, IRI, attribute_dict)
-        self.check_for_obsolete_nodes_in_use()
+        if commit:
+            self.commit()
+            self.check_for_obsolete_nodes_in_use()
         return True
 
     def check_for_obsolete_nodes_in_use(self):
