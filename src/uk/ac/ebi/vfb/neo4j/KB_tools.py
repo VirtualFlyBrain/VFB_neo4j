@@ -616,14 +616,16 @@ class node_importer(kb_writer):
                          "SET r2=properties(r) DELETE r") % (old_id, new_id)
             return command_1, command_2
 
+        # get mappings based on term_replaced_by (IAO_0100001)
         mapping_dict = {}
         for i in ob_term_ids:
             for n in graph['nodes']:
-                if n['id'] == i:
+                if (n['id'] == i) and (n['meta']['basicPropertyValues']):
                     for p in n['meta']['basicPropertyValues']:
                         if p['pred'] == "http://purl.obolibrary.org/obo/IAO_0100001":
                             mapping_dict[i] = convert_to_short_form(p['val'])
 
+        # add merge commands to statements (to auto-merge) and collect unmapped obsolete terms
         failed_mappings = []
         for i in ob_term_ids:
             try:
@@ -633,10 +635,40 @@ class node_importer(kb_writer):
                 failed_mappings.append(convert_to_short_form(i))
                 continue
 
+        # get mappings based on consider annotations for terms with no term_replaced_by
         if len(failed_mappings) > 0:
-            print("Warning: Some obsolete terms could not be mapped using term_replaced_by:")
-            print(failed_mappings)
+            failed_mapping_dict = {}
+            consider_all_shortids = []
+            for i in failed_mappings:
+                consider_all_shortids.append(i)
+                for n in graph['nodes']:
+                    if i in n['id']:
+                        consider_list = [convert_to_short_form(p['val']) for p in n['meta']['basicPropertyValues'] if
+                                         p['pred'] == "http://www.geneontology.org/formats/oboInOwl#consider"]
+                        failed_mapping_dict[convert_to_short_form(i)] = consider_list
+                        consider_all_shortids.extend(consider_list)
+
+            # dictionary of short forms and labels for all consider mappings
+            consider_label_lookup = {}
+            for i in consider_all_shortids:
+                for n in graph['nodes']:
+                    if i in n['id']:
+                        try:
+                            consider_label_lookup[i] = n['lbl']
+                        except KeyError:
+                            consider_label_lookup[i] = "<no label>"
+
+            # terminal output to show mappings based on consider (no auto-merging)
+            print("Warning: Some terms could not be mapped using term_replaced_by:")
+            for i in failed_mappings:
+                print('  %s (%s):' % (i, consider_label_lookup[i]))
+                if failed_mapping_dict[i]:
+                    for r in failed_mapping_dict[i]:
+                        print('    consider - %s (%s)' % (r, consider_label_lookup[r]))
+                else:
+                    print('    <no suggestions>')
             return False
+
         else:
             print("All obsolete terms mapped successfully")
             return True
