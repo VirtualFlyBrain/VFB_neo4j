@@ -112,13 +112,14 @@ class pubLink():
         edge_annotations = {}  #{"value":  escape_string(j['value'])} # switched to only put value on syn edges.
 
         ### Set typ (def or syn) + scope for syn
-
         if type in synonym_types:
             edge_annotations['typ'] = 'syn'
             edge_annotations['scope'] = type
             edge_annotations['value'] = escape_string(j['value'])
         else:
             edge_annotations['typ'] = 'def'
+            self.node_writer.statements.append('MATCH (c:Class {short_form: "%s"}) SET c.description = "%s"'
+                                             "" % (subject, escape_string(j['value'])))
 
         # If no xrefs, add a fake one to FlyBase
 
