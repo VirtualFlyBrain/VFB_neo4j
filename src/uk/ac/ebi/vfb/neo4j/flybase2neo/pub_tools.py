@@ -29,8 +29,8 @@ class pubMover(FB2Neo):
             for k in d.keys():
                 if d[k] and not (k in ['fbrf', 'type']):
                     attribute_dict[k] = [d[k]]
-            if not d['title']:
-                print(attribute_dict)
+            if d['miniref']:
+                attribute_dict['label'] = d['miniref']
             self.ni.add_node(labels=['pub', 'Individual'],
                              IRI=map_iri('fb') + d['fbrf'],
                              attribute_dict=attribute_dict)
