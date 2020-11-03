@@ -338,8 +338,8 @@ class FeatureMover(FB2Neo):
 
             # Generate label = 'label . expression pattern'
             # Add node
-
-            self.ni.add_node(labels=['Class'],
+            # Specification of labels here assumes existing nodes correctly labelled. Should be safe in p2
+            self.ni.add_node(labels=['Class', 'Expression_pattern'],
                              IRI=ep.iri,
                              attribute_dict=ad)
 
@@ -408,8 +408,9 @@ class FeatureMover(FB2Neo):
                 self.ew.add_xref(s=short_form,
                                  xref=x,
                                  stype=':Class')
-
-            self.ni.add_node(labels=['Class'],
+            # Hacking additional labels here
+            # Should be safe for merge in pipeline 2 with appropriate config
+            self.ni.add_node(labels=['Class', 'Split', 'Expression_pattern'],
                              IRI=iri,
                              attribute_dict=ad)
 
