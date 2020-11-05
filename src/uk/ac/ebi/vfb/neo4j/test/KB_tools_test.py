@@ -180,6 +180,31 @@ class TestNodeImporter(unittest.TestCase):
         dc = results_2_dict_list(result)
         assert dc[0]['label'] == 'cluster'
 
+    def test_update_from_obograph_obsoletes(self):
+        p = get_file_path("uk/ac/ebi/vfb/neo4j/test/resources/fbbt-simple-obsoletes.json")
+        self.ni.update_from_obograph(file_path=p, include_properties=True)
+        self.ni.commit()
+
+        # Check that obsoleted term (MBON01 with term_replaced_by = FBbt:9) is no longer used
+        result = self.ni.nc.commit_list(["MATCH (c:Class)<-[]-(i:Individual) "
+                                         "WHERE c.iri = 'http://purl.obolibrary.org/obo/FBbt_00100234' "
+                                         "RETURN i.short_form"])
+        dc = results_2_dict_list(result)
+        assert len(dc) == 0
+
+        # Check that replacement term (FBbt:9) is now used
+        result = self.ni.nc.commit_list(["MATCH (c:Class)<-[]-(i:Individual) "
+                                         "WHERE c.iri = 'http://purl.obolibrary.org/obo/FBbt_9' "
+                                         "RETURN i.short_form"])
+        dc = results_2_dict_list(result)
+        assert len(dc) > 0
+
+        # Check that obsoleted term (MBON02) with consider instead of term_replaced_by is still used
+        result = self.ni.nc.commit_list(["MATCH (c:Class)<-[]-(i:Individual) "
+                                         "WHERE c.iri = 'http://purl.obolibrary.org/obo/FBbt_00111012' "
+                                         "RETURN i.short_form"])
+        dc = results_2_dict_list(result)
+        assert len(dc) > 0
     
     def tearDown(self):
          self.ni.nc.commit_list(statements=["MATCH (n) "
