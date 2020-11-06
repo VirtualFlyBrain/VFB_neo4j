@@ -64,7 +64,7 @@ for d in dc:
                                     o=db,
                                     stype=':Entity',
                                     edge_annotations={
-                                        "accession": acc,
+                                        "accession": [acc],
                                     },
                                     match_on='short_form',
                                     safe_label_edge=True
