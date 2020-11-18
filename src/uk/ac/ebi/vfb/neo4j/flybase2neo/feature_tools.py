@@ -140,7 +140,7 @@ class FeatureMover(FB2Neo):
         statement = "MERGE (n:Class:Entity { short_form : line.short_form } ) " \
                     "SET n.label = line.label SET n.synonyms = split(line.synonyms, '|') " \
                     "SET n.iri = 'http://flybase.org/reports/' + line.short_form " \
-                    "SET n:Feature SET n.self_xref = True"
+                    "SET n:Feature SET n.self_xref = 'FlyBase'"
 
         if commit:
             self.commit_via_csv(statement, proc_names)
