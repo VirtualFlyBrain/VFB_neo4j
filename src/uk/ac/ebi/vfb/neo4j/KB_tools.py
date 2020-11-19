@@ -585,7 +585,7 @@ class node_importer(kb_writer):
                 warnings.warn("%s, %s is obsolete but in use." % 
                               (r['c.label'], r['c.iri']))
             obsolete_iris = [r['c.iri'] for r in q]
-            return obsolete_iris
+            return list(set(obsolete_iris))
         else:
             print("No obsolete nodes in use.")
             return False
@@ -620,10 +620,13 @@ class node_importer(kb_writer):
         mapping_dict = {}
         for i in ob_term_ids:
             for n in graph['nodes']:
-                if (n['id'] == i) and (n['meta']['basicPropertyValues']):
-                    for p in n['meta']['basicPropertyValues']:
-                        if p['pred'] == "http://purl.obolibrary.org/obo/IAO_0100001":
-                            mapping_dict[i] = convert_to_short_form(p['val'])
+                if n['id'] == i:
+                    try:
+                        for p in n['meta']['basicPropertyValues']:
+                            if p['pred'] == "http://purl.obolibrary.org/obo/IAO_0100001":
+                                mapping_dict[i] = convert_to_short_form(p['val'])
+                    except KeyError:
+                        continue
 
         # add merge commands to statements (to auto-merge) and collect unmapped obsolete terms
         failed_mappings = []
@@ -643,29 +646,33 @@ class node_importer(kb_writer):
                 consider_all_shortids.append(i)
                 for n in graph['nodes']:
                     if i in n['id']:
-                        consider_list = [convert_to_short_form(p['val']) for p in n['meta']['basicPropertyValues'] if
-                                         p['pred'] == "http://www.geneontology.org/formats/oboInOwl#consider"]
-                        failed_mapping_dict[convert_to_short_form(i)] = consider_list
-                        consider_all_shortids.extend(consider_list)
+                        try:
+                            consider_list = [convert_to_short_form(p['val']) for p in n['meta']['basicPropertyValues'] if
+                                             p['pred'] == "http://www.geneontology.org/formats/oboInOwl#consider"]
+                            failed_mapping_dict[convert_to_short_form(i)] = consider_list
+                            consider_all_shortids.extend(consider_list)
+                        except KeyError:
+                            failed_mapping_dict[convert_to_short_form(i)] = ["<no suggestions>"]
 
             # dictionary of short forms and labels for all consider mappings
             consider_label_lookup = {}
             for i in consider_all_shortids:
+                consider_label_lookup[i] = "<no label>"
                 for n in graph['nodes']:
                     if i in n['id']:
                         try:
                             consider_label_lookup[i] = n['lbl']
                         except KeyError:
-                            consider_label_lookup[i] = "<no label>"
+                            continue
 
             # terminal output to show mappings based on consider (no auto-merging)
             print("Warning: Some terms could not be mapped using term_replaced_by:")
             for i in failed_mappings:
                 print('  %s (%s):' % (i, consider_label_lookup[i]))
-                if failed_mapping_dict[i]:
+                try:
                     for r in failed_mapping_dict[i]:
                         print('    consider - %s (%s)' % (r, consider_label_lookup[r]))
-                else:
+                except KeyError:
                     print('    <no suggestions>')
             return False
 
