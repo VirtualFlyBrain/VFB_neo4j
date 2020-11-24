@@ -612,7 +612,7 @@ class node_importer(kb_writer):
                          "(c2:Class {short_form: '%s'}) MERGE (c2)<-[r2:Related]-(i) "
                          "SET r2=properties(r) DELETE r") % (old_id, new_id)
             command_2 = ("MATCH (c:Class {iri: '%s'})<-[r:INSTANCEOF]-(i:Individual), "
-                         "(c2:Class {short_form: '%s'}) MERGE (c2)<-[r2:r:INSTANCEOF]-(i) "
+                         "(c2:Class {short_form: '%s'}) MERGE (c2)<-[r2:INSTANCEOF]-(i) "
                          "SET r2=properties(r) DELETE r") % (old_id, new_id)
             return command_1, command_2
 
