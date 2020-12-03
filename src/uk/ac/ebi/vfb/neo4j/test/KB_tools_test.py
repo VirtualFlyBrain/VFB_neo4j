@@ -137,7 +137,7 @@ class TestEdgeWriter(unittest.TestCase):
                                               r='has license',
                                               o='Drivers license asdfadf',
                                               stype=':Individual',
-                                              otype='"Individual',
+                                              otype=':Individual',
                                               match_on='label',
                                               safe_label_edge=True)
         self.edge_writer.commit()
