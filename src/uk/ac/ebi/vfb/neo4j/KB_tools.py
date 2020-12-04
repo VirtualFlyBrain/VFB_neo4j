@@ -571,7 +571,9 @@ class node_importer(kb_writer):
             self.add_node(labels, IRI, attribute_dict)
         if commit:
             self.commit()
-            self.check_for_obsolete_nodes_in_use()
+            obsolete_terms = self.check_for_obsolete_nodes_in_use()
+            if obsolete_terms:
+                self.merge_obsoletes(obsolete_terms, primary_graph)
         return True
 
     def check_for_obsolete_nodes_in_use(self):
@@ -582,11 +584,102 @@ class node_importer(kb_writer):
             for r in q:
                 warnings.warn("%s, %s is obsolete but in use." % 
                               (r['c.label'], r['c.iri']))
-            return False
+            obsolete_iris = [r['c.iri'] for r in q]
+            return list(set(obsolete_iris))
         else:
             print("No obsolete nodes in use.")
+            return False
+
+    def merge_obsoletes(self, ob_term_ids, graph):
+        """
+        Maps a list of full length IRIs to their 'term replaced by', where possible.
+        Produces cypher commands to transfer annotations in VFB to the replacement terms.
+        """
+        def convert_to_short_form(iri):
+            """
+            Convert any type of id to a short form (with an underscore).
+            """
+            pattern = re.compile("([A-Za-z]+)[_:]([0-9]+)$")
+            m = re.search(pattern, iri)
+            short_form = m.group(1) + "_" + m.group(2)
+            return short_form
+
+        def command_writer(old_id, new_id):
+            """
+            Returns cypher commands for merging old_id (IRI) and new_id (short) in KB.
+            """
+            command_1 = ("MATCH (c:Class {iri: '%s'})<-[r:Related]-(i:Individual), "
+                         "(c2:Class {short_form: '%s'}) MERGE (c2)<-[r2:Related]-(i) "
+                         "SET r2=properties(r) DELETE r") % (old_id, new_id)
+            command_2 = ("MATCH (c:Class {iri: '%s'})<-[r:INSTANCEOF]-(i:Individual), "
+                         "(c2:Class {short_form: '%s'}) MERGE (c2)<-[r2:INSTANCEOF]-(i) "
+                         "SET r2=properties(r) DELETE r") % (old_id, new_id)
+            return command_1, command_2
+
+        # get mappings based on term_replaced_by (IAO_0100001)
+        mapping_dict = {}
+        for i in ob_term_ids:
+            for n in graph['nodes']:
+                if n['id'] == i:
+                    try:
+                        for p in n['meta']['basicPropertyValues']:
+                            if p['pred'] == "http://purl.obolibrary.org/obo/IAO_0100001":
+                                mapping_dict[i] = convert_to_short_form(p['val'])
+                    except KeyError:
+                        continue
+
+        # add merge commands to statements (to auto-merge) and collect unmapped obsolete terms
+        failed_mappings = []
+        for i in ob_term_ids:
+            try:
+                x = command_writer(i, mapping_dict[i])
+                self.statements.extend(x)
+            except KeyError:
+                failed_mappings.append(convert_to_short_form(i))
+                continue
+
+        # get mappings based on consider annotations for terms with no term_replaced_by
+        if len(failed_mappings) > 0:
+            failed_mapping_dict = {}
+            consider_all_shortids = []
+            for i in failed_mappings:
+                consider_all_shortids.append(i)
+                for n in graph['nodes']:
+                    if i in n['id']:
+                        try:
+                            consider_list = [convert_to_short_form(p['val']) for p in n['meta']['basicPropertyValues'] if
+                                             p['pred'] == "http://www.geneontology.org/formats/oboInOwl#consider"]
+                            failed_mapping_dict[convert_to_short_form(i)] = consider_list
+                            consider_all_shortids.extend(consider_list)
+                        except KeyError:
+                            failed_mapping_dict[convert_to_short_form(i)] = ["<no suggestions>"]
+
+            # dictionary of short forms and labels for all consider mappings
+            consider_label_lookup = {}
+            for i in consider_all_shortids:
+                consider_label_lookup[i] = "<no label>"
+                for n in graph['nodes']:
+                    if i in n['id']:
+                        try:
+                            consider_label_lookup[i] = n['lbl']
+                        except KeyError:
+                            continue
+
+            # terminal output to show mappings based on consider (no auto-merging)
+            print("Warning: Some terms could not be mapped using term_replaced_by:")
+            for i in failed_mappings:
+                print('  %s (%s):' % (i, consider_label_lookup[i]))
+                try:
+                    for r in failed_mapping_dict[i]:
+                        print('    consider - %s (%s)' % (r, consider_label_lookup[r]))
+                except KeyError:
+                    print('    <no suggestions>')
+            return False
+
+        else:
+            print("All obsolete terms mapped successfully")
             return True
-        
+
     def update_from_flybase(self, load_list):            
             """
             Add feature nodes to KB from FlyBase
