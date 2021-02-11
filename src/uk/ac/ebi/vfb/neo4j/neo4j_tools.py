@@ -175,8 +175,7 @@ def results_2_dict_list(results):
 def escape_string(strng):
     if type(strng) == str:
         strng = re.sub(r'\\', r'\\\\', strng)
-        strng = re.sub("'", "\\'", strng)
-        strng = re.sub('"', '\\"', strng)        
+        strng = re.sub('"', '\\"', strng)
     return strng
 
 def dict_2_mapString(d):
