@@ -81,9 +81,10 @@ class neo4j_connect():
             for s in statements:
                 cstatements.append({'statement': s}) # rows an columns are returned by default.
         payload = {'statements': cstatements}
+        headers = {'Content-type': 'application/json'}
         response = requests.post(url = "%s/db/neo4j/tx/commit"
                                  % self.base_uri, auth = (self.usr, self.pwd) ,
-                                  data = json.dumps(payload))
+                                  data = json.dumps(payload), headers=headers)
         if self.rest_return_check(response):
             return response.json()['results']
         else:
