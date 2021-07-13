@@ -16,8 +16,7 @@ parser.add_argument("solr_endpoint",
 args = parser.parse_args()
 
 
-matches = {'datasets': "MATCH (n:DataSet:Individual) "
-                       "WHERE n.production = true",
+matches = {'datasets': "MATCH (n:DataSet:Individual) ",
            'expression_patterns': "MATCH (n:Expression_pattern)",
            'pubs': "MATCH (n:pub)"}
 
