@@ -37,6 +37,8 @@ for m in matches.values():
       r = results_2_dict_list(q)[0]
       print(json.dumps(r, indent=4))
       solr.add(json.loads(json.dumps(r))['flat'])
+    else:
+      print("Query failed!")
       
 # adding facets:
 with_file = open("uk/ac/ebi/vfb/neo4j/neo2solr/ols_solr_facets_query.cypher", 'r')
@@ -48,4 +50,6 @@ if not isinstance(q, bool):
   r = results_2_dict_list(q)[0]
   print(json.dumps(r, indent=4))
   solr.add(json.loads(json.dumps(r))['flat'],fieldUpdates={'facets_annotation':'set'})
+else:
+  print("Query failed!")
 
