@@ -1,5 +1,5 @@
 WITH collect(DISTINCT {
-     id: "vfb:class:" + coalesce(n.iri,n.short_form,"XXX"), 
+     id: coalesce(n.iri,n.short_form,"XXX"), 
      iri: coalesce(n.iri,n.short_form,"XXX"), 
      short_form: coalesce(n.short_form,"XXX"), 
      shortform_autosuggest:[n.short_form], 
