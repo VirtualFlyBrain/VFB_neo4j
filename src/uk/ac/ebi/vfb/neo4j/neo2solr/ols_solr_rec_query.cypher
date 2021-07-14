@@ -1,4 +1,4 @@
-WITH n LIMIT 1000 
+WITH n SKIP 0 LIMIT 2000 
 WITH collect(DISTINCT {
      id: coalesce(n.iri,n.short_form,"XXX"), 
      iri: [coalesce(n.iri,n.short_form,"XXX")], 
