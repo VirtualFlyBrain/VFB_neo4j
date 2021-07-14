@@ -26,20 +26,24 @@ with_clause = with_file.read()
 nc = neo4j_connect(args.pdb_endpoint, 'neo4j', 'neo4j')
 
 solr = pysolr.Solr(args.solr_endpoint, always_commit=True)
-
+l = 2000
 for m in matches.values():
-    query = ' \n'.join([m, with_clause])
-    print(query)
-    q = nc.commit_list([query])
-
-    if not isinstance(q, bool):
-      r = results_2_dict_list(q)[0]
-      #print(json.dumps(r, indent=4))
-      print(len(r['flat']))
-      solr.add(json.loads(json.dumps(r))['flat'])
-    else:
-      print("Query failed!")
-      
+    s = 0
+    c = l
+    while not c < l:
+      query = ' \n'.join([m, with_clause.replace('SKIP 0 LIMIT 2000','SKIP ' + s + ' LIMIT ' + l )])
+      print(query)
+      q = nc.commit_list([query])
+      if not isinstance(q, bool):
+        r = results_2_dict_list(q)[0]
+        #print(json.dumps(r, indent=4))
+        c = len(r['flat'])
+        print(c)
+        solr.add(json.loads(json.dumps(r))['flat'])
+      else:
+        print("Query failed!")
+        c = 0
+      s += l
 # adding facets:
 with_file = open("uk/ac/ebi/vfb/neo4j/neo2solr/ols_solr_facets_query.cypher", 'r')
 with_clause = with_file.read()
