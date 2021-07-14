@@ -47,14 +47,21 @@ for m in matches.values():
 # adding facets:
 with_file = open("uk/ac/ebi/vfb/neo4j/neo2solr/ols_solr_facets_query.cypher", 'r')
 with_clause = with_file.read()
-query = ' \n'.join(["MATCH (n:Entity) WHERE n.short_form starts with 'FBbt' OR (n.short_form starts with 'VFB_' AND NOT n.short_form starts with 'VFB_internal') ", with_clause])
-print(query)
-q = nc.commit_list([query])
-if not isinstance(q, bool):
-  r = results_2_dict_list(q)[0]
-  #print(json.dumps(r, indent=4))
-  print(len(r['flat']))
-  solr.add(json.loads(json.dumps(r))['flat'],fieldUpdates={'facets_annotation':'set'})
-else:
-  print("Query failed!")
+l = 2000
+s = 0
+c = l
+while not c < l:
+  query = ' \n'.join(["MATCH (n:Entity) WHERE n.short_form starts with 'FBbt' OR (n.short_form starts with 'VFB_' AND NOT n.short_form starts with 'VFB_internal') ", with_clause.replace('SKIP 0 LIMIT 2000','SKIP ' + str(s) + ' LIMIT ' + str(l) )])
+  print(query)
+  q = nc.commit_list([query])
+  if not isinstance(q, bool):
+    r = results_2_dict_list(q)[0]
+    #print(json.dumps(r, indent=4))
+    c = len(r['flat'])
+    print(c)
+    solr.add(json.loads(json.dumps(r))['flat'],fieldUpdates={'facets_annotation':'set'})
+  else:
+    print("Query failed!")
+    c = 0
+  s += l
 
