@@ -31,7 +31,7 @@ for m in matches.values():
     s = 0
     c = l
     while not c < l:
-      query = ' \n'.join([m, with_clause.replace('SKIP 0 LIMIT 2000','SKIP ' + s + ' LIMIT ' + l )])
+      query = ' \n'.join([m, with_clause.replace('SKIP 0 LIMIT 2000','SKIP ' + Str(s) + ' LIMIT ' + Str(l) )])
       print(query)
       q = nc.commit_list([query])
       if not isinstance(q, bool):
