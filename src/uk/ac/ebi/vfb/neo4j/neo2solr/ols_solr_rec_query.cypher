@@ -14,7 +14,6 @@ WITH collect(DISTINCT {
      synonym_autosuggest_e: coalesce(n.synonyms, []), 
      autosuggest: [n.label] + n.synonyms, 
      autosuggest_e:[n.label] + n.synonyms, 
-     description: [coalesce(n.description, n.label)], 
      facets_annotation: labels(n),
      ontology_name: 'vfb', 
      ontology_title: 'Virtual Fly Brain Knowledge Base', 
