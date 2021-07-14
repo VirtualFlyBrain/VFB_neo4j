@@ -35,7 +35,7 @@ for m in matches.values():
     if not isinstance(q, bool):
       r = results_2_dict_list(q)[0]
       #print(json.dumps(r, indent=4))
-      print(len(r))
+      print(len(r['flat']))
       solr.add(json.loads(json.dumps(r))['flat'])
     else:
       print("Query failed!")
@@ -49,7 +49,7 @@ q = nc.commit_list([query])
 if not isinstance(q, bool):
   r = results_2_dict_list(q)[0]
   #print(json.dumps(r, indent=4))
-  print(len(r))
+  print(len(r['flat']))
   solr.add(json.loads(json.dumps(r))['flat'],fieldUpdates={'facets_annotation':'set'})
 else:
   print("Query failed!")
