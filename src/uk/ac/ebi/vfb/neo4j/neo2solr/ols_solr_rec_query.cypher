@@ -1,26 +1,15 @@
 WITH collect(DISTINCT {
      id: coalesce(n.iri,n.short_form,"XXX"), 
-     iri: coalesce(n.iri,n.short_form,"XXX"), 
+     iri: [coalesce(n.iri,n.short_form,"XXX")], 
      short_form: coalesce(n.short_form,"XXX"), 
-     shortform_autosuggest:[n.short_form], 
-     obo_id: n.short_form, 
+     shortform_autosuggest:[n.short_form, replace(n.short_form,'_',':'), replace(n.short_form,'_',' ')], 
+     obo_id: replace(n.short_form,'_',':'), 
+     obo_id_autosuggest:[n.short_form, replace(n.short_form,'_',':'), replace(n.short_form,'_',' ')],
      label: n.label, 
-     label_autosuggest: n.label, 
-     label_autosuggest_ws: n.label, 
-     label_autosuggest_e: n.label, 
-     synonym: n.synonyms, 
+     label_autosuggest: [n.label, replace(n.label,'-',' '), replace(n.label,'_',' ')], 
+     synonym: coalesce(n.synonyms, []), 
      synonym_autosuggest: coalesce(n.synonyms, []), 
-     synonym_autosuggest_ws: coalesce(n.synonyms, []), 
-     synonym_autosuggest_e: coalesce(n.synonyms, []), 
      autosuggest: [n.label] + n.synonyms, 
-     autosuggest_e:[n.label] + n.synonyms, 
-     facets_annotation: labels(n),
-     ontology_name: 'vfb', 
-     ontology_title: 'Virtual Fly Brain Knowledge Base', 
-     ontology_prefix: 'VFB', 
-     ontology_iri: 'http://purl.obolibrary.org/obo/fbbt/vfb/vfb.owl', 
-     type: 'class', 
-     is_defining_ontology: true, 
-     is_root: true}) AS doc
+     facets_annotation: labels(n)
+     }) AS doc
 RETURN REDUCE(output = [], r IN doc | output + r) AS flat
-
