@@ -1,5 +1,6 @@
 from .fb_tools import FB2Neo, dict_list_2_dict
 from ...curie_tools import map_iri
+from ..KB_tools import iri_generator
 import re
 import warnings
 from dataclasses import dataclass, field
@@ -37,7 +38,6 @@ def map_feature_type(fbid, ftype):
 # Using named tuples to standardise immutable objects for holding data.
 
 
-
 Feature = collections.namedtuple('Feature', ['symbol',
                                              'fbid',
                                              'synonyms',  # list of synonyms
@@ -68,7 +68,6 @@ class FeatureRelation:
     eps: Dict[str, Node] = field(default_factory=dict)
 
 
-
 # For splits
 # pub FBex tg comment split
 # + al
@@ -80,15 +79,12 @@ class FeatureRelation:
 # short_form IS a compound key! We know one half at the start, and whether it is DBD or AD, but we only get the other half just before the addition.  Solution is to have a separate, bespoke job to update lookup table.  This can happen during Split object generation.
 
 
-
-
-
-
 class FeatureMover(FB2Neo):
 
     def name_synonym_lookup(self, fbids):
         """Takes a list of fbids, returns a dictionary of Feature objects, keyed on fbid.
         Note - makes unicode name primary.  Makes everything else a synonym."""
+
         # Limitation - no concept of type: name (as opposed to symbol).
 
         def proc_feature(d, ds):
@@ -292,8 +288,7 @@ class FeatureMover(FB2Neo):
             self.ew.commit()
         return FeatureRelation(features=objects_pdm, edges=triples)
 
-    def generate_expression_patterns(self, features, feature_objects=False, add_features =True, commit=True):
-
+    def generate_expression_patterns(self, features, feature_objects=False, add_features=True, commit=True):
 
         """Takes a list of features as input,
         generates expression patterns for these features.
@@ -310,7 +305,6 @@ class FeatureMover(FB2Neo):
         if not features:
             warnings.warn("No features provided.")
             return False
-
 
         eps = {}
         triples = []
@@ -334,7 +328,6 @@ class FeatureMover(FB2Neo):
             ep = gen_ep_feat(feat)
             ad = {'label': ep.label, 'synonyms': ep.synonyms}
             eps[ep.short_form] = ep,
-
 
             # Generate label = 'label . expression pattern'
             # Add node
@@ -365,8 +358,7 @@ class FeatureMover(FB2Neo):
         # Better standardise output here?
         return FeatureRelation(features=features, edges=triples, eps=eps)
 
-
-    def gen_split_ep_feat(self, splits, add_feats = True, add_feature_details=False, commit=True):
+    def gen_split_ep_feat(self, splits, add_feats=True, add_feature_details=False, commit=True):
         """Adds split expression pattern nodes to Neo following
         Returns a dict of feature objects keyed on
         schema: (sep)-[:has_hemidriver]->(construct).
@@ -389,17 +381,15 @@ class FeatureMover(FB2Neo):
             else:
                 feats = self.name_synonym_lookup([s.ad, s.dbd])
 
-
             short_form = 'VFBexp_' + s.dbd + s.ad
             iri = map_iri('vfb') + short_form
-            ad = {'label' : feats[s.dbd].label + ' ∩ ' +
-                  feats[s.ad].label +' expression pattern',
+            ad = {'label': feats[s.dbd].label + ' ∩ ' +
+                           feats[s.ad].label + ' expression pattern',
                   'synonyms': s.synonyms,
                   'description': ['The sum of all cells at the intersection between '
-                                   'the expression patterns of %s and'
-                                   ' %s.' % (feats[s.dbd].label,
-                                             feats[s.ad].label)]}
-
+                                  'the expression patterns of %s and'
+                                  ' %s.' % (feats[s.dbd].label,
+                                            feats[s.ad].label)]}
 
             out[short_form] = {'attributes': ad, 'iri': iri,
                                short_form: short_form, 'xrefs': s.xrefs}
@@ -426,16 +416,64 @@ class FeatureMover(FB2Neo):
                                            o=s.dbd,
                                            match_on='short_form')
 
-
-
         if commit:
             self.ni.commit()
             self.ew.commit()
         return out
 
+    def add_genotype(self, genotype, add_feats=True, add_feature_details=False, commit=False):
+        """Adds genotype nodes
+        genotype should be a list of FB IDs
+        schema: (g)-[:has_part]->(allele).
+        """
 
+        if add_feats:
+            if add_feature_details:
+                feats = self.add_features(genotype)
+            else:
+                feats = self.name_synonym_lookup(genotype)
+                for k, v in feats.items():
+                    # labels is neo4j node labels
+                    self.ni.add_node(labels=['Class', 'Feature'],
+                                     IRI=map_iri('fb') + k,
+                                     attribute_dict={'label': v.label})
+        else:
+            feats = self.name_synonym_lookup(genotype)
 
+        # IRI
+        genotype_iri = iri_generator(endpoint=self.ni.nc.base_uri, usr=self.ni.nc.usr,
+                                     pwd=self.ni.nc.pwd, idp='VFB_geno')
+        # these are the endpoint, usr and pwd used to set up self (FeatureMover object), idp is namespace
 
+        iri = genotype_iri.generate(start=0)
+        # iri['iri'] is long form, iri['short_form'] is short form
 
+        # label
+        feat_names = [n.label for n in feats.values()]  # list of labels of features in genotype
+        genotype_name = ', '.join(feat_names)
 
+        # synonym (FlyBase IDs)
+        feat_IDs = [n.short_form for n in feats.values()]  # list of FB IDs of features in genotype
+        genotype_synonym = ', '.join(feat_IDs)
 
+        # add genotype node
+        self.ni.add_node(labels=['Individual'],
+                         IRI=iri['iri'],
+                         attribute_dict={'label': genotype_name, 'synonyms': genotype_synonym})
+
+        # make instance of 'genotype'
+        self.ew.add_named_type_ax(s=iri['short_form'],
+                                  o='GENO_0000536',  # 'genotype' from GENO ontology
+                                  match_on='short_form')
+
+        #  add features as parts of genotype
+        for f in feats:
+            print(f)
+            self.ew.add_anon_subClassOf_ax(s=iri['short_form'],
+                                           r='has_part',
+                                           o=f,
+                                           match_on='short_form')
+
+        if commit:
+            self.ni.commit()
+            self.ew.commit()
