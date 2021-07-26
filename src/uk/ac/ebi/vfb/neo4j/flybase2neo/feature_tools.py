@@ -421,7 +421,7 @@ class FeatureMover(FB2Neo):
             self.ew.commit()
         return out
 
-    def add_genotype(self, genotype, add_feats=True, add_feature_details=False, commit=False):
+    def add_genotype(self, genotype_components, add_feats=True, add_feature_details=True, commit=True):
         """Adds genotype nodes
         genotype should be a list of FB IDs
         schema: (g)-[:has_part]->(allele).
@@ -429,31 +429,31 @@ class FeatureMover(FB2Neo):
 
         if add_feats:
             if add_feature_details:
-                feats = self.add_features(genotype)
+                feats = self.add_features(genotype_components)
             else:
-                feats = self.name_synonym_lookup(genotype)
+                feats = self.name_synonym_lookup(genotype_components)
                 for k, v in feats.items():
                     # labels is neo4j node labels
                     self.ni.add_node(labels=['Class', 'Feature'],
                                      IRI=map_iri('fb') + k,
                                      attribute_dict={'label': v.label})
         else:
-            feats = self.name_synonym_lookup(genotype)
+            feats = self.name_synonym_lookup(genotype_components)
 
         # IRI
         genotype_iri = iri_generator(endpoint=self.ni.nc.base_uri, usr=self.ni.nc.usr,
-                                     pwd=self.ni.nc.pwd, idp='VFB_geno')
+                                     pwd=self.ni.nc.pwd, idp='VFBgeno')
         # these are the endpoint, usr and pwd used to set up self (FeatureMover object), idp is namespace
 
         iri = genotype_iri.generate(start=0)
         # iri['iri'] is long form, iri['short_form'] is short form
 
         # label
-        feat_names = [n.label for n in feats.values()]  # list of labels of features in genotype
+        feat_names = [n.label for n in feats.values()]  # list of labels of features in genotype_components
         genotype_name = ', '.join(feat_names)
 
         # synonym (FlyBase IDs)
-        feat_IDs = [n.short_form for n in feats.values()]  # list of FB IDs of features in genotype
+        feat_IDs = [n.short_form for n in feats.values()]  # list of FB IDs of features in genotype_components
         genotype_synonym = ', '.join(feat_IDs)
 
         # add genotype node
