@@ -1,4 +1,5 @@
 from .fb_tools import FB2Neo, dict_list_2_dict
+from ..neo4j_tools import neo4j_connect, results_2_dict_list
 from ...curie_tools import map_iri
 from ..KB_tools import iri_generator
 import re
@@ -422,9 +423,12 @@ class FeatureMover(FB2Neo):
         return out
 
     def add_genotype(self, genotype_components, add_feats=True, add_feature_details=True, commit=True):
-        """Adds genotype nodes
-        genotype should be a list of FB IDs
-        schema: (g)-[:has_part]->(allele).
+        """Adds and returns new genotypes.
+        genotype_components should be a list of FB IDs.
+        schema: (genotype)-[:has_part]->(allele)
+        Returns dictionary for genotype {short_form: '', label: ''}
+        If a genotype composed of these features already exists,
+        this will be returned in the same format and no new node will be added.
         """
 
         if add_feats:
@@ -440,23 +444,40 @@ class FeatureMover(FB2Neo):
         else:
             feats = self.name_synonym_lookup(genotype_components)
 
-        # IRI
-        genotype_iri = iri_generator(endpoint=self.ni.nc.base_uri, usr=self.ni.nc.usr,
-                                     pwd=self.ni.nc.pwd, idp='VFBgeno')
-        # these are the endpoint, usr and pwd used to set up self (FeatureMover object), idp is namespace
-
-        iri = genotype_iri.generate(start=0)
-        # iri['iri'] is long form, iri['short_form'] is short form
-
-        # label
-        feat_names = [n.label for n in feats.values()]  # list of labels of features in genotype_components
-        feat_names.sort()
-        genotype_name = 'genotype consisting of ' + ', '.join(feat_names)
-
         # synonym (FlyBase IDs)
         feat_IDs = [n.short_form for n in feats.values()]  # list of FB IDs of features in genotype_components
         feat_IDs.sort()
         genotype_synonym = 'genotype consisting of ' + ', '.join(feat_IDs)
+
+        # check that synonym does not already exist on a VFBgeno
+        nc = neo4j_connect(base_uri=self.ni.nc.base_uri, usr=self.ni.nc.usr, pwd=self.ni.nc.pwd)
+
+        q = [("MATCH (n:Individual) WHERE n.short_form =~ \'VFBgeno_[0-9]{8}\' "
+             "AND n.synonyms = \'%s\' RETURN n.short_form AS short_form, n.label AS label" % genotype_synonym)]
+
+        r = nc.commit_list(statements=q)
+
+        if r:
+            existing_genotype = results_2_dict_list(r)
+            print("Genotype already exists:")
+            print(existing_genotype[0])
+            return existing_genotype[0]
+
+        else:
+            # IRI
+            genotype_iri = iri_generator(endpoint=self.ni.nc.base_uri, usr=self.ni.nc.usr,
+                                         pwd=self.ni.nc.pwd, idp='VFBgeno')
+            # these are the endpoint, usr and pwd used to set up self (FeatureMover object), idp is namespace
+
+            iri = genotype_iri.generate(start=0)
+            # iri['iri'] is long form, iri['short_form'] is short form
+
+            # label
+            feat_names = [n.label for n in feats.values()]  # list of labels of features in genotype_components
+            feat_names.sort()
+            genotype_name = 'genotype consisting of ' + ', '.join(feat_names)
+
+            new_genotype = {'short_form': iri['short_form'], 'label': genotype_name}
 
         # add genotype node
         self.ni.add_node(labels=['Individual'],
@@ -470,7 +491,6 @@ class FeatureMover(FB2Neo):
 
         #  add features as parts of genotype
         for f in feats:
-            print(f)
             self.ew.add_annotation_axiom(s=iri['short_form'],
                                          stype=':Individual',
                                          otype=':Class',
@@ -481,3 +501,5 @@ class FeatureMover(FB2Neo):
         if commit:
             self.ni.commit()
             self.ew.commit()
+
+        return new_genotype
