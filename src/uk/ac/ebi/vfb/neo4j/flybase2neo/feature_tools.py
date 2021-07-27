@@ -471,10 +471,12 @@ class FeatureMover(FB2Neo):
         #  add features as parts of genotype
         for f in feats:
             print(f)
-            self.ew.add_anon_subClassOf_ax(s=iri['short_form'],
-                                           r='has_part',
-                                           o=f,
-                                           match_on='short_form')
+            self.ew.add_annotation_axiom(s=iri['short_form'],
+                                         stype=':Individual',
+                                         otype=':Class',
+                                         r='has_part',
+                                         o=f,
+                                         match_on='short_form')
 
         if commit:
             self.ni.commit()
