@@ -450,11 +450,13 @@ class FeatureMover(FB2Neo):
 
         # label
         feat_names = [n.label for n in feats.values()]  # list of labels of features in genotype_components
-        genotype_name = ', '.join(feat_names)
+        feat_names.sort()
+        genotype_name = 'genotype consisting of ' + ', '.join(feat_names)
 
         # synonym (FlyBase IDs)
         feat_IDs = [n.short_form for n in feats.values()]  # list of FB IDs of features in genotype_components
-        genotype_synonym = ', '.join(feat_IDs)
+        feat_IDs.sort()
+        genotype_synonym = 'genotype consisting of ' + ', '.join(feat_IDs)
 
         # add genotype node
         self.ni.add_node(labels=['Individual'],
