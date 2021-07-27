@@ -453,19 +453,21 @@ class FeatureMover(FB2Neo):
         nc = neo4j_connect(base_uri=self.ni.nc.base_uri, usr=self.ni.nc.usr, pwd=self.ni.nc.pwd)
 
         q = [("MATCH (n:Individual) WHERE n.short_form =~ \'VFBgeno_[0-9]{8}\' "
-             "AND n.synonyms = \'%s\' RETURN n.short_form AS short_form, n.label AS label" % genotype_synonym)]
+             "AND n.synonyms = \'%s\' RETURN n.short_form AS short_form, n.label AS label"
+              % genotype_synonym)]
 
         if verbose:
             print("Checking for this genotype in database, running query: " + q[0])
 
         r = nc.commit_list(statements=q)
-        existing_genotype = results_2_dict_list(r)
+        existing_genotype = results_2_dict_list(r)[0]
+        existing_genotype['synonym'] = genotype_synonym
 
         # return existing genotype if present
         if existing_genotype:
             print("Genotype already exists:")
-            print(existing_genotype[0])
-            return existing_genotype[0]
+            print(existing_genotype)
+            return existing_genotype
 
         # continue with creating new node if no equivalent genotype present
         if verbose:
@@ -484,7 +486,7 @@ class FeatureMover(FB2Neo):
         feat_names.sort()
         genotype_name = 'genotype consisting of ' + ', '.join(feat_names)
 
-        new_genotype = {'short_form': iri['short_form'], 'label': genotype_name}
+        new_genotype = {'short_form': iri['short_form'], 'label': genotype_name, 'synonym': genotype_synonym}
 
         # add genotype node
         self.ni.add_node(labels=['Individual'],
