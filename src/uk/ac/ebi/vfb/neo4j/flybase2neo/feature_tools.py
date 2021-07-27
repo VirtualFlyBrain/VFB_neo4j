@@ -456,9 +456,9 @@ class FeatureMover(FB2Neo):
              "AND n.synonyms = \'%s\' RETURN n.short_form AS short_form, n.label AS label" % genotype_synonym)]
 
         r = nc.commit_list(statements=q)
+        existing_genotype = results_2_dict_list(r)
 
-        if r:
-            existing_genotype = results_2_dict_list(r)
+        if existing_genotype:
             print("Genotype already exists:")
             print(existing_genotype[0])
             return existing_genotype[0]
