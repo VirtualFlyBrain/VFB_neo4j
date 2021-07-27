@@ -359,7 +359,7 @@ class FeatureMover(FB2Neo):
         # Better standardise output here?
         return FeatureRelation(features=features, edges=triples, eps=eps)
 
-    def gen_split_ep_feat(self, splits, add_feats=True, add_feature_details=False, commit=True):
+    def gen_split_ep_feat(self, splits, add_feats=True, add_feature_details=True, commit=True):
         """Adds split expression pattern nodes to Neo following
         Returns a dict of feature objects keyed on
         schema: (sep)-[:has_hemidriver]->(construct).
