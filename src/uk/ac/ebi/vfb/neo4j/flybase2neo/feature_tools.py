@@ -422,7 +422,7 @@ class FeatureMover(FB2Neo):
             self.ew.commit()
         return out
 
-    def add_genotype(self, genotype_components, add_feats=True, add_feature_details=True, commit=True):
+    def add_genotype(self, genotype_components, add_feats=True, add_feature_details=True, commit=True, verbose=False):
         """Adds and returns new genotypes.
         genotype_components should be a list of FB IDs.
         schema: (genotype)-[:has_part]->(allele)
@@ -455,6 +455,9 @@ class FeatureMover(FB2Neo):
         q = [("MATCH (n:Individual) WHERE n.short_form =~ \'VFBgeno_[0-9]{8}\' "
              "AND n.synonyms = \'%s\' RETURN n.short_form AS short_form, n.label AS label" % genotype_synonym)]
 
+        if verbose:
+            print("Checking for this genotype in database, running query: " + q[0])
+
         r = nc.commit_list(statements=q)
         existing_genotype = results_2_dict_list(r)
 
@@ -465,6 +468,8 @@ class FeatureMover(FB2Neo):
             return existing_genotype[0]
 
         # continue with creating new node if no equivalent genotype present
+        if verbose:
+            print("Genotype not already in database, creating...")
 
         # IRI
         genotype_iri = iri_generator(endpoint=self.ni.nc.base_uri, usr=self.ni.nc.usr,
@@ -501,7 +506,15 @@ class FeatureMover(FB2Neo):
                                          match_on='short_form')
 
         if commit:
-            self.ni.commit()
-            self.ew.commit()
+            node_commit_out = self.ni.commit(verbose=verbose)
+            if not node_commit_out:
+                print("Problem loading nodes.")
+                return False
+            edge_commit_out = self.ew.commit(verbose=verbose)
+            if not edge_commit_out:
+                print("Problem loading edges.")
+                return False
+            if verbose:
+                print("Genotype added as:", new_genotype)
 
         return new_genotype
