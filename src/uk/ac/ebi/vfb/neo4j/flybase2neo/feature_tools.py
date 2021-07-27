@@ -449,7 +449,7 @@ class FeatureMover(FB2Neo):
         feat_IDs.sort()
         genotype_synonym = 'genotype consisting of ' + ', '.join(feat_IDs)
 
-        # check that synonym does not already exist on a VFBgeno
+        # check whether synonym already exists on a VFBgeno
         nc = neo4j_connect(base_uri=self.ni.nc.base_uri, usr=self.ni.nc.usr, pwd=self.ni.nc.pwd)
 
         q = [("MATCH (n:Individual) WHERE n.short_form =~ \'VFBgeno_[0-9]{8}\' "
@@ -458,26 +458,28 @@ class FeatureMover(FB2Neo):
         r = nc.commit_list(statements=q)
         existing_genotype = results_2_dict_list(r)
 
+        # return existing genotype if present
         if existing_genotype:
             print("Genotype already exists:")
             print(existing_genotype[0])
             return existing_genotype[0]
 
-        else:
-            # IRI
-            genotype_iri = iri_generator(endpoint=self.ni.nc.base_uri, usr=self.ni.nc.usr,
-                                         pwd=self.ni.nc.pwd, idp='VFBgeno')
-            # these are the endpoint, usr and pwd used to set up self (FeatureMover object), idp is namespace
+        # continue with creating new node if no equivalent genotype present
 
-            iri = genotype_iri.generate(start=0)
-            # iri['iri'] is long form, iri['short_form'] is short form
+        # IRI
+        genotype_iri = iri_generator(endpoint=self.ni.nc.base_uri, usr=self.ni.nc.usr,
+                                     pwd=self.ni.nc.pwd, idp='VFBgeno')
+        # these are the endpoint, usr and pwd used to set up self (FeatureMover object), idp is namespace
 
-            # label
-            feat_names = [n.label for n in feats.values()]  # list of labels of features in genotype_components
-            feat_names.sort()
-            genotype_name = 'genotype consisting of ' + ', '.join(feat_names)
+        iri = genotype_iri.generate(start=0)
+        # iri['iri'] is long form, iri['short_form'] is short form
 
-            new_genotype = {'short_form': iri['short_form'], 'label': genotype_name}
+        # label
+        feat_names = [n.label for n in feats.values()]  # list of labels of features in genotype_components
+        feat_names.sort()
+        genotype_name = 'genotype consisting of ' + ', '.join(feat_names)
+
+        new_genotype = {'short_form': iri['short_form'], 'label': genotype_name}
 
         # add genotype node
         self.ni.add_node(labels=['Individual'],
