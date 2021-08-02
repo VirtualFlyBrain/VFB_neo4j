@@ -700,6 +700,7 @@ class node_importer(kb_writer):
 #                 query += "WHERE typ.name in ('gene', " \
 #                 "'transposable_element_insertion_site', 'transgenic_transposon') "
             
+            print(query);
             cursor.execute(query)
             dc = dict_cursor(cursor)
             matched = set()
