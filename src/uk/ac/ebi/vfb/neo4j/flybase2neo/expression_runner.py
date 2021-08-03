@@ -181,10 +181,9 @@ for fep_c in feps_chunked:
     for c in extra_columns:
         fep_df[c] = np.NaN
     # Seed SQL DB for tracking
-    engine = create_engine('sqlite://', echo=False)
+    engine = create_engine('sqlite://', echo=True, echo_pool='debug')
     fep_df.to_sql('feature_expression', con=engine)
     gps = list(fep_df['gp'])
-    print(gps)
     gp2al = fm.gp2allele(gps)  # A list of triples (as python tuples)
     allele_ids = []
     for t in gp2al:
