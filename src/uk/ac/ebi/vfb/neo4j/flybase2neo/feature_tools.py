@@ -222,7 +222,7 @@ class FeatureMover(FB2Neo):
                 results.append(g)
             results.extend(self.abberationType(abbs_list))
 
-    def _get_objs(self, subject_ids, chado_rel, out_rel, o_idp):
+    def _get_objs(self, subject_ids, chado_rel, out_rel, o_idp, verbose=False):
         query_template = "SELECT s.uniquename AS subj, o.uniquename AS obj FROM feature s " \
                          "JOIN feature_relationship fr ON fr.subject_id=s.feature_id " \
                          "JOIN cvterm r ON fr.type_id=r.cvterm_id " \
@@ -231,6 +231,8 @@ class FeatureMover(FB2Neo):
                          "AND r.name = '%s' " \
                          "AND o.uniquename ~ '%s.+'"
         query = query_template % ("','".join(subject_ids), chado_rel, o_idp)
+        if verbose:
+            print(query)
         dc = self.query_fb(query)
         results = []
         for d in dc:
