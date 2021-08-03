@@ -162,7 +162,7 @@ feps = fm.query_fb("SELECT pub.uniquename as fbrf, "
 
 print("Processing %d expression statements from FB." % len(feps))
 
-feps_chunked = chunks(feps, 2000)
+feps_chunked = chunks(feps, 1000)
 
 # * This needs to be modified so that name-synonym lookup is called directly and so is
 # avaible to multiple methods. This can be run on case classes, making it easy to plug
