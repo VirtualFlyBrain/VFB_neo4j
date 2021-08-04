@@ -122,7 +122,6 @@ class FeatureMover(FB2Neo):
                 "JOIN synonym s on (fs.synonym_id=s.synonym_id) " \
                 "JOIN cvterm stype on (s.type_id=stype.cvterm_id) " \
                 "WHERE f.uniquename IN ('%s') ORDER BY fbid"
-        print(query % "','".join(fbids))
         dc = self.query_fb(query % "','".join(fbids))
 
         return dict_list_2_dict(key='fbid', dict_list=dc, pfunc=proc_feature, sort=False)
