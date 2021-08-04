@@ -95,10 +95,12 @@ class FB2Neo(object):
     def query_fb(self, query):
         """Runs a query of public Flybase,
         returns results as interable of dicts keyed on columns names"""
-        if time.time() - self.conn_reset_time:
+        if (time.time() - self.conn_reset_time) > self.conn_start_time:
             self.conn.close()
             self.conn = get_fb_conn()
             self.conn_start_time = time.time()
+
+        # This should really be on a switch for verbose mode:
         print("query_fb(" + str(query) + ")")
         cursor = self.conn.cursor()  # Investigate using with statement
         cursor.execute(query)
