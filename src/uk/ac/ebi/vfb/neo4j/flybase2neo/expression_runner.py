@@ -167,10 +167,9 @@ feps_chunked = chunks(feps, 2000)
 # * This needs to be modified so that name-synonym lookup is called directly and so is
 # avaible to multiple methods. This can be run on case classes, making it easy to plug
 # directly into triple-store integration via dipper.
-
+fm = None
 
 for fep_c in feps_chunked:
-
     # Using SQLITE for tracking/lookup.  Loading via DataFrame
 
     # TODO: check whether indexing relevant elements of df will improve performance
@@ -193,29 +192,38 @@ for fep_c in feps_chunked:
     # Add alleles (starting point for graph).
     if not allele_ids:
         continue
+    fm = FeatureMover(args.endpoint, args.usr, args.pwd, args.filepath)
     alleles = fm.add_features(allele_ids)
+    fm = None
     # Only add pubs where allele is present
     q = engine.execute("SELECT fbrf from feature_expression WHERE al IS NOT NULL")
     pubs = [i[0] for i in q.fetchall()]
     pm.move(pubs)
 
+    fm = FeatureMover(args.endpoint, args.usr, args.pwd, args.filepath)
     # Add genes linked to alleles (these don't need to be in the table)
     fm.add_feature_relations(fm.allele2Gene(alleles))
-
+    fm = None
+    
+    fm = FeatureMover(args.endpoint, args.usr, args.pwd, args.filepath)
     # Find transgenes, add them to table and link them to alleles
     al2tg = fm.allele2transgene(allele_ids)
+    fm = None
     tg_ids = []
     for t in al2tg:
         engine.execute("UPDATE feature_expression SET tg = '%s'"
                        "WHERE al = '%s'" % (t[2], t[0]))
         allele_ids.append(t[0])
+    fm = FeatureMover(args.endpoint, args.usr, args.pwd, args.filepath)
     transgenes = fm.add_feature_relations(al2tg)  # Dict tg_id: feature object
-
+    fm = None
+    
     # Find and process splits
 
     # Add regular expression patterns
     q = engine.execute("SELECT tg FROM feature_expression WHERE comment IS NULL AND tg is NOT NULL")
     non_split_tgs = [i[0] for i in q.fetchall()]
+    fm = FeatureMover(args.endpoint, args.usr, args.pwd, args.filepath)
     if non_split_tgs:
         eps = fm.generate_expression_patterns(non_split_tgs)
         if eps:
@@ -248,3 +256,4 @@ for fep_c in feps_chunked:
     print ("Finished commit:")
     print (now.strftime("%Y-%m-%d %H:%M:%S"))
     exp_write = None
+    fm = None
