@@ -460,11 +460,12 @@ class FeatureMover(FB2Neo):
             print("Checking for this genotype in database, running query: " + q[0])
 
         r = nc.commit_list(statements=q)
-        existing_genotype = results_2_dict_list(r)[0]
-        existing_genotype['synonym'] = genotype_synonym
+        results = results_2_dict_list(r)
 
         # return existing genotype if present
-        if existing_genotype:
+        if results:
+            existing_genotype = results[0]
+            existing_genotype['synonym'] = genotype_synonym
             print("Genotype already exists:")
             print(existing_genotype)
             return existing_genotype
