@@ -167,10 +167,10 @@ feps_chunked = chunks(feps, 2000)
 # * This needs to be modified so that name-synonym lookup is called directly and so is
 # avaible to multiple methods. This can be run on case classes, making it easy to plug
 # directly into triple-store integration via dipper.
-
+fm = None
 
 for fep_c in feps_chunked:
-
+    fm = FeatureMover(args.endpoint, args.usr, args.pwd, args.filepath)
     # Using SQLITE for tracking/lookup.  Loading via DataFrame
 
     # TODO: check whether indexing relevant elements of df will improve performance
@@ -248,3 +248,4 @@ for fep_c in feps_chunked:
     print ("Finished commit:")
     print (now.strftime("%Y-%m-%d %H:%M:%S"))
     exp_write = None
+    fm = None
