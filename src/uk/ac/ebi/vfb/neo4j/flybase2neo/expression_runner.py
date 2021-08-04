@@ -44,7 +44,7 @@ args = parser.parse_args()
 # pwd = sys.argv[3]
 # temp_csv_filepath = sys.argv[4]  # Location for readable csv files
 
-fm = FeatureMover(args.endpoint, args.usr, args.pwd, args.filepath, verbose=True)
+fm = FeatureMover(args.endpoint, args.usr, args.pwd, args.filepath)
 pm = pubMover(args.endpoint, args.usr, args.pwd, args.filepath)
 
 if args.test:
