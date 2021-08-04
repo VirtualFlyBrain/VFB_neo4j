@@ -44,7 +44,7 @@ args = parser.parse_args()
 # pwd = sys.argv[3]
 # temp_csv_filepath = sys.argv[4]  # Location for readable csv files
 
-fm = FeatureMover(args.endpoint, args.usr, args.pwd, args.filepath)
+fm = FeatureMover(args.endpoint, args.usr, args.pwd, args.filepath, verbose=True)
 pm = pubMover(args.endpoint, args.usr, args.pwd, args.filepath)
 
 if args.test:
@@ -184,7 +184,7 @@ for fep_c in feps_chunked:
     engine = create_engine('sqlite://', echo=False)
     fep_df.to_sql('feature_expression', con=engine)
     gps = list(fep_df['gp'])
-    gp2al = fm.gp2allele(gps, verbose=True)  # A list of triples (as python tuples)
+    gp2al = fm.gp2allele(gps)  # A list of triples (as python tuples)
     allele_ids = []
     for t in gp2al:
         engine.execute("UPDATE feature_expression SET al = '%s'"
