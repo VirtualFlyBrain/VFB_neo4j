@@ -246,11 +246,11 @@ class FeatureMover(FB2Neo):
                               out_rel='GENO_0000408', o_idp='FBgn')  # is_allele_of
 
     # gp - transgene R associated_with Type object by uniquename FBgn
-    def gp2allele(self, subject_ids, verbose=True):
+    def gp2allele(self, subject_ids):
         """Takes a list of gene product IDs, returns a list of triples as python tuples:
          (gene_product rel transgene) where rel is appropriate for addition to prod."""
         return self._get_objs(subject_ids, chado_rel='associated_with', out_rel='RO_0002204',
-                              o_idp='FBal', verbose=verbose)  # gene_product_of
+                              o_idp='FBal')  # gene_product_of
 
     # gp - gene associated_with Type object by uniquename FBgn
     def gp2Gene(self, subject_ids):
