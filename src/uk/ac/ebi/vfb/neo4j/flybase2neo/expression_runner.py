@@ -184,7 +184,6 @@ for fep_c in feps_chunked:
     engine = create_engine('sqlite://', echo=False)
     fep_df.to_sql('feature_expression', con=engine)
     gps = list(fep_df['gp'])
-    print(gps)
     gp2al = fm.gp2allele(gps)  # A list of triples (as python tuples)
     allele_ids = []
     for t in gp2al:
