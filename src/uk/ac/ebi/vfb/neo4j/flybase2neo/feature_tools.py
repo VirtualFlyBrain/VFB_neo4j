@@ -452,23 +452,21 @@ class FeatureMover(FB2Neo):
         # check whether synonym already exists on a VFBgeno
         nc = neo4j_connect(base_uri=self.ni.nc.base_uri, usr=self.ni.nc.usr, pwd=self.ni.nc.pwd)
 
-        q = [("MATCH (n:Individual) WHERE n.short_form =~ \'VFBgeno_[0-9]{8}\' "
-             "AND n.synonyms = \'%s\' RETURN n.short_form AS short_form, n.label AS label"
+        q = [("MATCH (n:Individual) WHERE n.short_form =~ \'VFBgeno_[0-9]{8}\' AND n.synonyms = \'%s\' "
+              "RETURN n.short_form AS short_form, n.label AS label, n.synonyms AS synonyms"
               % genotype_synonym)]
 
         if verbose:
             print("Checking for this genotype in database, running query: " + q[0])
 
         r = nc.commit_list(statements=q)
-        results = results_2_dict_list(r)
+        existing_genotype = results_2_dict_list(r)
 
         # return existing genotype if present
-        if results:
-            existing_genotype = results[0]
-            existing_genotype['synonym'] = genotype_synonym
+        if existing_genotype:
             print("Genotype already exists:")
-            print(existing_genotype)
-            return existing_genotype
+            print(existing_genotype[0])
+            return existing_genotype[0]
 
         # continue with creating new node if no equivalent genotype present
         if verbose:
