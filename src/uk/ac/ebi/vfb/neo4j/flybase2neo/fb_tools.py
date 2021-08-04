@@ -92,6 +92,7 @@ class FB2Neo(object):
     def query_fb(self, query):
         """Runs a query of public Flybase, 
         returns results as interable of dicts keyed on columns names"""
+        print("query_fb(" + str(query) + ")")
         cursor = self.conn.cursor()  # Investigate using with statement
         cursor.execute(query)
         dc = dict_cursor(cursor)
