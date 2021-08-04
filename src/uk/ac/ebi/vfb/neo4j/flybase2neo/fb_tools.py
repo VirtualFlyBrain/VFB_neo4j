@@ -37,8 +37,7 @@ def get_fb_conn():
     return psycopg2.connect(dbname='flybase',
                             host='chado.flybase.org',
                             user='flybase',
-                            connect_timeout=60,
-                            tcp_user_timeout=90)
+                            connect_timeout=60)
 
 
 def dict_list_2_dict(key, dict_list, pfunc, sort = True):
