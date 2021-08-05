@@ -69,23 +69,20 @@ def dict_list_2_dict(key, dict_list, pfunc, sort = True):
         old_key = current_key
     return result
 
-import time
 
 class FB2Neo(object):
     """A general class for moving content between FB and Neo.
     Includes connections to FB and neo4J and a generic method for running queries
     SubClass this for specific transfer jobs."""
     
-    def __init__(self, endpoint, usr, pwd, file_path='', fb_conn_reset_time=300):
+    def __init__(self, endpoint, usr, pwd, file_path=''):
         """Specify Neo4J server endpoint, username and password"""
-        self._init(endpoint, usr, pwd, fb_conn_reset_time=fb_conn_reset_time)
+        self._init(endpoint, usr, pwd)
         self.file_path = file_path  # A path for temp csv files  # This really should be pushed up to neo4J connect (via KB tools)
 
 
-    def _init(self, endpoint, usr, pwd, fb_conn_reset_time = 300):
+    def _init(self, endpoint, usr, pwd):
         self.conn = get_fb_conn()
-        self.conn_start_time = time.time()
-        self.conn_reset_time = fb_conn_reset_time
         self.ew = kb_owl_edge_writer(endpoint, usr, pwd)
         self.ni = node_importer(endpoint, usr, pwd)
         self.nc = self.ni.nc
@@ -95,10 +92,6 @@ class FB2Neo(object):
     def query_fb(self, query):
         """Runs a query of public Flybase, 
         returns results as interable of dicts keyed on columns names"""
-        if time.time() - self.conn_reset_time:
-            self.conn.close()
-            self.conn = get_fb_conn()
-            self.conn_start_time = time.time()
         cursor = self.conn.cursor()  # Investigate using with statement
         cursor.execute(query)
         dc = dict_cursor(cursor)
@@ -115,7 +108,7 @@ class FB2Neo(object):
 
         
     def close(self):
-        self.conn.close()
+        self.conn.close()  # Investigate implementing using with statement.  Then method not required.
 
 
 
