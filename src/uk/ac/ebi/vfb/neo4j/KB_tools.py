@@ -732,6 +732,46 @@ class node_importer(kb_writer):
         """STUB"""
         return
 
+    def update_genotypes(self):
+        """Checks whether obsolete FB features are used in genotypes.
+        Updates genotypes (using add_genotype) if feature labels changed.
+        Should be run after update_current_features_from_FlyBase."""
+
+        # check for obsolete features
+        s = ["MATCH (h:Feature:Class)<-[r {short_form:'has_part'}]-(g)-[:INSTANCEOF]->(x {short_form:'GENO_0000536'}) "
+             "WHERE h.is_obsolete=true RETURN DISTINCT g.short_form, g.synonyms, g.label, h.short_form, h.label"]
+        r = self.nc.commit_list(s)
+        rd = results_2_dict_list(r)
+        if rd:
+            obs_gen = pd.DataFrame(rd)
+            print("Genotypes linked to obsolete features:")
+            print(obs_gen)
+        else:
+            print("No obsolete features linked to genotypes.")
+
+        # check for changed labels - not possible for synonym to need updating unless associated with new feature
+        # associating with new feature using add_genotype would automatically update synonym
+        s = ["MATCH (h:Feature:Class)<-[r {short_form:'has_part'}]-(g)-[:INSTANCEOF]->(x {short_form:'GENO_0000536'}) "
+             "RETURN DISTINCT g.short_form, g.synonyms, g.label, "
+             "COLLECT(h.short_form) AS FBIDs, COLLECT(h.label) AS labels"]
+        r = self.nc.commit_list(s)
+        rd = results_2_dict_list(r)
+        genotype_details = pd.DataFrame(rd)
+        genotype_details['expected_label'] = genotype_details['labels'].apply(
+            lambda x: 'genotype consisting of ' + ', '.join(sorted(x)))
+        changed_labels = list(genotype_details[
+                                  genotype_details['g.label'] != genotype_details['expected_label']]['g.short_form'])
+        if changed_labels:
+            print('Some genotypes have new feature labels')
+            # need to import FeatureMover locally to avoid circular imports
+            from uk.ac.ebi.vfb.neo4j.flybase2neo.feature_tools import FeatureMover
+            fm = FeatureMover(endpoint=self.nc.base_uri, usr=self.nc.usr, pwd=self.nc.pwd)
+            for g in changed_labels:
+                print('updating genotype ' + g)
+                fm.add_genotype(short_form=g)
+        else:
+            print('No genotypes with updated feature labels')
+
 
 class EntityChecker(kb_writer):
 
