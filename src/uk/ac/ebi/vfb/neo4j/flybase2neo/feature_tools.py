@@ -422,15 +422,53 @@ class FeatureMover(FB2Neo):
             self.ew.commit()
         return out
 
-    def add_genotype(self, genotype_components, add_feats=True, add_feature_details=True, commit=True, verbose=False):
-        """Adds and returns new genotypes.
-        genotype_components should be a list of FB IDs.
+    def add_genotype(self, genotype_components=None, add_feats=True, add_feature_details=True,
+                     commit=True, verbose=False, short_form=None):
+        """Adds/updates genotypes.
         schema: (genotype)-[:has_part]->(allele)
-        Returns dictionary for genotype {short_form: '', label: ''}
-        If a genotype composed of these features already exists,
-        this will be returned in the same format and no new node will be added.
+        genotype_components should be a list of FB IDs (if specified).
+        Returns dictionary for genotype if genotype is added or updated {short_form: '', label: '', synonyms: ''}.
+        Specifying the short_form using short_form= can update or create a genotype with this short_form.
+        A short_form may be specified with no genotype_components to update using the existing components.
+        If a genotype composed of genotype_components already exists, no changes will be made to the database. If no
+        short form was specified, the matching genotype will be returned, otherwise False will be returned.
         """
 
+        # look for existing node if short_form given
+        if short_form:
+            q = [("MATCH (h:Feature:Class)<-[r {short_form:'has_part'}]-(g {short_form:'%s'})-[:INSTANCEOF]->"
+                  "(x {short_form:'GENO_0000536'}) RETURN DISTINCT COLLECT(h.short_form) AS features" % short_form)]
+            r = self.nc.commit_list(q)
+            rd = results_2_dict_list(r)
+            existing_genotype_components = rd[0]['features']
+            if not genotype_components:  # no new feat
+                if verbose:
+                    print("No features specified, using existing features based on genotype short_form...")
+                if not existing_genotype_components:  # no new or old feat
+                    print("No features associated with genotype, please specify")
+                    return False
+                else:  # old but no new feat
+                    if verbose:
+                        print("Identified features:", existing_genotype_components)
+                    genotype_components = existing_genotype_components
+            elif existing_genotype_components:  # new feat and old feat
+                if sorted(existing_genotype_components) == sorted(genotype_components):
+                    if verbose:
+                        print("Existing genotype matches specified genotype_components")
+                else:  # new feat different to old
+                    for f in existing_genotype_components:
+                        if f not in genotype_components:
+                            s = [("MATCH (g {short_form:'%s'})-[r {short_form:'has_part'}]->"
+                                 "(f:Feature {short_form:'%s'}) DELETE r") % (short_form, f)]
+                            self.ew.statements.extend(s)
+                            if verbose:
+                                print("Feature %s will no longer be associated with this genotype" % f)
+
+        elif not genotype_components:
+            print("Genotype short_form or genotype_components must be specified")
+            return False
+
+        # get features in genotype_components from FlyBase
         if add_feats:
             if add_feature_details:
                 feats = self.add_features(genotype_components)
@@ -452,7 +490,7 @@ class FeatureMover(FB2Neo):
         # check whether synonym already exists on a VFBgeno
         nc = neo4j_connect(base_uri=self.ni.nc.base_uri, usr=self.ni.nc.usr, pwd=self.ni.nc.pwd)
 
-        q = [("MATCH (n:Individual) WHERE n.short_form =~ \'VFBgeno_[0-9]{8}\' AND n.synonyms = \'%s\' "
+        q = [("MATCH (n:Individual) WHERE n.short_form =~ 'VFBgeno_[0-9]{8}' AND n.synonyms = '%s' "
               "RETURN n.short_form AS short_form, n.label AS label, n.synonyms AS synonyms"
               % genotype_synonym)]
 
@@ -462,23 +500,31 @@ class FeatureMover(FB2Neo):
         r = nc.commit_list(statements=q)
         existing_genotype = results_2_dict_list(r)
 
-        # return existing genotype if present
+        # handling genotype with matching synonym
         if existing_genotype:
-            print("Genotype already exists:")
-            print(existing_genotype[0])
-            return existing_genotype[0]
-
-        # continue with creating new node if no equivalent genotype present
-        if verbose:
-            print("Genotype not already in database, creating...")
+            if existing_genotype[0]['short_form'] != short_form:  # different genotype has same components
+                print("Genotype with specified features already exists:")
+                print(existing_genotype[0])
+                print("No changes committed to database")
+                if short_form:  # cannot make/update desired node
+                    return False
+                else:  # do not need to make a new node - returns existing node
+                    return existing_genotype[0]
+            elif verbose and short_form:  # match is to itself - continuing to update label
+                print("No conflict with existing genotypes, updating...")
+        elif verbose:
+            print("Genotype not already in database")
 
         # IRI
-        genotype_iri = iri_generator(endpoint=self.ni.nc.base_uri, usr=self.ni.nc.usr,
-                                     pwd=self.ni.nc.pwd, idp='VFBgeno')
-        # these are the endpoint, usr and pwd used to set up self (FeatureMover object), idp is namespace
+        if short_form:
+            iri = {'short_form': short_form, 'iri': map_iri('vfb') + short_form}
+        else:
+            genotype_iri = iri_generator(endpoint=self.ni.nc.base_uri, usr=self.ni.nc.usr,
+                                         pwd=self.ni.nc.pwd, idp='VFBgeno')
+            # these are the endpoint, usr and pwd used to set up self (FeatureMover object), idp is namespace
 
-        iri = genotype_iri.generate(start=0)
-        # iri['iri'] is long form, iri['short_form'] is short form
+            iri = genotype_iri.generate(start=0)
+            # iri['iri'] is long form, iri['short_form'] is short form
 
         # label
         feat_names = [n.label for n in feats.values()]  # list of labels of features in genotype_components
@@ -516,6 +562,6 @@ class FeatureMover(FB2Neo):
                 print("Problem loading edges.")
                 return False
             if verbose:
-                print("Genotype added as:", new_genotype)
+                print("Genotype is now:", new_genotype)
 
         return new_genotype
