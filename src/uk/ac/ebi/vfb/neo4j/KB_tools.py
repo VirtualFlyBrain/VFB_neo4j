@@ -6,7 +6,8 @@ Created on Mar 6, 2017
 import warnings
 import re
 import json
-#import psycopg2
+# import psycopg2
+import pandas as pd
 import requests
 from .neo4j_tools import neo4j_connect, results_2_dict_list
 from .SQL_tools import get_fb_conn, dict_cursor
@@ -41,6 +42,7 @@ def get_sf(iri):
     """Get a short form from an iri."""
     return re.split('[#/]', iri)[-1]
 
+
 def gen_id(idp, ID, length, id_name, use_base36=False):
     """
     Generates an ID of form <idp>_<padded_accession>
@@ -48,9 +50,10 @@ def gen_id(idp, ID, length, id_name, use_base36=False):
     ARG 2 starting ID number (int), 
     ARG3, length of numeric portion ID, 
     ARG4 an id:name hash"""
+
     def gen_key(ID, length):  # This function is limited to the scope of the gen_id function.
         dl = len(str(ID))  # coerce int to string.
-        k = idp+'_'+(length - dl)*'0'+str(ID)
+        k = idp + '_' + (length - dl) * '0' + str(ID)
         return k
 
     k = gen_key(ID, length)
@@ -65,11 +68,8 @@ def gen_id(idp, ID, length, id_name, use_base36=False):
     return {'short_form': k, 'acc_int': ID}  # useful to return ID to use for next round.
 
 
+class kb_writer(object):
 
-
-
-class kb_writer (object):
-      
     def __init__(self, endpoint, usr, pwd, hard_fail=False):
         self.nc = neo4j_connect(endpoint, usr, pwd)
         self.statements = []
@@ -82,22 +82,22 @@ class kb_writer (object):
         Returns REST API output.
         Optionally set verbosity and chunk length for commits."""
         self.output = self.nc.commit_list_in_chunks(
-                                      statements=self.statements,
-                                      verbose=verbose,
-                                      chunk_length=chunk_length)
+            statements=self.statements,
+            verbose=verbose,
+            chunk_length=chunk_length)
         self.statements = []
         return self.output
 
     def commit(self, verbose=False, chunk_length=5000):
         return self._commit(verbose, chunk_length)
 
-    def escape_string(self, strng:str):
+    def escape_string(self, strng: str):
         # backslashes need special escaping to be treated literally
         return re.sub(r'\\', r'\\\\', strng)
-  
+
     def _add_textual_attribute(self, var, key, value):
-        return 'SET %s.%s = "%s" ' % (var, key, self.escape_string(value)) # Note arrangement single and double quotes
-    
+        return 'SET %s.%s = "%s" ' % (var, key, self.escape_string(value))  # Note arrangement single and double quotes
+
     def _set_attributes_from_dict(self, var, attribute_dict):
         """Generates CYPHER `SET` sub-clauses 
         from key value pairs in a dict (attribute_dict).
@@ -106,26 +106,28 @@ class kb_writer (object):
         """
         # Note - may be able to simplify this by converting to a map and passing that.
         out = ''
-        for k,v in attribute_dict.items():
+        for k, v in attribute_dict.items():
             if type(v) == int:
-                out += "SET %s.%s = %d " % (var,k,v)
-            elif type(v) == float:   
-                out += "SET %s.%s = %f " % (var,k,v)                    
+                out += "SET %s.%s = %d " % (var, k, v)
+            elif type(v) == float:
+                out += "SET %s.%s = %f " % (var, k, v)
             elif type(v) == str:
-                out += 'SET %s.%s = "%s" ' % (var, k, self.escape_string(v))           
-            elif type(v) == list:                        
-                out += 'SET %s.%s = %s ' % (var,k, str([self.escape_string(i) for i in v]))
+                out += 'SET %s.%s = "%s" ' % (var, k, self.escape_string(v))
+            elif type(v) == list:
+                out += 'SET %s.%s = %s ' % (var, k, str([self.escape_string(i) for i in v]))
             elif type(v) == bool:
-                out += "SET %s.%s = %s " % (var,k, str(v))                
-            else: 
-                warnings.warn("Can't use a %s as an attribute value in Cypher. Key %s Value :%s" 
+                out += "SET %s.%s = %s " % (var, k, str(v))
+            else:
+                warnings.warn("Can't use a %s as an attribute value in Cypher. Key %s Value :%s"
                               % (type(v), k, (str(v))))
         return out
+
 
 class iri_generator(kb_writer):
     """
     A wrapper class for generating IRIs for *OWL individuals* that don't stomp on those already in the KB.
     """
+
     def __init__(self, endpoint, usr, pwd,
                  use_base36=False,
                  idp='VFB',
@@ -137,7 +139,6 @@ class iri_generator(kb_writer):
         self._configure(idp=idp,
                         acc_length=acc_length,
                         base=base)
-
 
     def _configure(self, idp, acc_length, base):
         self.acc_length = acc_length
@@ -166,7 +167,7 @@ class iri_generator(kb_writer):
                     self.lookup.add(base36.loads(acc))
             return True
         else:
-            warnings.warn("No existing ids match the pattern %s_%s" % (idp, 'n'*acc_length))
+            warnings.warn("No existing ids match the pattern %s_%s" % (idp, 'n' * acc_length))
             return False
 
     def set_channel_config(self):
@@ -195,6 +196,7 @@ class iri_generator(kb_writer):
     def _gen_short_form(self, accession):
         return self.idp + '_' + str(accession).zfill(self.acc_length)
 
+
 class kb_owl_edge_writer(kb_writer):
     """A class wrapping methods for updating imported entities in the KB.
     Constructor: kb_owl_edge_writer(endpoint, usr, pwd)
@@ -219,8 +221,8 @@ class kb_owl_edge_writer(kb_writer):
         for k, v in self.properties.items():
             # If this was only operating on Neo3, could just grab all node properties as a map.
             statements.append(
-                "OPTIONAL MATCH (r:Property { %s: '%s' }) " 
-                "RETURN r.iri as iri, r.short_form as short_form, " 
+                "OPTIONAL MATCH (r:Property { %s: '%s' }) "
+                "RETURN r.iri as iri, r.short_form as short_form, "
                 "r.label as label, '%s' as key, '%s' as match_on" % (
                     v['match_on'], k, k, v['match_on'])
             )
@@ -251,9 +253,9 @@ class kb_owl_edge_writer(kb_writer):
         """Remove triples using specified prop and warn."""
         for t in self.triples.pop(prop):
             m = "Unknown property %s: Can't add triple %s, %s, %s." % (prop,
-                                                                              t['o'],
-                                                                              prop,
-                                                                              t['s'])
+                                                                       t['o'],
+                                                                       prop,
+                                                                       t['s'])
             self.log.append(m)
             warnings.warn(m)
 
@@ -289,7 +291,7 @@ class kb_owl_edge_writer(kb_writer):
             else:
                 rel = rel_map[t['match_on']]
 
-            out = "OPTIONAL MATCH (s%s { %s:'%s' }) " % (t['stype'],t['match_on'], t['s'])
+            out = "OPTIONAL MATCH (s%s { %s:'%s' }) " % (t['stype'], t['match_on'], t['s'])
             out += "OPTIONAL MATCH (o%s { %s:'%s' }) " % (t['otype'], t['match_on'], t['o'])
             out += "FOREACH (a IN CASE WHEN s IS NOT NULL THEN [s] ELSE [] END | " \
                    "FOREACH (b IN CASE WHEN o IS NOT NULL THEN [o] ELSE [] END | "
@@ -297,8 +299,8 @@ class kb_owl_edge_writer(kb_writer):
                 out += "MERGE (a)-[re:%s]->(b) SET re.type = '%s'" % (rel, t['rtype'])  # Might need work?
             else:
                 out += "MERGE (a)-[re:%s { %s: '%s' }]->(b) " % (t['rtype'],
-                                                                t['match_on'],
-                                                                rel)
+                                                                 t['match_on'],
+                                                                 rel)
             out += self._set_attributes_from_dict('re', t['edge_annotations'])
 
             # For each of label, iri, short_form; Check if available; Check if used in match
@@ -306,13 +308,12 @@ class kb_owl_edge_writer(kb_writer):
             # This is needed as cypher doesn't like property used in merge is also set in same statement.
             if rel_map['label'] and ((not t['match_on'] == 'label') or t['safe_label_edge']):
                 out += "SET re.label = '%s' " % rel_map['label']
-            if rel_map['short_form'] and ((not t['match_on'] == 'short_form' ) or t['safe_label_edge']):
+            if rel_map['short_form'] and ((not t['match_on'] == 'short_form') or t['safe_label_edge']):
                 out += "SET re.short_form = '%s' " % rel_map['short_form']
             if rel_map['iri'] and ((not t['match_on'] == 'iri') or t['safe_label_edge']):
                 out += "SET re.iri = '%s' " % rel_map['iri']
             out += ")) RETURN { `%s`: count(s), `%s`: count(o) } as match_count" % (t['s'], t['o'])
             self.statements.append(out)
-
 
     def _add_related_edge(self, s, r, o, stype, otype,
                           edge_annotations=None, match_on="iri", safe_label_edge=False):
@@ -322,7 +323,8 @@ class kb_owl_edge_writer(kb_writer):
         self._add_triple(s, r, o, rtype, stype, otype,
                          edge_annotations, match_on, safe_label_edge=safe_label_edge)
 
-    def add_annotation_axiom(self, s, r, o, stype='', otype=':Individual', edge_annotations=None, match_on="iri", safe_label_edge=False):
+    def add_annotation_axiom(self, s, r, o, stype='', otype=':Individual', edge_annotations=None, match_on="iri",
+                             safe_label_edge=False):
         """Link an OWL entity to an Individual via an annotation axiom.
         s = property identifying subject entity ,
         r = property identifying relation (AnnotationProperty) ,
@@ -337,7 +339,7 @@ class kb_owl_edge_writer(kb_writer):
         self._add_triple(s, r, o, rtype, stype, otype,
                          edge_annotations, match_on, safe_label_edge=safe_label_edge)
 
-    def add_fact(self, s, r, o, edge_annotations = None,
+    def add_fact(self, s, r, o, edge_annotations=None,
                  match_on="iri", safe_label_edge=False):
 
         """Add OWL fact to statement stack.
@@ -367,7 +369,6 @@ class kb_owl_edge_writer(kb_writer):
                                   match_on='short_form',
                                   safe_label_edge=True)
 
-                
     def add_anon_type_ax(self, s, r, o, edge_annotations=None,
                          match_on="iri", safe_label_edge=False):
         """Add OWL anonymous type axiom to statement stack.
@@ -380,8 +381,8 @@ class kb_owl_edge_writer(kb_writer):
        """
         if edge_annotations is None: edge_annotations = {}
         self._add_related_edge(s, r, o, stype=":Individual", otype=":Class",
-                               edge_annotations = edge_annotations, 
-                               match_on = match_on,
+                               edge_annotations=edge_annotations,
+                               match_on=match_on,
                                safe_label_edge=safe_label_edge)
 
     def add_named_type_ax(self, s, o, match_on="iri", edge_annotations=None):
@@ -414,9 +415,9 @@ class kb_owl_edge_writer(kb_writer):
         """
 
         if edge_annotations is None: edge_annotations = {}
-        self._add_related_edge(s, r, o, stype = ":Class", otype = ":Class",
-                               edge_annotations = edge_annotations,
-                               match_on = match_on,
+        self._add_related_edge(s, r, o, stype=":Class", otype=":Class",
+                               edge_annotations=edge_annotations,
+                               match_on=match_on,
                                safe_label_edge=safe_label_edge)
 
     def add_named_subClassOf_ax(self, s, o, match_on="iri"):
@@ -431,7 +432,7 @@ class kb_owl_edge_writer(kb_writer):
                "MERGE (a)-[:SUBCLASSOF]->(b) "
         out += ")) RETURN { `%s`: count(s), `%s`: count(o) } as match_count" % (s, o)
         self.statements.append(out)
-    
+
     def commit(self, verbose=False, chunk_length=5000):
         """Check prroperties; construct triples for all properties present;
         commit all edge additions (triples and duples) and test success.
@@ -441,14 +442,14 @@ class kb_owl_edge_writer(kb_writer):
         self.check_properties()
         self._construct_triples()
         self._commit(verbose, chunk_length)
-        self.test_edge_addition() # Do something with return value?
+        self.test_edge_addition()  # Do something with return value?
         # At this point - resetting all attributes except connection to default.
         # Better practice to just make a new object?
         out = self.output
         self.statements = []
         self.output = []
-        self.properties = {} # Dict of properties
-        self.triples = {} # Dict of lists of triples keyed on property
+        self.properties = {}  # Dict of properties
+        self.triples = {}  # Dict of lists of triples keyed on property
         return out
 
     def test_edge_addition(self):
@@ -465,24 +466,25 @@ class kb_owl_edge_writer(kb_writer):
         else:
             return True
 
+
 class node_importer(kb_writer):
     """A class wrapping methods for updating imported entities in the KB,
     e.g. from ontologies, FlyBase, CATMAID.
     Constructor: owl_import_updater(endpoint, usr, pwd)
     """
-        
+
     def add_constraints(self, uniqs=None, indexes=None):
         """Specify addition uniqs and indexes via dicts.
         { label : [attributes] } """
         if uniqs is None: uniqs = {}
         if indexes is None: indexes = {}
-        for k,v in uniqs.items():
+        for k, v in uniqs.items():
             for a in v:
-                self.statements.append("CREATE CONSTRAINT ON (n:%s) ASSERT n.%s IS UNIQUE" % (k,a))
-        for k,v in indexes.items():
+                self.statements.append("CREATE CONSTRAINT ON (n:%s) ASSERT n.%s IS UNIQUE" % (k, a))
+        for k, v in indexes.items():
             for a in v:
-                self.statements.append("CREATE INDEX ON :%s(%s)" % (k,a))
-            
+                self.statements.append("CREATE INDEX ON :%s(%s)" % (k, a))
+
     def add_default_constraint_set(self, labels):
         """SETS iri and short_form as uniq, indexes label"""
         uniqs = {}
@@ -492,7 +494,7 @@ class node_importer(kb_writer):
             indexes[l] = ['label']
         self.add_constraints(uniqs, indexes)
         self.commit()
-            
+
     def add_node(self, labels, IRI, attribute_dict=None):
         """Adds or updates a node.
         Node uniqueness specified by IRI + labels.
@@ -502,18 +504,18 @@ class node_importer(kb_writer):
         if attribute_dict is None: attribute_dict = {}
         short_form = re.split('[#/]', IRI)[-1]
         statement = "MERGE (n:%s { iri: '%s' }) set n.short_form = '%s'" % (
-                    (':'.join(labels)),
-                     IRI, short_form)
+            (':'.join(labels)),
+            IRI, short_form)
         statement += self._set_attributes_from_dict(var='n',
                                                     attribute_dict=attribute_dict)
         self.statements.append(statement)
 
-    
-    def update_from_obograph(self, file_path = '', url = '', include_properties=False, commit=True):
+    def update_from_obograph(self, file_path='', url='', include_properties=False, commit=True):
         """Update property and class nodes from an OBOgraph file
         (currently does not distinguish OPs from APs!)
         Only updates from pimary graph (i.e. ignores imports)
         """
+
         ## Get JSON, assuming only primary graph should be used for updating
         ## ie: imports ignored.
 
@@ -532,7 +534,7 @@ class node_importer(kb_writer):
             else:
                 return False
 
-        if file_path:   
+        if file_path:
             f = open(file_path, 'r')
             obographs = json.loads(f.read())
             f.close()
@@ -541,10 +543,10 @@ class node_importer(kb_writer):
             r = requests.get(url)
             if r.status_code == 200:
                 obographs = r.json()
-                primary_graph = obographs['graphs'][0]   # Add a check for success here!
+                primary_graph = obographs['graphs'][0]  # Add a check for success here!
             else:
-                warnings.warn("URL connection issue %s %s for %s" % (r.status_code, 
-                                                              r.reason, url))
+                warnings.warn("URL connection issue %s %s for %s" % (r.status_code,
+                                                                     r.reason, url))
                 return False
         else:
             warnings.warn('Please provide a file_path or a URL')
@@ -562,8 +564,8 @@ class node_importer(kb_writer):
                     continue
             # Split URL -> base & short_form
             m = re.findall('.+(#|/)(.+?)$', node['id'])
-            attribute_dict['short_form'] =  m[0][1]
-            if 'lbl' in node.keys(): attribute_dict['label']=  node['lbl']
+            attribute_dict['short_form'] = m[0][1]
+            if 'lbl' in node.keys(): attribute_dict['label'] = node['lbl']
             if 'meta' in node.keys():
                 if obs_check(node):
                     attribute_dict['is_obsolete'] = obs_check(node)
@@ -582,7 +584,7 @@ class node_importer(kb_writer):
         q = results_2_dict_list(self.nc.commit_list([m]))
         if q:
             for r in q:
-                warnings.warn("%s, %s is obsolete but in use." % 
+                warnings.warn("%s, %s is obsolete but in use." %
                               (r['c.label'], r['c.iri']))
             obsolete_iris = [r['c.iri'] for r in q]
             return list(set(obsolete_iris))
@@ -595,6 +597,7 @@ class node_importer(kb_writer):
         Maps a list of full length IRIs to their 'term replaced by', where possible.
         Produces cypher commands to transfer annotations in VFB to the replacement terms.
         """
+
         def convert_to_short_form(iri):
             """
             Convert any type of id to a short form (with an underscore).
@@ -647,8 +650,8 @@ class node_importer(kb_writer):
                 for n in graph['nodes']:
                     if i in n['id']:
                         try:
-                            consider_list = [convert_to_short_form(p['val']) for p in n['meta']['basicPropertyValues'] if
-                                             p['pred'] == "http://www.geneontology.org/formats/oboInOwl#consider"]
+                            consider_list = [convert_to_short_form(p['val']) for p in n['meta']['basicPropertyValues']
+                                             if p['pred'] == "http://www.geneontology.org/formats/oboInOwl#consider"]
                             failed_mapping_dict[convert_to_short_form(i)] = consider_list
                             consider_all_shortids.extend(consider_list)
                         except KeyError:
@@ -770,7 +773,7 @@ class EntityChecker(kb_writer):
     def _check_should_not_exist(self, hard_fail=False):
         self.statements.extend(self.should_not_exist)
         self.should_not_exist.clear()
-        return(self._check("Already in DB: ", exists=False, hard_fail=hard_fail))
+        return (self._check("Already in DB: ", exists=False, hard_fail=hard_fail))
 
     def _check_should_exist(self, hard_fail=False):
         self.statements.extend(self.should_exist)
@@ -784,7 +787,6 @@ class EntityChecker(kb_writer):
             return False
         else:
             return True
-
 
     def _check(self, error_message, exists=True, hard_fail=False):
         """Run checks in the stack then empty the stack.
@@ -807,12 +809,13 @@ class EntityChecker(kb_writer):
                 return False
         else:
             return True
-    
+
+
 class KB_pattern_writer(object):
     """A wrapper class for adding subgraphs following some pre-specified
     schema pattern.
     """
-    
+
     def __init__(self, endpoint, usr, pwd, use_base36=False):
         self.ew = kb_owl_edge_writer(endpoint, usr, pwd)
         self.ni = node_importer(endpoint, usr, pwd)
@@ -833,7 +836,7 @@ class KB_pattern_writer(object):
             'is specified output of': 'http://purl.obolibrary.org/obo/OBI_0000312',
             'hasDbXref': 'http://www.geneontology.org/formats/oboInOwl#hasDbXref',
             'has_source': 'http://purl.org/dc/terms/source'
-            }
+        }
 
         self.class_lookup = {
             'computer graphic': 'http://purl.obolibrary.org/obo/FBbi_00000224',
@@ -841,7 +844,7 @@ class KB_pattern_writer(object):
             'confocal microscopy': 'http://purl.obolibrary.org/obo/FBbi_00000251',
             'SB-SEM': 'http://purl.obolibrary.org/obo/FBbi_00000585',
             'TEM': 'http://purl.obolibrary.org/obo/FBbi_00000258'
-            }
+        }
 
     def commit(self, ni_chunk_length=5000, ew_chunk_length=2000, verbose=False):
         """Commits nodes then edges. Populate commit_log, returns False if log has content,
@@ -917,7 +920,7 @@ class KB_pattern_writer(object):
                                   query=dataset)
         if dbxref_strings:
             # Add checking dbxref strings for ':'
-            dbxrefs.update({x.split(':')[0]:x.split(':')[1] for x in dbxref_strings})
+            dbxrefs.update({x.split(':')[0]: x.split(':')[1] for x in dbxref_strings})
 
         for k in dbxrefs.keys():
             self.ec.roll_entity_check(labels=['Site'],
@@ -948,7 +951,6 @@ class KB_pattern_writer(object):
             warnings.warn("Load fail: Unknown entities referenced.")
             return False
 
-
         anat_id = self.anat_iri_gen.generate(start)
 
         anat_id['label'] = label
@@ -960,11 +962,10 @@ class KB_pattern_writer(object):
         if template == 'self':
             self_labels.append("Template")
 
-
         self.ni.add_node(labels=self_labels,
                          IRI=anat_id['iri'],
                          attribute_dict=anatomy_attributes)
-        #dataset_short_form = self.ni.nc.commit_list(["MATCH (ds:DataSet) WHERE ds.label = %s RETURN ds.short_form" % dataset])
+        # dataset_short_form = self.ni.nc.commit_list(["MATCH (ds:DataSet) WHERE ds.label = %s RETURN ds.short_form" % dataset])
         self.ew.add_annotation_axiom(s=anat_id[match_on],
                                      r='source',
                                      o=dataset,
@@ -995,16 +996,15 @@ class KB_pattern_writer(object):
                          attribute_dict={'label': label + '_c'}
                          )
         # Add a query to look up template channel, assuming template anat ind spec
-        #q = "MATCH (c:Individual)-[:Related { short_form : 'depicts' }]" \
+        # q = "MATCH (c:Individual)-[:Related { short_form : 'depicts' }]" \
         #    "->(t:Individual { iri : '%s' }) RETURN c.iri" % template
-        #x = results_2_dict_list(self.ni.nc.commit_list([q]))
-        #template = x['c.iri']
+        # x = results_2_dict_list(self.ni.nc.commit_list([q]))
+        # template = x['c.iri']
 
         # Add typing as channel.  This takes no vars so match_on can be fixed.
         self.ew.add_named_type_ax(s=channel_id['short_form'],
                                   o='VFBext_0000014',
                                   match_on='short_form')
-
 
         # Imaging modality - currently works on internal lookup in script.  Should probably be dynamic with DB
         self.ew.add_anon_type_ax(s=channel_id['iri'],
@@ -1044,7 +1044,7 @@ class KB_pattern_writer(object):
                                      o=ax[1],
                                      match_on='short_form')
 
-        return {'channel': channel_id, 'anatomy': anat_id }
+        return {'channel': channel_id, 'anatomy': anat_id}
 
     def add_dataSet(self, name,
                     license,
@@ -1083,7 +1083,7 @@ class KB_pattern_writer(object):
         if not self.ec.check():
             return False
 
-        dataset_id = {'iri': map_iri('data') + short_form , 'short_form': short_form }
+        dataset_id = {'iri': map_iri('data') + short_form, 'short_form': short_form}
         self.ni.add_node(labels=['Individual', 'DataSet'],
                          IRI=dataset_id['iri'],
                          attribute_dict={
@@ -1091,8 +1091,8 @@ class KB_pattern_writer(object):
                              'short_form': short_form,
                              'description': [description],
                              'dataset_spec_text': [dataset_spec_text],
-                             'schema': schema })
-#       self.ni.commit()
+                             'schema': schema})
+        #       self.ni.commit()
         self.ew.add_annotation_axiom(s=short_form,
                                      r='license',
                                      o=license,
@@ -1119,17 +1119,12 @@ class KB_pattern_writer(object):
 
         return dataset_id
 
-
-
-
-
-
 # Specs for a fb_feature_update
 ## Pull current feature nodes from DB
 #   query = "SELECT uniquename, name, is_obsolete from feature"
 
-#class fb_feature_update(kb_writer):   
-    
+# class fb_feature_update(kb_writer):
+
 
 # def add_ind(self, iri, short_form, label, synonyms = [], additional_attributes = {}):
 #     out = "MERGE (i:Individual { IRI: '%s'} ) " \
