@@ -66,6 +66,7 @@ class neo4j_connect():
         self.pwd = pwd
         self.commit = "/db/data/transaction/commit"
         if not self.test_connection():
+            print("swapping to NEO4J 4.X")
             self.commit = "/db/neo4j/tx/commit"
             self.test_connection()
        
