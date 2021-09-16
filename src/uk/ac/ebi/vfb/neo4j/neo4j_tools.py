@@ -64,7 +64,10 @@ class neo4j_connect():
         self.base_uri=base_uri
         self.usr = usr
         self.pwd = pwd
-        self.test_connection()
+        self.commit = "/db/data/transaction/commit"
+        if not self.test_connection():
+            self.commit = "/db/neo4j/tx/commit"
+            self.test_connection()
        
     def commit_list(self, statements, return_graphs = False):
         """Commit a list of statements to neo4J DB via REST API.
@@ -81,8 +84,8 @@ class neo4j_connect():
             for s in statements:
                 cstatements.append({'statement': s}) # rows an columns are returned by default.
         payload = {'statements': cstatements}
-        response = requests.post(url = "%s/db/data/transaction/commit" 
-                                 % self.base_uri, auth = (self.usr, self.pwd) ,
+        response = requests.post(url = "%s%s" 
+                                 % (self.base_uri, self.commit), auth = (self.usr, self.pwd) ,
                                   data = json.dumps(payload))
         if self.rest_return_check(response):
             return response.json()['results']
