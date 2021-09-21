@@ -65,9 +65,11 @@ class neo4j_connect():
         self.usr = usr
         self.pwd = pwd
         self.commit = "/db/data/transaction/commit"
+        self.headers = {}
         if not self.test_connection():
             print("swapping to NEO4J 4.X")
             self.commit = "/db/neo4j/tx/commit"
+            self.headers = {'Content-type': 'application/json'}
             self.test_connection()
        
     def commit_list(self, statements, return_graphs = False):
@@ -87,7 +89,7 @@ class neo4j_connect():
         payload = {'statements': cstatements}
         response = requests.post(url = "%s%s" 
                                  % (self.base_uri, self.commit), auth = (self.usr, self.pwd) ,
-                                  data = json.dumps(payload))
+                                  data = json.dumps(payload), headers = self.headers)
         if self.rest_return_check(response):
             return response.json()['results']
         else:
