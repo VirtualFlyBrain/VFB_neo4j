@@ -976,15 +976,11 @@ class KB_pattern_writer(object):
 
         if dbxrefs:
             for db, acc in dbxrefs.items():
-                self.ew.add_annotation_axiom(s=anat_id['short_form'],
-                                             r='hasDbXref',
-                                             o=db,
-                                             stype=':Individual',
-                                             otype=':Individual' + dbxref_type,
-                                             match_on='short_form',
-                                             edge_annotations={'accession': acc},
-                                             safe_label_edge=True
-                                             )
+                self.ew.add_xref(s=anat_id['short_form'],
+                                 xref=':'.join([db, acc]),
+                                 stype=':Individual',
+                                 otype=':Individual' + dbxref_type,
+                                 )
         if orcid:
             self.ew.add_annotation_axiom(s=anat_id['short_form'],
                                          r='contributor',
