@@ -228,7 +228,8 @@ class FeatureMover(FB2Neo):
                          "JOIN feature o ON fr.object_id=o.feature_id " \
                          "WHERE s.uniquename IN ('%s') " \
                          "AND r.name = '%s' " \
-                         "AND o.uniquename ~ '%s.+'"
+                         "AND o.uniquename ~ '%s.+'" \
+                         "AND NOT o.is_obsolete"
         query = query_template % ("','".join(subject_ids), chado_rel, o_idp)
         dc = self.query_fb(query)
         results = []
