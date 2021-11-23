@@ -105,7 +105,7 @@ def proc_splits(eng):
     # * Update feature_expression table in temp DB (eng)
     #   * Columns: fbrf, gp, fbex, comment, al, tg, ep, hemidriver
     # * generate a list of split objects to add to PDB
-    splitz = []
+    splitz = [] # Important to collect list by appending to list as set.update(named_tuple) upacks tuple
     # Find all cases where a tg linked to exp_cur statement with a comment
     q = eng.execute("SELECT comment, tg FROM feature_expression "
                     "WHERE tg IS NOT NULL "
@@ -113,7 +113,7 @@ def proc_splits(eng):
                     )
     dc = dict_cursor(q.cursor)
     for f in dc:
-            syns = []
+            syns = tuple() # empty tuple.  tuple, not list, needed for hashing
             # Does assoc comment indicate combination with some other TG
             # If so capture (potential) hemidriver id (m.group(1)) and label (m.group(2))
             m = re.match("^when combined with @(FB.{9}):(.+)@.*", f['comment'])
@@ -121,7 +121,7 @@ def proc_splits(eng):
             m3 = re.match(".+combination referred to as '(.+)'\).*", f['comment'])
             # Add synonym to syns if present
             if m3:
-                syns.append(m3.group(1))
+                syns = (m3.group(1),) # length 1 tuple
             # If combo
             if m:
                 # Parse potential hemidriver name to work out if it's a split (AD/DBD), if so, capture which
@@ -139,15 +139,14 @@ def proc_splits(eng):
                     if hemidriver_type == 'DBD':
                         dbd = hemidriver_id
                         ad = f['tg']
-                    elif hemidriver_type == 'AD':
+                    if hemidriver_type == 'AD':
                         ad = hemidriver_id
                         dbd = f['tg']
-
                     # Add to list of splits to be added to PDB. dbd = hemidriver; ad = transgene
                     splitz.append(split(dbd=dbd,
                                         ad=ad,
                                         synonyms=syns,
-                                        xrefs=[]))
+                                        xrefs=tuple()))
                     # Update temp DB to link feature_expression to ep (DBD vs AD defined order FB IDs in ID)
                     eng.execute('UPDATE feature_expression SET ep = "%s" '
                                 'WHERE tg = "%s" '
@@ -158,7 +157,7 @@ def proc_splits(eng):
                 else:
                     warnings.warn("Can't identify AD vs DBD in %s "
                                   "so ignoring this annotation." % m.group(2))
-    return splitz
+    return set(splitz)
 
 
 feps = fm.query_fb("SELECT pub.uniquename as fbrf, "
@@ -168,10 +167,11 @@ feps = fm.query_fb("SELECT pub.uniquename as fbrf, "
                    "JOIN pub ON fe.pub_id = pub.pub_id "
                    "JOIN feature f ON fe.feature_id = f.feature_id "
                    "JOIN expression e ON fe.expression_id = e.expression_id "
-                   "LEFT OUTER JOIN feature_expressionprop fep "
+                   "JOIN feature_expressionprop fep "
                    "ON fe.feature_expression_id = fep.feature_expression_id "
                    "AND fep.type_id = '101625' "
-                   "AND fep.value ~ 'when combined with @.*@.*'" + limit)
+                   "AND fep.value ~ 'when combined with @.*@.*'" 
+                   "AND fep.value ~ 'SS02256|SS01047'" + limit)
 
 # -> chunk results:
 # Make lookup with c
