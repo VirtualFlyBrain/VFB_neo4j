@@ -101,8 +101,12 @@ def sql_tab_2_df(eng, table_name):
 
 def proc_splits(eng):
 
-
+    # Process splits to
+    # * Update feature_expression table in temp DB (eng)
+    #   * Columns: fbrf, gp, fbex, comment, al, tg, ep, hemidriver
+    # * generate a list of split objects to add to PDB
     splitz = []
+    # Find all cases where a tg linked to exp_cur statement with a comment
     q = eng.execute("SELECT comment, tg FROM feature_expression "
                     "WHERE tg IS NOT NULL "
                     "AND comment IS NOT NULL"
@@ -110,33 +114,46 @@ def proc_splits(eng):
     dc = dict_cursor(q.cursor)
     for f in dc:
             syns = []
+            # Does assoc comment indicate combination with some other TG
+            # If so capture (potential) hemidriver id (m.group(1)) and label (m.group(2))
             m = re.match("^when combined with @(FB.{9}):(.+)@.*", f['comment'])
+            # Match synonym for combo (not always present)
             m3 = re.match(".+combination referred to as '(.+)'\).*", f['comment'])
+            # Add synonym to syns if present
             if m3:
                 syns.append(m3.group(1))
+            # If combo
             if m:
+                # Parse potential hemidriver name to work out if it's a split (AD/DBD), if so, capture which
                 m2 = re.match('.*{.*(DBD|AD).*}', m.group(2))
+                # If it is a split:
                 if m2:
+                    hemidriver_id = m.group(1)
+                    hemidriver_type = m2.group(1)
+                    # link hemidriver to feature_expression table in temp DB
                     eng.execute('UPDATE feature_expression SET hemidriver = "%s" '
-                                   'WHERE tg = "%s" '
-                                   'AND comment = "%s" '
-                                   '' % (m.group(1), f['tg'], f['comment']))
-                    if m2.group(1) == 'DBD':
-                        splitz.append(split(dbd=m.group(1),
-                                            ad=f['tg'],
-                                            synonyms=syns,
-                                            xrefs=[]))
-                        eng.execute('UPDATE feature_expression SET ep = "%s" '
-                                    'WHERE tg = "%s" '
-                                    'AND comment = "%s" '
-                                    '' % ('VFBexp_' + m.group(1) + f['tg'],
-                                          f['tg'], f['comment']))
-                    else:
-                        splitz.append(split(dbd=f['tg'],
-                                            ad=m.group(1),
-                                            synonyms=syns,
-                                            xrefs=[]))
-                        f['ep'] = 'VFBexp_' + f['tg'] + m.group(1)
+                                'WHERE tg = "%s" '
+                                'AND comment = "%s" '
+                                '' % (hemidriver_id, f['tg'], f['comment']))
+                    # If the hemidriver is a DBD:
+                    if hemidriver_type == 'DBD':
+                        dbd = hemidriver_id
+                        ad = f['tg']
+                    elif hemidriver_type == 'AD':
+                        ad = hemidriver_id
+                        dbd = f['tg']
+
+                    # Add to list of splits to be added to PDB. dbd = hemidriver; ad = transgene
+                    splitz.append(split(dbd=dbd,
+                                        ad=ad,
+                                        synonyms=syns,
+                                        xrefs=[]))
+                    # Update temp DB to link feature_expression to ep (DBD vs AD defined order FB IDs in ID)
+                    eng.execute('UPDATE feature_expression SET ep = "%s" '
+                                'WHERE tg = "%s" '
+                                'AND comment = "%s" '
+                                '' % ('VFBexp_' + dbd + ad,
+                                      f['tg'], f['comment']))
 
                 else:
                     warnings.warn("Can't identify AD vs DBD in %s "
