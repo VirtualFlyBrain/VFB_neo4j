@@ -332,7 +332,7 @@ class TestKBPatternWriter(unittest.TestCase):
             start=100,
             hard_fail=False
         )
-        assert t is True
+        assert bool(t) is True
 
         t = self.kpw.add_anatomy_image_set(
             dataset='dosumis2020',
@@ -399,8 +399,6 @@ class TestEntityChecker(unittest.TestCase):
                                              query='Aya') is True
             assert 'Aya' in self.ec.cache
             assert len(self.ec.should_exist) == 0
-
-
 
 
             assert self.ec.check() is True
