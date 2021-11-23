@@ -322,7 +322,6 @@ class TestKBPatternWriter(unittest.TestCase):
         assert t is False
         self.kpw.commit()
 
-        # This should  fail because xref doesn't exist.
         t = self.kpw.add_anatomy_image_set(
             dataset='dosumis2020',
             imaging_type='computer graphic',
@@ -333,7 +332,7 @@ class TestKBPatternWriter(unittest.TestCase):
             start=100,
             hard_fail=False
         )
-        assert t is False
+        assert t is True
 
         t = self.kpw.add_anatomy_image_set(
             dataset='dosumis2020',
