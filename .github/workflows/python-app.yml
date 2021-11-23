@@ -28,7 +28,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install flake8 pytest
+        pip install flake8
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
     - name: Lint with flake8
       continue-on-error: true
@@ -71,10 +71,5 @@ jobs:
         python -m $VN.flybase2neo.test.pub_tools_tests
         python -m $VN.flybase2neo.expression_runner --test http://localhost:7475 neo4j neo4j $TRAVIS_BUILD_DIR/src/ # Really more or an intgration test - consider splitting out.
         python -m $VN.flybase2neo.add_refs_for_anat http://localhost:7475 neo4j neo4j # Integration test.
-    
-    
-    - name: Test with pytest
-      run: |
-        pytest
     
     
