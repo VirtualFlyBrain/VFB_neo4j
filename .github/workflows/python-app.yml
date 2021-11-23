@@ -42,6 +42,17 @@ jobs:
         git clone https://github.com/VirtualFlyBrain/VFB_connect.git
         pip install -r VFB_connect/requirements.txt
     
+    - name: Database startup logs for debug
+      run: |
+        echo -e "KB check:"
+        curl -sSf -u neo4j:neo4j "http://localhost:7474/db/data/"
+        echo -e "KB log"
+        docker logs db
+        echo -e "PDB check:"
+        curl -sSf -u neo4j:neo4j "http://localhost:7475/db/data/"
+        echo -e "PDB log"
+        docker logs pdb
+    
     - name: Run Tests
       run: |
         export VN="uk.ac.ebi.vfb.neo4j"
@@ -52,14 +63,6 @@ jobs:
         export PWD=neo4j
         export FILEPATH=$TRAVIS_BUILD_DIR/src/
         export ENDPOINT=$PDB
-        echo -e "travis_fold:start:db-log"
-        curl -sSf -u neo4j:neo4j "http://localhost:7474/db/data/"
-        docker logs db
-        echo -e "travis_fold:end:db-log"
-        echo -e "travis_fold:start:pdb-log"
-        curl -sSf -u neo4j:neo4j "http://localhost:7475/db/data/"
-        docker logs pdb
-        echo -e "travis_fold:end:pdb-log"
         echo $VN
         cd src
         python -m $VN.test.KB_tools_test
