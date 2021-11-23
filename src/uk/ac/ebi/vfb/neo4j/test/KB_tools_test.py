@@ -406,15 +406,15 @@ class TestEntityChecker(unittest.TestCase):
             self.ec.roll_entity_check(labels=['Individual'],
                                       match_on='label',
                                       query='asdfd')
-
+            # checking failure
             assert self.ec.check() is False
 
             self.ec.roll_dbxref_check('FlyLight', 'GMR_fubar_23')
 
-            assert self.ec.check() is False
+            assert self.ec.check() is True
 
             # Log length should  match number negative tests
-            assert len(self.ec.log) == 2
+            assert len(self.ec.log) == 1
 
 if __name__ == "__main__":
     unittest.main()
