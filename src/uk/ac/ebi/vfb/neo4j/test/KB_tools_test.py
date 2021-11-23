@@ -316,7 +316,8 @@ class TestKBPatternWriter(unittest.TestCase):
             template='asdofiuo',
             anatomical_type='aoiu',
             dbxrefs={'fu': 'bar'},
-            start=100
+            start=100,
+            hard_fail=False
         )
         assert t is False
         self.kpw.commit()
@@ -329,7 +330,8 @@ class TestKBPatternWriter(unittest.TestCase):
             template='template_of_dave',
             anatomical_type='lobulobus',
             dbxrefs={'fu': 'GMR_fubar_23'},
-            start=100
+            start=100,
+            hard_fail=False
         )
         assert t is False
 
@@ -341,7 +343,8 @@ class TestKBPatternWriter(unittest.TestCase):
             anatomical_type='lobulobus',
             dbxrefs={'fu': 'bar'},
             anon_anatomical_types=([('part_of', 'brainz')]),
-            start=100
+            start=100,
+            hard_fail=False
         )
         assert bool(t) is False
 
@@ -353,6 +356,7 @@ class TestKBPatternWriter(unittest.TestCase):
             anatomical_type='lobulobus',
             dbxrefs={'fu': 'bar'},
             anon_anatomical_types=([('this_prop_has_no_iri', 'brain')]),
+            hard_fail=False,
             start=100
         )
         assert bool(self.kpw.commit()) is False
