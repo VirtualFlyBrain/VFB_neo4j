@@ -69,7 +69,7 @@ jobs:
         cd src
         ls -lh
         echo 'Same inside container (/import/):'
-        docker exec db /bin/bash ls -lh /import/
+        docker exec db /bin/ls -lh /import/
         python -m $VN.test.KB_tools_test
         python -m $VN.test.neo_tools_tests
         python -m $VN.flybase2neo.test.feature_tools_tests
