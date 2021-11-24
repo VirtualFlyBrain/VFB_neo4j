@@ -43,16 +43,24 @@ jobs:
         git clone https://github.com/VirtualFlyBrain/VFB_connect.git
         pip install -r VFB_connect/requirements.txt
     
-    - name: Database startup logs for debug
+    - name: KB startup log
+      run: |
+        echo -e "KB log"
+        docker logs db
+    
+    - name: KB checks
       run: |
         echo -e "KB check:"
         curl -sSf -u neo4j:neo4j "http://localhost:7474/db/data/"
-        echo -e "KB log"
-        docker logs db
+    - name: PDB startup log
+      run: |
+        echo -e "PDB log"
+        docker logs pdb 
+    - name: PDB checks
+      run: |
         echo -e "PDB check:"
         curl -sSf -u neo4j:neo4j "http://localhost:7475/db/data/"
-        echo -e "PDB log"
-        docker logs pdb
+
     
     - name: Run Tests
       run: |
