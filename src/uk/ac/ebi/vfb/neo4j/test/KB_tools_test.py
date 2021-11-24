@@ -41,7 +41,7 @@ class TestEdgeWriter(unittest.TestCase):
 
 
     def setUp(self):
-        self.edge_writer = kb_owl_edge_writer('http://localhost:7474', 'neo4j', 'neo4j')
+        self.edge_writer = kb_owl_edge_writer('http://localhost:7474', 'neo4j', 'test')
         s = []
         s.append(
             "MERGE (i1:Individual { "
