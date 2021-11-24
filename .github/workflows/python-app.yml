@@ -23,8 +23,8 @@ jobs:
         python-version: "3.7"
     - name: Start databases
       run: |
-        docker run -d --name db -p 7474:7474 -p 7687:7687 --env=NEO4J_AUTH=neo4j/test --env=NEOREADONLY=false --env=NEO4J_dbms_read__only=false --env=NEO4J_dbms_memory_heap_maxSize=1G --volume=$(pwd)/src/:/import/ virtualflybrain/docker-neo4j-knowledgebase
-        docker run -d --name pdb -p 7475:7474 -p 7688:7687 --env=NEO4J_AUTH=neo4j/test --env=NEOREADONLY=false --env=NEO4J_dbms_read__only=false --env=NEO4J_dbms_memory_heap_maxSize=1G --env=NEO4J_HEAP_MEMORY=2560 --volume=$(pwd)/src/:/import/ virtualflybrain/docker-vfb-neo4j-productiondb:pipeline2
+        docker run -d --name db -p 7474:7474 -p 7687:7687 --env=NEO4J_AUTH=neo4j/neo4j --env=NEOREADONLY=false --env=NEO4J_dbms_read__only=false --env=NEO4J_dbms_memory_heap_maxSize=1G --volume=$(pwd)/src/:/import/ virtualflybrain/docker-neo4j-knowledgebase
+        docker run -d --name pdb -p 7475:7474 -p 7688:7687 --env=NEO4J_AUTH=neo4j/neo4j --env=NEOREADONLY=false --env=NEO4J_dbms_read__only=false --env=NEO4J_dbms_memory_heap_maxSize=1G --env=NEO4J_HEAP_MEMORY=2560 --volume=$(pwd)/src/:/import/ virtualflybrain/docker-vfb-neo4j-productiondb:pipeline2
         sleep 50s
     - name: Install dependencies
       run: |
@@ -46,11 +46,11 @@ jobs:
     - name: Database startup logs for debug
       run: |
         echo -e "KB check:"
-        curl -sSf -u neo4j:test "http://localhost:7474/db/data/"
+        curl -sSf -u neo4j:neo4j "http://localhost:7474/db/data/"
         echo -e "KB log"
         docker logs db
         echo -e "PDB check:"
-        curl -sSf -u neo4j:test "http://localhost:7475/db/data/"
+        curl -sSf -u neo4j:neo4j "http://localhost:7475/db/data/"
         echo -e "PDB log"
         docker logs pdb
     
@@ -62,19 +62,16 @@ jobs:
         export KB=http://localhost:7474/
         export PDB=http://localhost:7475/
         export USR=neo4j
-        export PWD=test
+        export PWD=neo4j
         export FILEPATH=$TRAVIS_BUILD_DIR/src/
         export ENDPOINT=$PDB 
         echo $VN
         cd src
-        ls -lh
-        echo 'Same inside container (/import/):'
-        docker exec db /bin/ls -lh /import/
-        python -m $VN.test.KB_tools_test
+        python -m $VN.test.KB_tools_test 
         python -m $VN.test.neo_tools_tests
         python -m $VN.flybase2neo.test.feature_tools_tests
         python -m $VN.flybase2neo.test.pub_tools_tests
-        python -m $VN.flybase2neo.expression_runner --test http://localhost:7475 neo4j test $TRAVIS_BUILD_DIR/src/ # Really more or an intgration test - consider splitting out.
-        python -m $VN.flybase2neo.add_refs_for_anat http://localhost:7475 neo4j test # Integration test.
+        python -m $VN.flybase2neo.expression_runner --test http://localhost:7475 neo4j neo4j $TRAVIS_BUILD_DIR/src/ # Really more or an intgration test - consider splitting out.
+        python -m $VN.flybase2neo.add_refs_for_anat http://localhost:7475 neo4j neo4j # Integration test.
     
     
