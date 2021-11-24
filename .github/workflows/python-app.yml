@@ -57,14 +57,14 @@ jobs:
     - name: Run Tests
       run: |
         export VN="uk.ac.ebi.vfb.neo4j"
+        export TRAVIS_BUILD_DIR=$(pwd)
         export PYTHONPATH=$PYTHONPATH":/"$TRAVIS_BUILD_DIR/VFB_connect/src
         export KB=http://localhost:7474/
         export PDB=http://localhost:7475/
         export USR=neo4j
         export PWD=test
         export FILEPATH=$TRAVIS_BUILD_DIR/src/
-        export ENDPOINT=$PDB
-        export TRAVIS_BUILD_DIR=$(pwd)
+        export ENDPOINT=$PDB 
         echo $VN
         cd src
         ls -lh
