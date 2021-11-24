@@ -64,6 +64,7 @@ jobs:
         export PWD=neo4j
         export FILEPATH=$TRAVIS_BUILD_DIR/src/
         export ENDPOINT=$PDB
+        export TRAVIS_BUILD_DIR=$(pwd)
         echo $VN
         cd src
         python -m $VN.test.KB_tools_test
