@@ -25,7 +25,7 @@ jobs:
       run: |
         docker run -d --name db -p 7474:7474 -p 7687:7687 --env=NEO4J_AUTH=neo4j/test --env=NEOREADONLY=false --env=NEO4J_dbms_read__only=false --env=NEO4J_dbms_memory_heap_maxSize=1G --volume=$(pwd)/src/:/import/ virtualflybrain/docker-neo4j-knowledgebase
         docker run -d --name pdb -p 7475:7474 -p 7688:7687 --env=NEO4J_AUTH=neo4j/test --env=NEOREADONLY=false --env=NEO4J_dbms_read__only=false --env=NEO4J_dbms_memory_heap_maxSize=1G --env=NEO4J_HEAP_MEMORY=2560 --volume=$(pwd)/src/:/import/ virtualflybrain/docker-vfb-neo4j-productiondb:pipeline2
-        sleep 50s
+        sleep 60s
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
@@ -64,6 +64,7 @@ jobs:
     - name: Run KB_tools_test
       run: |
         export PYTHONPATH=$PYTHONPATH":/"$(pwd)/VFB_connect/src
+        
         cd src
         python -m uk.ac.ebi.vfb.neo4j.test.KB_tools_test 
     - name: Run neo_tools_tests
