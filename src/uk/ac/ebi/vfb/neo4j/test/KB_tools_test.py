@@ -41,7 +41,7 @@ class TestEdgeWriter(unittest.TestCase):
 
 
     def setUp(self):
-        self.edge_writer = kb_owl_edge_writer('http://localhost:7474', 'neo4j', 'neo4j')
+        self.edge_writer = kb_owl_edge_writer('http://localhost:7474', 'neo4j', 'test')
         s = []
         s.append(
             "MERGE (i1:Individual { "
@@ -160,7 +160,7 @@ class TestEdgeWriter(unittest.TestCase):
 class TestNodeImporter(unittest.TestCase):
 
     def setUp(self):
-        self.ni = node_importer('http://localhost:7474', 'neo4j', 'neo4j')
+        self.ni = node_importer('http://localhost:7474', 'neo4j', 'test')
         ### Maybe need node addition test first?!
         self.ni.add_node(labels = ['Individual'], IRI = map_iri('vfb') + "VFB_00000001")
         self.ni.commit()
@@ -227,7 +227,7 @@ class TestIriGenerator(unittest.TestCase):
 
     def test_default_id_gen(self):
         start_time = time.time()
-        ig = iri_generator('http://localhost:7474', 'neo4j', 'neo4j')
+        ig = iri_generator('http://localhost:7474', 'neo4j', 'test')
         print("iri_generator init time = " + str(time.time() - start_time))
         start_time = time.time()
         i = ig.generate(1)
@@ -237,7 +237,7 @@ class TestIriGenerator(unittest.TestCase):
 
     def test_base36_id_gen(self):
         start_time = time.time()
-        ig_b36 = iri_generator('http://localhost:7474', 'neo4j', 'neo4j', use_base36=True)
+        ig_b36 = iri_generator('http://localhost:7474', 'neo4j', 'test', use_base36=True)
         print("b36_iri_generator init time = " + str(time.time() - start_time))
         start_time = time.time()
         print(ig_b36.generate('99999'))
@@ -251,9 +251,9 @@ class TestKBPatternWriter(unittest.TestCase):
 
     def setUp(self):
         self.nc = neo4j_connect(
-            'http://localhost:7474', 'neo4j', 'neo4j')
+            'http://localhost:7474', 'neo4j', 'test')
         self.kpw = KB_pattern_writer(
-            'http://localhost:7474', 'neo4j', 'neo4j')
+            'http://localhost:7474', 'neo4j', 'test')
         statements = []
         for k,v in self.kpw.relation_lookup.items():
             short_form = re.split('[/#]', v)[-1]
@@ -379,7 +379,7 @@ class TestEntityChecker(unittest.TestCase):
                  "MATCH (i:Individual { label: 'Aya' }), "
                  "(s:Site { short_form: 'FlyLight' })"
                  " MERGE (i)-[:hasDbXref { accession: 'GMR_fubar_23'}]->(s)"]
-            self.ec = EntityChecker('http://localhost:7474', 'neo4j', 'neo4j')
+            self.ec = EntityChecker('http://localhost:7474', 'neo4j', 'test')
             self.ec.nc.commit_list(s)
 
         def testEntityCheck(self):

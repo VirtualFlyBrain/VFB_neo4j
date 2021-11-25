@@ -512,7 +512,7 @@ class node_importer(kb_writer):
     def update_from_obograph(self, file_path = '', url = '', include_properties=False, commit=True):
         """Update property and class nodes from an OBOgraph file
         (currently does not distinguish OPs from APs!)
-        Only updates from pimary graph (i.e. ignores imports)
+        Only updates from primary graph (i.e. ignores imports)
         """
         ## Get JSON, assuming only primary graph should be used for updating
         ## ie: imports ignored.
@@ -637,6 +637,7 @@ class node_importer(kb_writer):
             except KeyError:
                 failed_mappings.append(convert_to_short_form(i))
                 continue
+        self.commit()
 
         # get mappings based on consider annotations for terms with no term_replaced_by
         if len(failed_mappings) > 0:
