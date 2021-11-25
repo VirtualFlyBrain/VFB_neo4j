@@ -62,7 +62,6 @@ jobs:
         curl -sSf -u neo4j:test "http://localhost:7475/db/data/"
         
     - name: Run KB_tools_test
-      continue-on-error: true
       run: |
         export PYTHONPATH=$PYTHONPATH":/"$(pwd)/VFB_connect/src
         cd src
