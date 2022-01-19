@@ -876,6 +876,7 @@ class KB_pattern_writer(object):
                               dbxrefs=None,
                               dbxref_strings=None,
                               image_filename='',
+                              force_image_release=False,
                               match_on='short_form',
                               orcid='',
                               type_edge_annotations=None,
@@ -900,6 +901,7 @@ class KB_pattern_writer(object):
         hard_fail: Boolean.  If True, throw exception for uknown entitise referenced in args"""
 
         if anatomy_attributes is None: anatomy_attributes = {}
+        if not force_image_release: anatomy_attributes['block'] = "New Images"
         if anon_anatomical_types is None: anon_anatomical_types = []
         if dbxrefs is None: dbxrefs = {}
         if dbxref_strings is None: dbxref_strings = []
