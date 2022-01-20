@@ -10,7 +10,7 @@ import pandas as pd
 class Test_commit(unittest.TestCase):
     
     def setUp(self):
-        self.nc = neo4j_connect('http://localhost:7474', 'neo4j', 'neo4j')
+        self.nc = neo4j_connect('http://localhost:7474', 'neo4j', 'test')
 
     def test_neo_create_node(self): 
         # Quite a minimal test...
