@@ -18,7 +18,8 @@ args = parser.parse_args()
 
 matches = {'datasets': "MATCH (n:DataSet:Individual) ",
            'expression_patterns': "MATCH (n:Expression_pattern)",
-           'pubs': "MATCH (n:pub)"}
+           'pubs': "MATCH (n:pub)",
+           'Neuron': "MATCH (n:has_neuron_connectivity)"}
 
 with_file = open("uk/ac/ebi/vfb/neo4j/neo2solr/ols_solr_rec_query.cypher", 'r')
 with_clause = with_file.read()
