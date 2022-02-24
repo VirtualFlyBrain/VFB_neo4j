@@ -47,14 +47,16 @@ jobs:
         echo -e "KB check:"
         export LANDING_PAGE="http://localhost:7474/db/data/"  
         Test () { export http_status=$(curl -s -i -u neo4j:test $LANDING_PAGE | grep HTTP/1.1 | awk {'print $2'}); echo "Returned status \"$http_status\""; if [ "$http_status" != "200" ]; then echo "Waiting for docker to finish building..."; iterations=$((iterations+1)); if [ "$iterations" != "100" ]; then sleep 1; Test; fi; else echo "$(date) - connected successfully"; fi; }
-        Test;
+        Test || :
+        sleep 10
         curl -sSf -u neo4j:test "$LANDING_PAGE"
     - name: PDB checks
       run: |
         echo -e "PDB check:"
         export LANDING_PAGE="http://localhost:7475/db/data/"  
         Test () { export http_status=$(curl -s -i -u neo4j:test $LANDING_PAGE | grep HTTP/1.1 | awk {'print $2'}); echo "Returned status \"$http_status\""; if [ "$http_status" != "200" ]; then echo "Waiting for docker to finish building..."; iterations=$((iterations+1)); if [ "$iterations" != "100" ]; then sleep 1; Test; fi; else echo "$(date) - connected successfully"; fi; }
-        Test;
+        Test || :
+        sleep 10
         curl -sSf -u neo4j:test "$LANDING_PAGE"
     - name: KB startup log
       if: always()
@@ -69,7 +71,6 @@ jobs:
     - name: Run KB_tools_test
       run: |
         export PYTHONPATH=$PYTHONPATH":/"$(pwd)/VFB_connect/src
-        
         cd src
         python -m uk.ac.ebi.vfb.neo4j.test.KB_tools_test 
     - name: Run neo_tools_tests
