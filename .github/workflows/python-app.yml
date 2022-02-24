@@ -57,10 +57,12 @@ jobs:
         Test;
         curl -sSf -u neo4j:test "$LANDING_PAGE"
     - name: KB startup log
+      if: always()
       run: |
         echo -e "KB log"
         docker logs db
     - name: PDB startup log
+      if: always()
       run: |
         echo -e "PDB log"
         docker logs pdb 
