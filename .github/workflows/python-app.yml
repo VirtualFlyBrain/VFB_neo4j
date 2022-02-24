@@ -42,25 +42,28 @@ jobs:
       run: |
         git clone https://github.com/VirtualFlyBrain/VFB_connect.git
         pip install -r VFB_connect/requirements.txt
-    
+    - name: KB checks
+      run: |
+        echo -e "KB check:"
+        export LANDING_PAGE="http://localhost:7474/db/data/"  
+        Test () { export http_status=$(curl -s -i -u neo4j:test $LANDING_PAGE | grep HTTP/1.1 | awk {'print $2'}); echo "Returned status \"$http_status\""; if [ "$http_status" != "200" ]; then echo "Waiting for docker to finish building..."; iterations=$((iterations+1)); if [ "$iterations" != "100" ]; then sleep 1; Test; fi; else echo "$(date) - connected successfully"; fi; }
+        Test;
+        curl -sSf -u neo4j:test "$LANDING_PAGE"
+    - name: PDB checks
+      run: |
+        echo -e "PDB check:"
+        export LANDING_PAGE="http://localhost:7475/db/data/"  
+        Test () { export http_status=$(curl -s -i -u neo4j:test $LANDING_PAGE | grep HTTP/1.1 | awk {'print $2'}); echo "Returned status \"$http_status\""; if [ "$http_status" != "200" ]; then echo "Waiting for docker to finish building..."; iterations=$((iterations+1)); if [ "$iterations" != "100" ]; then sleep 1; Test; fi; else echo "$(date) - connected successfully"; fi; }
+        Test;
+        curl -sSf -u neo4j:test "$LANDING_PAGE"
     - name: KB startup log
       run: |
         echo -e "KB log"
         docker logs db
-    
-    - name: KB checks
-      run: |
-        echo -e "KB check:"
-        curl -sSf -u neo4j:test "http://localhost:7474/db/data/"
     - name: PDB startup log
       run: |
         echo -e "PDB log"
         docker logs pdb 
-    - name: PDB checks
-      run: |
-        echo -e "PDB check:"
-        curl -sSf -u neo4j:test "http://localhost:7475/db/data/"
-        
     - name: Run KB_tools_test
       run: |
         export PYTHONPATH=$PYTHONPATH":/"$(pwd)/VFB_connect/src
