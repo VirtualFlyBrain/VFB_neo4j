@@ -12,6 +12,6 @@ WITH collect(DISTINCT {
      synonym_autosuggest: coalesce(n.synonyms, []), 
      autosuggest: [n.label] + n.synonyms, 
      facets_annotation: labels(n),
-     unique_facets: coalesce(n.uniqueFacets, [])
+     unique_facets: coalesce([] + n.uniqueFacets, [])
      }) AS doc
 RETURN REDUCE(output = [], r IN doc | output + r) AS flat
