@@ -447,6 +447,7 @@ class kb_owl_edge_writer(kb_writer):
         out = self.output
         self.statements = []
         self.output = []
+        self.log = []
         self.properties = {} # Dict of properties
         self.triples = {} # Dict of lists of triples keyed on property
         return out
