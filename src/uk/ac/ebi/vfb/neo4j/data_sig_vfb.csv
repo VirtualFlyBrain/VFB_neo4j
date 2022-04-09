@@ -924,4 +924,4 @@ http://xmlns.com/foaf/0.1/workplaceHomepage,ObjectProperty,workplace_homepage
 http://xmlns.com/foaf/0.1/yahooChatID,DataProperty,yahoo_chat_id
 http://purl.obolibrary.org/obo/fbbt#goslim_ChEMBL,AnnotationProperty,goslim_chembl_c_fbbthash
 http://purl.obolibrary.org/obo/UBREL_0000002,AnnotationProperty,ubrel_two
-http://purl.obolibrary.org/obo/RO_0013005,ObjectProperty,receives synaptic input throughout
+http://purl.obolibrary.org/obo/RO_0013005,ObjectProperty,receives_synaptic_input_throughout
