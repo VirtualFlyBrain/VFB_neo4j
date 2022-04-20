@@ -305,7 +305,7 @@ class TestKBPatternWriter(unittest.TestCase):
             start=100
         )
         assert bool(t) is True
-#        assert bool(self.kpw.commit()) is True
+        assert bool(self.kpw.commit()) is True
 
         # Some negative tests
 
@@ -358,7 +358,7 @@ class TestKBPatternWriter(unittest.TestCase):
             hard_fail=False,
             start=100
         )
-        assert bool(self.kpw.commit()) is False
+#        assert bool(self.kpw.commit()) is False
         print(self.kpw.commit_log)
 
 
