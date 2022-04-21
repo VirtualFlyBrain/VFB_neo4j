@@ -1087,7 +1087,7 @@ class KB_pattern_writer(object):
         if not self.ec.check():
             return False
 
-        dataset_id = {'iri': map_iri('data') + short_form , 'short_form': short_form }
+        dataset_id = {'iri': map_iri('vfb') + short_form , 'short_form': short_form }
         self.ni.add_node(labels=['Individual', 'DataSet'],
                          IRI=dataset_id['iri'],
                          attribute_dict={
