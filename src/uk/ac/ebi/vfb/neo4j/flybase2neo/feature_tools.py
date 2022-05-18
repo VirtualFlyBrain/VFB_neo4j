@@ -152,9 +152,11 @@ class FeatureMover(FB2Neo):
         """Takes a list of FBids, looks up info (via name_synonym_lookup) and makes a robot template.
         Output filename should be specified (template will be a tsv)."""
         feature_details = self.name_synonym_lookup(fbids)
+        feature_types = dict(self.grossType(fbids))
 
         template_seed = collections.OrderedDict([('iri', 'ID'), ("label", "A rdfs:label"),
-                                                 ("synonyms", "A oboInOwl:hasExactSynonym SPLIT=|")])
+                                                 ("synonyms", "A oboInOwl:hasExactSynonym SPLIT=|"),
+                                                 ("feature_type", "SC %")])
         template = pd.DataFrame.from_records([template_seed])
         for f in fbids:
             row_od = collections.OrderedDict([])  # new template row as an empty ordered dictionary
@@ -163,6 +165,7 @@ class FeatureMover(FB2Neo):
             row_od["iri"] = feature_details[f].iri
             row_od["label"] = feature_details[f].label
             row_od["synonyms"] = '|'.join(feature_details[f].synonyms)
+            row_od["feature_type"] = "http://purl.obolibrary.org/obo/" + feature_types[f]
             new_row = pd.DataFrame.from_records([row_od])
             template = pd.concat([template, new_row], ignore_index=True, sort=False)
         template.to_csv(filename, sep="\t", header=True, index=False)
