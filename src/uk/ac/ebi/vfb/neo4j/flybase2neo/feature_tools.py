@@ -148,8 +148,9 @@ class FeatureMover(FB2Neo):
         self.addTypes2Neo(fbids=fbids, commit=commit)
         return feats
 
-    def feature_robot_template(self, fbids):
-        """Takes a list of FBids, looks up info (via name_synonym_lookup) and makes a robot template."""
+    def feature_robot_template(self, fbids, filename):
+        """Takes a list of FBids, looks up info (via name_synonym_lookup) and makes a robot template.
+        Output filename should be specified (template will be a tsv)."""
         feature_details = self.name_synonym_lookup(fbids)
 
         template_seed = collections.OrderedDict([('iri', 'ID'), ("label", "A rdfs:label"),
@@ -164,7 +165,7 @@ class FeatureMover(FB2Neo):
             row_od["synonyms"] = '|'.join(feature_details[f].synonyms)
             new_row = pd.DataFrame.from_records([row_od])
             template = pd.concat([template, new_row], ignore_index=True, sort=False)
-        template.to_csv(self.file_path + "template.tsv", sep="\t", header=True, index=False)
+        template.to_csv(filename, sep="\t", header=True, index=False)
 
 
     # Typing
