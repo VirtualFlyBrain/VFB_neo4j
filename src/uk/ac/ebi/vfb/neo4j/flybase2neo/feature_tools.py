@@ -395,7 +395,7 @@ class FeatureMover(FB2Neo):
             iri = map_iri('vfb') + short_form
             ad = {'label' : feats[s.dbd].label + ' ∩ ' +
                   feats[s.ad].label +' expression pattern',
-                  'synonyms': s.synonyms,
+                  'synonyms': list(s.synonyms),
                   'description': ['The sum of all cells at the intersection between '
                                    'the expression patterns of %s and'
                                    ' %s.' % (feats[s.dbd].label,

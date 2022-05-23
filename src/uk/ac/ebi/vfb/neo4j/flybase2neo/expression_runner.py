@@ -167,11 +167,11 @@ feps = fm.query_fb("SELECT pub.uniquename as fbrf, "
                    "JOIN pub ON fe.pub_id = pub.pub_id "
                    "JOIN feature f ON fe.feature_id = f.feature_id "
                    "JOIN expression e ON fe.expression_id = e.expression_id "
-                   "JOIN feature_expressionprop fep "
+                   "LEFT OUTER JOIN feature_expressionprop fep "
                    "ON fe.feature_expression_id = fep.feature_expression_id "
                    "AND fep.type_id = '101625' "
                    "AND fep.value ~ 'when combined with @.*@.*'" 
-                   "AND fep.value ~ 'SS02256|SS01047'" + limit)
+                   + limit)
 
 # -> chunk results:
 # Make lookup with c
