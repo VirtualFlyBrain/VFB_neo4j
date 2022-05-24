@@ -41,7 +41,7 @@ class TestEdgeWriter(unittest.TestCase):
 
 
     def setUp(self):
-        self.edge_writer = kb_owl_edge_writer('http://localhost:7474', 'neo4j', 'neo4j')
+        self.edge_writer = kb_owl_edge_writer('http://localhost:7474', 'neo4j', 'test')
         s = []
         s.append(
             "MERGE (i1:Individual { "
@@ -160,7 +160,7 @@ class TestEdgeWriter(unittest.TestCase):
 class TestNodeImporter(unittest.TestCase):
 
     def setUp(self):
-        self.ni = node_importer('http://localhost:7474', 'neo4j', 'neo4j')
+        self.ni = node_importer('http://localhost:7474', 'neo4j', 'test')
         ### Maybe need node addition test first?!
         self.ni.add_node(labels = ['Individual'], IRI = map_iri('vfb') + "VFB_00000001")
         self.ni.commit()
@@ -227,7 +227,7 @@ class TestIriGenerator(unittest.TestCase):
 
     def test_default_id_gen(self):
         start_time = time.time()
-        ig = iri_generator('http://localhost:7474', 'neo4j', 'neo4j')
+        ig = iri_generator('http://localhost:7474', 'neo4j', 'test')
         print("iri_generator init time = " + str(time.time() - start_time))
         start_time = time.time()
         i = ig.generate(1)
@@ -237,7 +237,7 @@ class TestIriGenerator(unittest.TestCase):
 
     def test_base36_id_gen(self):
         start_time = time.time()
-        ig_b36 = iri_generator('http://localhost:7474', 'neo4j', 'neo4j', use_base36=True)
+        ig_b36 = iri_generator('http://localhost:7474', 'neo4j', 'test', use_base36=True)
         print("b36_iri_generator init time = " + str(time.time() - start_time))
         start_time = time.time()
         print(ig_b36.generate('99999'))
@@ -251,9 +251,9 @@ class TestKBPatternWriter(unittest.TestCase):
 
     def setUp(self):
         self.nc = neo4j_connect(
-            'http://localhost:7474', 'neo4j', 'neo4j')
+            'http://localhost:7474', 'neo4j', 'test')
         self.kpw = KB_pattern_writer(
-            'http://localhost:7474', 'neo4j', 'neo4j')
+            'http://localhost:7474', 'neo4j', 'test')
         statements = []
         for k,v in self.kpw.relation_lookup.items():
             short_form = re.split('[/#]', v)[-1]
@@ -316,12 +316,12 @@ class TestKBPatternWriter(unittest.TestCase):
             template='asdofiuo',
             anatomical_type='aoiu',
             dbxrefs={'fu': 'bar'},
-            start=100
+            start=100,
+            hard_fail=False
         )
         assert t is False
         self.kpw.commit()
 
-        # This should  fail because xref doesn't exist.
         t = self.kpw.add_anatomy_image_set(
             dataset='dosumis2020',
             imaging_type='computer graphic',
@@ -329,9 +329,10 @@ class TestKBPatternWriter(unittest.TestCase):
             template='template_of_dave',
             anatomical_type='lobulobus',
             dbxrefs={'fu': 'GMR_fubar_23'},
-            start=100
+            start=100,
+            hard_fail=False
         )
-        assert t is False
+        assert bool(t) is True
 
         t = self.kpw.add_anatomy_image_set(
             dataset='dosumis2020',
@@ -341,7 +342,8 @@ class TestKBPatternWriter(unittest.TestCase):
             anatomical_type='lobulobus',
             dbxrefs={'fu': 'bar'},
             anon_anatomical_types=([('part_of', 'brainz')]),
-            start=100
+            start=100,
+            hard_fail=False
         )
         assert bool(t) is False
 
@@ -353,9 +355,10 @@ class TestKBPatternWriter(unittest.TestCase):
             anatomical_type='lobulobus',
             dbxrefs={'fu': 'bar'},
             anon_anatomical_types=([('this_prop_has_no_iri', 'brain')]),
+            hard_fail=False,
             start=100
         )
-        assert bool(self.kpw.commit()) is False
+#        assert bool(self.kpw.commit()) is False
         print(self.kpw.commit_log)
 
 
@@ -376,7 +379,7 @@ class TestEntityChecker(unittest.TestCase):
                  "MATCH (i:Individual { label: 'Aya' }), "
                  "(s:Site { short_form: 'FlyLight' })"
                  " MERGE (i)-[:hasDbXref { accession: 'GMR_fubar_23'}]->(s)"]
-            self.ec = EntityChecker('http://localhost:7474', 'neo4j', 'neo4j')
+            self.ec = EntityChecker('http://localhost:7474', 'neo4j', 'test')
             self.ec.nc.commit_list(s)
 
         def testEntityCheck(self):
@@ -398,23 +401,21 @@ class TestEntityChecker(unittest.TestCase):
             assert len(self.ec.should_exist) == 0
 
 
-
-
             assert self.ec.check() is True
 
 
             self.ec.roll_entity_check(labels=['Individual'],
                                       match_on='label',
                                       query='asdfd')
-
+            # checking failure
             assert self.ec.check() is False
 
             self.ec.roll_dbxref_check('FlyLight', 'GMR_fubar_23')
 
-            assert self.ec.check() is False
+            assert self.ec.check() is True
 
             # Log length should  match number negative tests
-            assert len(self.ec.log) == 2
+            assert len(self.ec.log) == 1
 
 if __name__ == "__main__":
     unittest.main()

@@ -449,6 +449,7 @@ class kb_owl_edge_writer(kb_writer):
         out = self.output
         self.statements = []
         self.output = []
+        self.log = []
         self.properties = {} # Dict of properties
         self.triples = {} # Dict of lists of triples keyed on property
         return out
@@ -514,7 +515,7 @@ class node_importer(kb_writer):
     def update_from_obograph(self, file_path = '', url = '', include_properties=False, commit=True):
         """Update property and class nodes from an OBOgraph file
         (currently does not distinguish OPs from APs!)
-        Only updates from pimary graph (i.e. ignores imports)
+        Only updates from primary graph (i.e. ignores imports)
         """
         ## Get JSON, assuming only primary graph should be used for updating
         ## ie: imports ignored.
@@ -639,6 +640,7 @@ class node_importer(kb_writer):
             except KeyError:
                 failed_mappings.append(convert_to_short_form(i))
                 continue
+        self.commit()
 
         # get mappings based on consider annotations for terms with no term_replaced_by
         if len(failed_mappings) > 0:
@@ -765,6 +767,7 @@ class EntityChecker(kb_writer):
         self.should_not_exist.append(
             "OPTIONAL MATCH (s:Site { short_form: '%s' } )"
             "<-[r:hasDbXref { accession: '%s' }]-(i:Individual) "
+            "WHERE exists(s.unique_id) AND s.unique_id=true "
             "RETURN s.short_form + ':' + r.accession AS result, "
             "'%s:%s' AS query" % (db, acc, db, acc))
 
@@ -876,10 +879,11 @@ class KB_pattern_writer(object):
                               dbxrefs=None,
                               dbxref_strings=None,
                               image_filename='',
+                              force_image_release=False,
                               match_on='short_form',
                               orcid='',
                               type_edge_annotations=None,
-                              hard_fail=False):
+                              hard_fail=True):
         """Adds typed inds for an anatomical individual and channel, 
         linked to each other and to the specified template.
         label: Name of anatomical individual
@@ -900,6 +904,7 @@ class KB_pattern_writer(object):
         hard_fail: Boolean.  If True, throw exception for uknown entitise referenced in args"""
 
         if anatomy_attributes is None: anatomy_attributes = {}
+        if not force_image_release: anatomy_attributes['block'] = "New Images"
         if anon_anatomical_types is None: anon_anatomical_types = []
         if dbxrefs is None: dbxrefs = {}
         if dbxref_strings is None: dbxref_strings = []

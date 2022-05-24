@@ -128,4 +128,3 @@ class pubMover(FB2Neo):
         for d in authors:
             statements.append("")
         return
-

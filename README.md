@@ -1,4 +1,4 @@
-VFB\_neo\_KB loading & update code: [![Build Status](https://travis-ci.org/VirtualFlyBrain/VFB_neo4j.svg?branch=master)](https://travis-ci.org/VirtualFlyBrain/VFB_neo4j)
+VFB\_neo\_KB loading & update code: [![Python application](https://github.com/VirtualFlyBrain/VFB_neo4j/actions/workflows/python-app.yml/badge.svg?branch=master)](https://github.com/VirtualFlyBrain/VFB_neo4j/actions/workflows/python-app.yml)
 
 # VFB_neo4j
 

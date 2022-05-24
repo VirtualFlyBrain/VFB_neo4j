@@ -228,7 +228,8 @@ class FeatureMover(FB2Neo):
                          "JOIN feature o ON fr.object_id=o.feature_id " \
                          "WHERE s.uniquename IN ('%s') " \
                          "AND r.name = '%s' " \
-                         "AND o.uniquename ~ '%s.+'"
+                         "AND o.uniquename ~ '%s.+'" \
+                         "AND NOT o.is_obsolete"
         query = query_template % ("','".join(subject_ids), chado_rel, o_idp)
         dc = self.query_fb(query)
         results = []
@@ -394,7 +395,7 @@ class FeatureMover(FB2Neo):
             iri = map_iri('vfb') + short_form
             ad = {'label' : feats[s.dbd].label + ' ∩ ' +
                   feats[s.ad].label +' expression pattern',
-                  'synonyms': s.synonyms,
+                  'synonyms': list(s.synonyms),
                   'description': ['The sum of all cells at the intersection between '
                                    'the expression patterns of %s and'
                                    ' %s.' % (feats[s.dbd].label,
