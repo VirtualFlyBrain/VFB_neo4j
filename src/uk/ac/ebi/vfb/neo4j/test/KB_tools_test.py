@@ -120,7 +120,7 @@ class TestEdgeWriter(unittest.TestCase):
                                           match_on='label')
         self.edge_writer.commit()
         q = self.edge_writer.nc.commit_list(["MATCH (x:Class)<-[r:loves]-(y:Individual) "
-                                             "return type(r) AS rt, x.label AS what, "
+                                             "return r.type AS type, x.label AS what, "
                                              "r.label AS rel, y.label AS who"])
         r = results_2_dict_list(q)
         if r:

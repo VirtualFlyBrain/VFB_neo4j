@@ -137,10 +137,10 @@ class FeatureMover(FB2Neo):
 
         for d in proc_names:
             d['synonyms'] = '|'.join(d['synonyms'])
-        statement = "MERGE (n:Class { short_form : line.short_form } ) " \
+        statement = "MERGE (n:Class:Entity { short_form : line.short_form } ) " \
                     "SET n.label = line.label SET n.synonyms = split(line.synonyms, '|') " \
                     "SET n.iri = 'http://flybase.org/reports/' + line.short_form " \
-                    "SET n:Feature SET n.self_xref = True"
+                    "SET n:Feature SET n.self_xref = ['FlyBase']"
 
         if commit:
             self.commit_via_csv(statement, proc_names)
@@ -339,8 +339,8 @@ class FeatureMover(FB2Neo):
 
             # Generate label = 'label . expression pattern'
             # Add node
-
-            self.ni.add_node(labels=['Class'],
+            # Specification of labels here assumes existing nodes correctly labelled. Should be safe in p2
+            self.ni.add_node(labels=['Class', 'Expression_pattern'],
                              IRI=ep.iri,
                              attribute_dict=ad)
 
@@ -409,8 +409,9 @@ class FeatureMover(FB2Neo):
                 self.ew.add_xref(s=short_form,
                                  xref=x,
                                  stype=':Class')
-
-            self.ni.add_node(labels=['Class'],
+            # Hacking additional labels here
+            # Should be safe for merge in pipeline 2 with appropriate config
+            self.ni.add_node(labels=['Class', 'Split', 'Expression_pattern'],
                              IRI=iri,
                              attribute_dict=ad)
 
