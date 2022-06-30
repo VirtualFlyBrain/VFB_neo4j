@@ -6,7 +6,7 @@ Created on Mar 8, 2017
 import unittest
 import os
 
-from ..KB_tools import kb_owl_edge_writer, node_importer, gen_id, iri_generator, KB_pattern_writer, EntityChecker
+from ..KB_tools import kb_owl_edge_writer, node_importer, gen_id, iri_generator, KB_pattern_writer, EntityChecker, contains_profanity
 from ...curie_tools import map_iri
 from ..neo4j_tools import results_2_dict_list, neo4j_connect
 import re
@@ -246,6 +246,27 @@ class TestIriGenerator(unittest.TestCase):
         print(ig_b36.generate('jhm00000'))
         print("b36_ig_generate time *4 = " + str(time.time()-start_time))
 
+    def test_base36_id_gen_profanity(self):
+        start_time = time.time()
+        ig_b36 = iri_generator('http://localhost:7474', 'neo4j', 'test', use_base36=True)
+        print("b36_iri_generator init time = " + str(time.time() - start_time))
+        start_time = time.time()
+
+        assert ig_b36.generate('fucj')["short_form"] == 'VFB_0000fucj'
+        assert ig_b36.generate('fucj')["short_form"] == 'VFB_0000fucl'
+        assert ig_b36.generate('fucj')["short_form"] == 'VFB_0000fucm'
+        assert ig_b36.generate('fucj')["short_form"] == 'VFB_0000fucn'
+        print("b36_ig_generate time *4 = " + str(time.time()-start_time))
+
+    def test_profanity_checker(self):
+        assert contains_profanity("11fuck02") is True
+        assert contains_profanity("1h4ndjob") is True
+        assert contains_profanity("3h4ndj0b") is True
+        assert contains_profanity("1usuck43") is True
+        assert contains_profanity("141aassd") is True
+
+        assert contains_profanity("e234dsd1") is False
+        assert contains_profanity("e2none31") is False
 
 class TestKBPatternWriter(unittest.TestCase):
 

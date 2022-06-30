@@ -12,6 +12,7 @@ from .neo4j_tools import neo4j_connect, results_2_dict_list
 from .SQL_tools import get_fb_conn, dict_cursor
 from ..curie_tools import map_iri
 import base36
+from better_profanity import profanity
 
 
 #  * OWL - Only edges of types Related, INSTANCEOF, SUBCLASSOF are exported to OWL.
@@ -65,6 +66,20 @@ def gen_id(idp, ID, length, id_name, use_base36=False):
     return {'short_form': k, 'acc_int': ID}  # useful to return ID to use for next round.
 
 
+def contains_profanity(value):
+    """
+    Checks if the input text has any swear words.
+    Parameters:
+        value: phrase to check
+    Return:
+        True the input text has any swear words, False otherwise.
+    """
+    min_length = 3
+    max_length = len(value)
+
+    all_substrings = [value[i:i + j] for i in range(len(value) - min_length) for j in
+                      range(min_length, max_length + 1)]
+    return profanity.contains_profanity(" ".join(all_substrings))
 
 
 
@@ -184,7 +199,7 @@ class iri_generator(kb_writer):
             i = base36.loads(start)
         else:
             i = int(start)  # casting just in case
-        while i in self.lookup:
+        while i in self.lookup or contains_profanity(base36.dumps(i)):
             i += 1
         self.lookup.add(i)
         if self.use_base36:
