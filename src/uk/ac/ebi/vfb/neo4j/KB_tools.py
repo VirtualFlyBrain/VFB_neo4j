@@ -73,7 +73,7 @@ def contains_profanity(value, use_base36):
         value: phrase to check
         use_base36: boolean variable to enable/disable base36 validation
     Return:
-        True the input text has any swear words, False otherwise.
+        True if the input text has any swear words, False otherwise.
     """
     if use_base36:
         min_length = 3
