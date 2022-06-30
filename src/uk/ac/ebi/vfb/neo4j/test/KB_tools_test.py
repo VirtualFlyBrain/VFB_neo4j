@@ -259,14 +259,14 @@ class TestIriGenerator(unittest.TestCase):
         print("b36_ig_generate time *4 = " + str(time.time()-start_time))
 
     def test_profanity_checker(self):
-        assert contains_profanity("11fuck02") is True
-        assert contains_profanity("1h4ndjob") is True
-        assert contains_profanity("3h4ndj0b") is True
-        assert contains_profanity("1usuck43") is True
-        assert contains_profanity("141aassd") is True
+        assert contains_profanity("11fuck02", True) is True
+        assert contains_profanity("1h4ndjob", True) is True
+        assert contains_profanity("3h4ndj0b", True) is True
+        assert contains_profanity("1usuck43", True) is True
+        assert contains_profanity("141aassd", True) is True
 
-        assert contains_profanity("e234dsd1") is False
-        assert contains_profanity("e2none31") is False
+        assert contains_profanity("e234dsd1", True) is False
+        assert contains_profanity("e2none31", True) is False
 
 class TestKBPatternWriter(unittest.TestCase):
 

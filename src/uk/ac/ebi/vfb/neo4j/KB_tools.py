@@ -66,20 +66,23 @@ def gen_id(idp, ID, length, id_name, use_base36=False):
     return {'short_form': k, 'acc_int': ID}  # useful to return ID to use for next round.
 
 
-def contains_profanity(value):
+def contains_profanity(value, use_base36):
     """
     Checks if the input text has any swear words.
     Parameters:
         value: phrase to check
+        use_base36: boolean variable to enable/disable base36 validation
     Return:
         True the input text has any swear words, False otherwise.
     """
-    min_length = 3
-    max_length = len(value)
+    if use_base36:
+        min_length = 3
+        max_length = len(value)
 
-    all_substrings = [value[i:i + j] for i in range(len(value) - min_length) for j in
-                      range(min_length, max_length + 1)]
-    return profanity.contains_profanity(" ".join(all_substrings))
+        all_substrings = [value[i:i + j] for i in range(len(value) - min_length) for j in
+                          range(min_length, max_length + 1)]
+        return profanity.contains_profanity(" ".join(all_substrings))
+    return False
 
 
 
@@ -199,7 +202,7 @@ class iri_generator(kb_writer):
             i = base36.loads(start)
         else:
             i = int(start)  # casting just in case
-        while i in self.lookup or contains_profanity(base36.dumps(i)):
+        while i in self.lookup or contains_profanity(base36.dumps(i), self.use_base36):
             i += 1
         self.lookup.add(i)
         if self.use_base36:
