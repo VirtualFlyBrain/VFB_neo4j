@@ -31,6 +31,7 @@ class pubMover(FB2Neo):
                     attribute_dict[k] = [d[k]]
             if d['miniref']:
                 attribute_dict['label'] = d['miniref']
+            attribute_dict['self_xref']=['FlyBase']
             self.ni.add_node(labels=['pub', 'Individual'],
                              IRI=map_iri('fb') + d['fbrf'],
                              attribute_dict=attribute_dict)
