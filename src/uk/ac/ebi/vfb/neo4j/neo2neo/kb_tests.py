@@ -47,13 +47,13 @@ def compare(dataset, description, query1, query2, verbose = False):
         print("Result: inds_in_datset: %d ; Compliant with pattern: %d" % (r1['ind_count'],  r2['ind_count']))
         # Should probably turn this into a report
         bad_inds = list(set(r1['ind_list']) - set(r2['ind_list']))
-        file = open(dataset + ".report", 'w')
-        file.write(json.dumps(bad_inds))
-        file.close()
+#        file = open(dataset + ".report", 'w')
+#        file.write(json.dumps(bad_inds))
+#        file.close()
         return False
 
 
-datasets = nc.commit_list(["MATCH (ds:DataSet) WHERE ds.schema = 'image' RETURN ds.label"])
+datasets = nc.commit_list(["MATCH (ds:DataSet) RETURN ds.label"])  # removed "WHERE ds.schema = 'image'" as not in kb2
 dc = results_2_dict_list(datasets)
 
 return_state = True
@@ -75,10 +75,10 @@ for d in dc:
             print("This dataset has no content")
             continue
     query1 = base_query + final_clauses
-    extended_base_query = base_query + "<-[:Related { short_form: 'depicts' }]-(j:Individual)"
+    extended_base_query = base_query + "<-[:depicts]-(j:Individual)"
     query2 = extended_base_query + final_clauses
-    query3 = extended_base_query + "-[{ iri: 'http://purl.obolibrary.org/obo/RO_0002026' }]->(k:Individual)" + final_clauses
-    query4 = extended_base_query + "-[:Related { label: 'is_specified_output_of'} ]->(:Class)" + final_clauses
+    query3 = extended_base_query + "-[in_register_with]->(k:Individual)" + final_clauses
+    query4 = extended_base_query + "-[:is_specified_output_of]->(:Class)" + final_clauses
     query5 = extended_base_query + "-[:INSTANCEOF]->(c:Class { label: 'channel'})" + final_clauses
     query6 = base_query + "-[:INSTANCEOF]->(c:Class)" + final_clauses
 
@@ -103,7 +103,7 @@ for d in dc:
     test_stats.append(compare(description="All anatomical individuals in dataset are typed",
                               dataset=ds,
                               query1=query1,
-                              query2=query4))
+                              query2=query6))
     if False in test_stats:
         return_state = False
     else:
