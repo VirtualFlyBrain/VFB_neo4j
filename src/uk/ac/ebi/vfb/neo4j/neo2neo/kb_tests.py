@@ -5,6 +5,11 @@ import json
 
 nc = neo4j_connect(sys.argv[1], sys.argv[2], sys.argv[3])
 
+silent_mode = False
+# prevents sys.exit(1) on failure, just silently logs the result and exits
+if len(sys.argv) > 3 and sys.argv[4] == 'silent_fail':
+    silent_mode = True
+
 
 def query(query):
     q = nc.commit_list([query])
@@ -116,7 +121,7 @@ for d in dc:
     else:
         print("Passes!")
 
-if not return_state:
+if not return_state and not silent_mode:
     sys.exit(1)
 
 # KB <-> prod check numbers
