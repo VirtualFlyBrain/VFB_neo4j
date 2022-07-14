@@ -7,7 +7,7 @@ nc = neo4j_connect(sys.argv[1], sys.argv[2], sys.argv[3])
 
 silent_mode = False
 # prevents sys.exit(1) on failure, just silently logs the result and exits
-if len(sys.argv) > 3 and sys.argv[4] == 'silent_fail':
+if len(sys.argv) > 4 and sys.argv[4] == 'silent_fail':
     silent_mode = True
 
 
