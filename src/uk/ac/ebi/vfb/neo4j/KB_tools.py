@@ -379,11 +379,11 @@ class kb_owl_edge_writer(kb_writer):
         # Add regex test for xref
         x = xref.split(':')
         self.add_annotation_axiom(s=s,
-                                  r='hasDbXref',
+                                  r='database_cross_reference',
                                   o=x[0],
                                   otype=':Site',
                                   stype=stype,
-                                  edge_annotations={'accession': x[1]},
+                                  edge_annotations={'accession': [x[1]]},
                                   match_on='short_form',
                                   safe_label_edge=True)
 
@@ -853,7 +853,7 @@ class KB_pattern_writer(object):
             'depicts': 'http://xmlns.com/foaf/0.1/depicts',
             'in register with': 'http://purl.obolibrary.org/obo/RO_0002026',
             'is specified output of': 'http://purl.obolibrary.org/obo/OBI_0000312',
-            'hasDbXref': 'http://www.geneontology.org/formats/oboInOwl#hasDbXref',
+            'database_cross_reference': 'http://www.geneontology.org/formats/oboInOwl#hasDbXref',
             'has_source': 'http://purl.org/dc/terms/source'
             }
 
@@ -999,12 +999,12 @@ class KB_pattern_writer(object):
         if dbxrefs:
             for db, acc in dbxrefs.items():
                 self.ew.add_annotation_axiom(s=anat_id['short_form'],
-                                             r='hasDbXref',
+                                             r='database_cross_reference',
                                              o=db,
                                              stype=':Individual',
                                              otype=':Individual:Site',
                                              match_on='short_form',
-                                             edge_annotations={'accession': acc},
+                                             edge_annotations={'accession': [acc]},
                                              safe_label_edge=True
                                              )
         if orcid:
@@ -1126,7 +1126,7 @@ class KB_pattern_writer(object):
                                      safe_label_edge=True)
         if site:
             self.ew.add_annotation_axiom(s=short_form,
-                                         r='hasDbXref',
+                                         r='database_cross_reference',
                                          o=site,
                                          stype=':Individual',
                                          otype=':Individual:Site',
