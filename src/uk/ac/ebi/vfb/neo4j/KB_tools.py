@@ -784,8 +784,8 @@ class EntityChecker(kb_writer):
             return True
         self.should_not_exist.append(
             "OPTIONAL MATCH (s:Site { short_form: '%s' } )"
-            "<-[r:hasDbXref { accession: '%s' }]-(i:Individual) "
-            "WHERE exists(s.unique_id) AND s.unique_id=true "
+            "<-[r:database_cross_reference { accession: ['%s'] }]-(i:Individual) "
+            "WHERE exists(s.unique_id) AND s.unique_id=[true] "
             "RETURN s.short_form + ':' + r.accession AS result, "
             "'%s:%s' AS query" % (db, acc, db, acc))
 
