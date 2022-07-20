@@ -43,6 +43,7 @@ jobs:
         git clone https://github.com/VirtualFlyBrain/VFB_connect.git
         pip install -r VFB_connect/requirements.txt
     - name: KB checks
+      timeout-minutes: 960
       run: |
         echo -e "KB check:"
         export LANDING_PAGE="http://localhost:7474/db/data/"  
