@@ -374,14 +374,14 @@ class kb_owl_edge_writer(kb_writer):
                                match_on=match_on,
                                safe_label_edge=safe_label_edge)
 
-    def add_xref(self, s, xref, stype=''):
+    def add_xref(self, s, xref, otype=':Site', stype=''):
         """Add an xref axiom"""
         # Add regex test for xref
         x = xref.split(':')
         self.add_annotation_axiom(s=s,
                                   r='hasDbXref',
                                   o=x[0],
-                                  otype=':Site',
+                                  otype=otype,
                                   stype=stype,
                                   edge_annotations={'accession': x[1]},
                                   match_on='short_form',
@@ -896,6 +896,7 @@ class KB_pattern_writer(object):
                               anatomy_attributes=None,
                               dbxrefs=None,
                               dbxref_strings=None,
+                              dbxref_type=':Site',
                               image_filename='',
                               force_image_release=False,
                               match_on='short_form',
@@ -917,6 +918,7 @@ class KB_pattern_writer(object):
         template: channel ID of the template to which the image is registered
         start: Start of range for generation of new accessions
         dbxrefs: dict of DB:accession pairs
+        dbxref_type: type of node for object of hasDbXref relationship, ':Site' by default.
         anatomy_attributes: Dict of property:value for anatomy node
 
         hard_fail: Boolean.  If True, throw exception for uknown entitise referenced in args"""
@@ -965,7 +967,7 @@ class KB_pattern_writer(object):
             for db, acc in dbxrefs.items():
                 self.ec.roll_dbxref_check(db, acc)
             if not self.ec.check(hard_fail=hard_fail):
-                warnings.warn("Load fail: Cross-referenced enties already exist.")
+                warnings.warn("Load fail: Cross-referenced entities already exist.")
                 return False
 
         if not self.ec.check(hard_fail=hard_fail):
@@ -998,15 +1000,11 @@ class KB_pattern_writer(object):
 
         if dbxrefs:
             for db, acc in dbxrefs.items():
-                self.ew.add_annotation_axiom(s=anat_id['short_form'],
-                                             r='hasDbXref',
-                                             o=db,
-                                             stype=':Individual',
-                                             otype=':Individual:Site',
-                                             match_on='short_form',
-                                             edge_annotations={'accession': acc},
-                                             safe_label_edge=True
-                                             )
+                self.ew.add_xref(s=anat_id['short_form'],
+                                 xref=':'.join([db, acc]),
+                                 stype=':Individual',
+                                 otype=':Individual' + dbxref_type,
+                                 )
         if orcid:
             self.ew.add_annotation_axiom(s=anat_id['short_form'],
                                          r='contributor',
