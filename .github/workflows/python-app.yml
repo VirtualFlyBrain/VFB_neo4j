@@ -46,7 +46,7 @@ jobs:
       timeout-minutes: 960
       run: |
         echo -e "KB check:"
-        export LANDING_PAGE="http://localhost:7474/db/data/"  
+        export LANDING_PAGE="http://localhost:7474/browser/"  
         Test () { export http_status=$(curl -s -i -u neo4j:test $LANDING_PAGE | grep HTTP/1.1 | awk {'print $2'}); echo "Returned status \"$http_status\""; if [ "$http_status" != "200" ]; then echo "Waiting for docker to finish building..."; iterations=$((iterations+1)); if [ "$iterations" != "100" ]; then sleep 1; Test; fi; else echo "$(date) - connected successfully"; fi; }
         Test || :
         sleep 10
