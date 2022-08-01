@@ -35,6 +35,10 @@ nc = edge_writer.nc
 print('Exporting KB')
 q_generate = 'CALL ebi.spot.neo4j2owl.exportOWL()'
 o = query(q_generate,nc)[0]['o']
-text_file = open(outfile, "w")
-text_file.write(o)
-text_file.close()
+
+with open(outfile, 'w') as text_file:
+    if isinstance(o, list):
+        for chunk in o:
+            text_file.write(chunk)
+    else:
+        text_file.write(o)
