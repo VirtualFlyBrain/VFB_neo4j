@@ -37,5 +37,8 @@ q_generate = 'CALL ebi.spot.neo4j2owl.exportOWL()'
 o = query(q_generate,nc)[0]['o']
 
 with open(outfile, 'w') as text_file:
-    for chunk in o:
-        text_file.write(chunk)
+    if isinstance(o, list):
+        for chunk in o:
+            text_file.write(chunk)
+    else:
+        text_file.write(o)
