@@ -43,14 +43,10 @@ def compare(description: str, query1: str, query2: str, verbose=False):
     if r1['ind_count'] == r2['ind_count']:
         return None
     else:
-        # print("Testing assertion:" + description)
-        # print(query2)
-        # print("Result: inds_in_datset: %d ; Compliant with pattern: %d" % (r1['ind_count'], r2['ind_count']))
-        # log[description + '. Failing Inds'] = list(set(r1['ind_list']) - set(r2['ind_list']))
         failing_individuals = list(set(r1['ind_list']) - set(r2['ind_list']))
         return {
             'description': description,
-            # 'failed_individuals': failing_individuals,
+            'failed_individuals': failing_individuals,
             'total_indv_count': r1['ind_count'],
             'compliant_indv_count': r2['ind_count'],
             'failed_indv_count': len(failing_individuals),
@@ -72,9 +68,21 @@ def dump_report_to_console(test_rpt):
     if failed_datasets:
         print("=== Failed Datasets:\n")
         for failed_dataset in failed_datasets:
-            print("Dataset: " + failed_dataset["dataset"])
+            print("Dataset: " + failed_dataset["dataset"] + "\n")
+            ds_failed_tests = failed_dataset["failed_tests"]
+            for test_name in ds_failed_tests:
+                failed_test = ds_failed_tests[test_name]
+                print("\tTesting assertion: " + failed_test["description"])
+                print("\t{} of total {} individuals failed. First 5 failing individuals are: {}"
+                      .format(str(failed_test["failed_indv_count"]),
+                              str(failed_test["total_indv_count"]),
+                              str(failed_test["failed_individuals"][:5])))
+                print("\t{}\n".format(failed_test["query"]))
 
-            print("\n")
+    if test_rpt["empty_datasets"]:
+        print("=== Empty Datasets:\n")
+        for empty_dataset in test_rpt["empty_datasets"]:
+            print("  - " + empty_dataset)
 
 
 def print_ratio_summary(desc, value, total):
@@ -83,12 +91,12 @@ def print_ratio_summary(desc, value, total):
 
 def dump_report_to_file(test_rpt):
     with open("kb_test.report", 'w') as report:
-        report.write(json.dumps(test_rpt))
+        report.write(json.dumps(test_rpt, indent=2))
 
 
 datasets = nc.commit_list(
-    # ["MATCH (ds:DataSet) RETURN ds.short_form"])  # removed "WHERE ds.schema = 'image'" as not in kb2
-    ["MATCH (ds:DataSet) RETURN ds.short_form LIMIT 11"])
+    ["MATCH (ds:DataSet) RETURN ds.short_form"])  # removed "WHERE ds.schema = 'image'" as not in kb2
+    # ["MATCH (ds:DataSet) RETURN ds.short_form LIMIT 8"])
 dc = results_2_dict_list(datasets)
 
 test_report = dict()
@@ -104,8 +112,6 @@ for d in test_progress:
     log = {}
     ds = d['ds.short_form']
     dataset_status = True
-    # print("\n")
-    # print("Testing: " + ds)
     final_clauses = " WHERE ds.short_form = '%s' RETURN COUNT (DISTINCT i) as ind_count" \
                     ", COLLECT(i.short_form) as ind_list" % ds
     base_query = "MATCH (ds:DataSet)<-[:has_source]-(i:Individual)"
@@ -115,7 +121,6 @@ for d in test_progress:
             base_query = new_base_query
             print("Using new schema for tests.")
         else:
-            # print("This dataset has no content")
             test_report["empty_datasets"].append(ds)
             continue
     query1 = base_query + final_clauses
@@ -142,18 +147,12 @@ for d in test_progress:
                   'description': "All anatomical individuals in dataset are typed.",
                   'name': 'typed_datasets_test'})
 
-    # query2 = extended_base_query + final_clauses
-    # query3 = extended_base_query + "-[in_register_with]->(k:Individual)" + final_clauses
-    # query4 = extended_base_query + "-[:is_specified_output_of]->(:Class)" + final_clauses
-    # query5 = extended_base_query + "-[:INSTANCEOF]->(c:Class { label: 'channel'})" + final_clauses
-    # query6 = base_query + "-[:INSTANCEOF]->(c:Class)" + final_clauses
-
-    failed_tests = list()
+    failed_tests = dict()
     for test in tests:
         result = compare(description=test['description'], query1=query1, query2=test['query'])
         test_count += 1
         if result:
-            failed_tests.append({test['name']: result})
+            failed_tests[test['name']] = result
             failed_test_count += 1
 
     if failed_tests:
