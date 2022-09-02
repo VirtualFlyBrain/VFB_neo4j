@@ -999,12 +999,12 @@ class KB_pattern_writer(object):
         if dbxrefs:
             for db, acc in dbxrefs.items():
                 self.ew.add_annotation_axiom(s=anat_id['short_form'],
-                                             r='hasDbXref',
+                                             r='database_cross_reference',
                                              o=db,
                                              stype=':Individual',
                                              otype=':Individual:Site',
                                              match_on='short_form',
-                                             edge_annotations={'accession': acc},
+                                             edge_annotations={'accession': [acc]},
                                              safe_label_edge=True
                                              )
         if orcid:
