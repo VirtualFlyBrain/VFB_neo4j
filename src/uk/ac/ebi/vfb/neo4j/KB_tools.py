@@ -379,11 +379,11 @@ class kb_owl_edge_writer(kb_writer):
         # Add regex test for xref
         x = xref.split(':')
         self.add_annotation_axiom(s=s,
-                                  r='hasDbXref',
+                                  r='database_cross_reference',
                                   o=x[0],
                                   otype=':Site',
                                   stype=stype,
-                                  edge_annotations={'accession': x[1]},
+                                  edge_annotations={'accession': [x[1]]},
                                   match_on='short_form',
                                   safe_label_edge=True)
 
@@ -922,7 +922,7 @@ class KB_pattern_writer(object):
         hard_fail: Boolean.  If True, throw exception for uknown entitise referenced in args"""
 
         if anatomy_attributes is None: anatomy_attributes = {}
-        if not force_image_release: anatomy_attributes['block'] = "New Images"
+        if not force_image_release: anatomy_attributes['block'] = ["New Images"]
         if anon_anatomical_types is None: anon_anatomical_types = []
         if dbxrefs is None: dbxrefs = {}
         if dbxref_strings is None: dbxref_strings = []
@@ -999,12 +999,12 @@ class KB_pattern_writer(object):
         if dbxrefs:
             for db, acc in dbxrefs.items():
                 self.ew.add_annotation_axiom(s=anat_id['short_form'],
-                                             r='hasDbXref',
+                                             r='database_cross_reference',
                                              o=db,
                                              stype=':Individual',
                                              otype=':Individual:Site',
                                              match_on='short_form',
-                                             edge_annotations={'accession': acc},
+                                             edge_annotations={'accession': [acc]},
                                              safe_label_edge=True
                                              )
         if orcid:
