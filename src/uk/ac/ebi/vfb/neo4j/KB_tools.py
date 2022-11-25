@@ -379,7 +379,7 @@ class kb_owl_edge_writer(kb_writer):
         # Add regex test for xref
         x = xref.split(':')
         self.add_annotation_axiom(s=s,
-                                  r='database_cross_reference',
+                                  r='hasDbXref',
                                   o=x[0],
                                   otype=':Site',
                                   stype=stype,
@@ -999,7 +999,7 @@ class KB_pattern_writer(object):
         if dbxrefs:
             for db, acc in dbxrefs.items():
                 self.ew.add_annotation_axiom(s=anat_id['short_form'],
-                                             r='database_cross_reference',
+                                             r='hasDbXref',
                                              o=db,
                                              stype=':Individual',
                                              otype=':Individual:Site',
