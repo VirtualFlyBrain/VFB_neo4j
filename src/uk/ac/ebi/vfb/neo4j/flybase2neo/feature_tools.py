@@ -156,7 +156,8 @@ class FeatureMover(FB2Neo):
 
         template_seed = collections.OrderedDict([('iri', 'ID'), ("label", "A rdfs:label"),
                                                  ("synonyms", "A oboInOwl:hasExactSynonym SPLIT=|"),
-                                                 ("feature_type", "SC %")])
+                                                 ("feature_type", "SC %"),
+                                                 ("self_xref", "A http://n2o.neo/custom/self_xref")])
         template = pd.DataFrame.from_records([template_seed])
         for f in fbids:
             row_od = collections.OrderedDict([])  # new template row as an empty ordered dictionary
@@ -166,6 +167,7 @@ class FeatureMover(FB2Neo):
             row_od["label"] = feature_details[f].label
             row_od["synonyms"] = '|'.join(feature_details[f].synonyms)
             row_od["feature_type"] = "http://purl.obolibrary.org/obo/" + feature_types[f]
+            row_od["self_xref"] = "FlyBase"
             new_row = pd.DataFrame.from_records([row_od])
             template = pd.concat([template, new_row], ignore_index=True, sort=False)
         template.to_csv(filename, sep="\t", header=True, index=False)
