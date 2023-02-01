@@ -379,7 +379,7 @@ class kb_owl_edge_writer(kb_writer):
         # Add regex test for xref
         x = xref.split(':')
         self.add_annotation_axiom(s=s,
-                                  r='hasDbXref',
+                                  r='database_cross_reference',
                                   o=x[0],
                                   otype=':Site',
                                   stype=stype,
