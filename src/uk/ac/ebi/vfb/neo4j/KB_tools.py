@@ -863,7 +863,7 @@ class KB_pattern_writer(object):
             'channel': 'http://purl.obolibrary.org/obo/fbbt/vfb/VFBext_0000014',
             'confocal microscopy': 'http://purl.obolibrary.org/obo/FBbi_00000251',
             'SB-SEM': 'http://purl.obolibrary.org/obo/FBbi_00000585',
-            'TEM': 'http://purl.obolibrary.org/obo/FBbi_00000258'
+            'TEM': 'http://purl.obolibrary.org/obo/FBbi_00000258',
             'XNH': 'http://purl.obolibrary.org/obo/FBbi_00001002'
             }
 
