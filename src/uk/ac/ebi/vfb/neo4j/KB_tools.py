@@ -379,7 +379,7 @@ class kb_owl_edge_writer(kb_writer):
         # Add regex test for xref
         x = xref.split(':')
         self.add_annotation_axiom(s=s,
-                                  r='hasDbXref',
+                                  r='database_cross_reference',
                                   o=x[0],
                                   otype=':Site',
                                   stype=stype,
@@ -784,7 +784,7 @@ class EntityChecker(kb_writer):
             return True
         self.should_not_exist.append(
             "OPTIONAL MATCH (s:Site { short_form: '%s' } )"
-            "<-[r:hasDbXref { accession: ['%s'] }]-(i:Individual) "
+            "<-[r:database_cross_reference { accession: ['%s'] }]-(i:Individual) "
             "WHERE exists(s.unique_id) AND s.unique_id=[true] "
             "RETURN s.short_form + ':' + r.accession AS result, "
             "'%s:%s' AS query" % (db, acc, db, acc))
@@ -854,6 +854,7 @@ class KB_pattern_writer(object):
             'in register with': 'http://purl.obolibrary.org/obo/RO_0002026',
             'is specified output of': 'http://purl.obolibrary.org/obo/OBI_0000312',
             'hasDbXref': 'http://www.geneontology.org/formats/oboInOwl#hasDbXref',
+            'database_cross_reference': 'http://www.geneontology.org/formats/oboInOwl#hasDbXref',
             'has_source': 'http://purl.org/dc/terms/source'
             }
 
@@ -862,7 +863,8 @@ class KB_pattern_writer(object):
             'channel': 'http://purl.obolibrary.org/obo/fbbt/vfb/VFBext_0000014',
             'confocal microscopy': 'http://purl.obolibrary.org/obo/FBbi_00000251',
             'SB-SEM': 'http://purl.obolibrary.org/obo/FBbi_00000585',
-            'TEM': 'http://purl.obolibrary.org/obo/FBbi_00000258'
+            'TEM': 'http://purl.obolibrary.org/obo/FBbi_00000258',
+            'XNH': 'http://purl.obolibrary.org/obo/FBbi_00001002'
             }
 
     def commit(self, ni_chunk_length=5000, ew_chunk_length=2000, verbose=False):

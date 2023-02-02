@@ -68,7 +68,7 @@ class pubMover(FB2Neo):
     def _generate_pub_xref_cypher(self, pub, db, acc):
         return "MATCH (p:pub), (s:Site) WHERE p.short_form = '%s' " \
                 "AND s.label = '%s' " \
-                "MERGE (p)-[dbx :hasDbXref]->(s) " \
+                "MERGE (p)-[dbx :database_cross_reference]->(s) " \
                 "SET dbx.accession = ['%s']" % (pub, db, acc)
 
     def set_pub_xrefs(self, pub_list):
