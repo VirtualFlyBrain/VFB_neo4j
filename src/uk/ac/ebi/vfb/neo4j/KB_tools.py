@@ -864,6 +864,7 @@ class KB_pattern_writer(object):
             'confocal microscopy': 'http://purl.obolibrary.org/obo/FBbi_00000251',
             'SB-SEM': 'http://purl.obolibrary.org/obo/FBbi_00000585',
             'TEM': 'http://purl.obolibrary.org/obo/FBbi_00000258'
+            'XNH': 'http://purl.obolibrary.org/obo/FBbi_00001002'
             }
 
     def commit(self, ni_chunk_length=5000, ew_chunk_length=2000, verbose=False):
