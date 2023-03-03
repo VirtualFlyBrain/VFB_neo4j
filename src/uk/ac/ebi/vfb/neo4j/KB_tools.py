@@ -381,7 +381,7 @@ class kb_owl_edge_writer(kb_writer):
         self.add_annotation_axiom(s=s,
                                   r='hasDbXref',
                                   o=x[0],
-                                  otype=':Site',
+                                  otype=':Individual',
                                   stype=stype,
                                   edge_annotations={'accession': [x[1]]},
                                   match_on='short_form',
@@ -783,9 +783,9 @@ class EntityChecker(kb_writer):
         if ':'.join([db, str(acc)]) in self.cache:
             return True
         self.should_not_exist.append(
-            "OPTIONAL MATCH (s:Site { short_form: '%s' } )"
+            "OPTIONAL MATCH (s:Individual { short_form: '%s' } )"
             "<-[r:hasDbXref { accession: ['%s'] }]-(i:Individual) "
-            "WHERE exists(s.unique_id) AND s.unique_id=[true] "
+            "WHERE (s:Site OR s:API) AND exists(s.unique_id) AND s.unique_id=[true] "
             "RETURN s.short_form + ':' + r.accession AS result, "
             "'%s:%s' AS query" % (db, acc, db, acc))
 
@@ -944,7 +944,7 @@ class KB_pattern_writer(object):
             dbxrefs.update({x.split(':')[0]:x.split(':')[1] for x in dbxref_strings})
 
         for k in dbxrefs.keys():
-            self.ec.roll_entity_check(labels=['Site'],
+            self.ec.roll_entity_check(labels=['Individual'],
                                       match_on=match_on,
                                       query=k)
 
@@ -1002,7 +1002,7 @@ class KB_pattern_writer(object):
                                              r='hasDbXref',
                                              o=db,
                                              stype=':Individual',
-                                             otype=':Individual:Site',
+                                             otype=':Individual',
                                              match_on='short_form',
                                              edge_annotations={'accession': [acc]},
                                              safe_label_edge=True
@@ -1129,7 +1129,8 @@ class KB_pattern_writer(object):
                                          r='hasDbXref',
                                          o=site,
                                          stype=':Individual',
-                                         otype=':Individual:Site',
+                                         otype=':Individual
+                                         ',
                                          match_on='short_form',
                                          safe_label_edge=True)
         if pub:
