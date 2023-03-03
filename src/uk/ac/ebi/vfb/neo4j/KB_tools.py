@@ -1129,8 +1129,7 @@ class KB_pattern_writer(object):
                                          r='hasDbXref',
                                          o=site,
                                          stype=':Individual',
-                                         otype=':Individual
-                                         ',
+                                         otype=':Individual',
                                          match_on='short_form',
                                          safe_label_edge=True)
         if pub:
