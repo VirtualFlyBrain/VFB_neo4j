@@ -1049,9 +1049,9 @@ class KB_pattern_writer(object):
                          o=anat_id['iri'])
 
         edge_annotations = {}
-        if index: edge_annotations['index'] = index
-        if center: edge_annotations['center'] = center
-        if image_filename: edge_annotations['filename'] = image_filename
+        if index: edge_annotations['index'] = [index]
+        if center: edge_annotations['center'] = [center]
+        if image_filename: edge_annotations['filename'] = [image_filename]
 
         if template == 'self':
             template = channel_id['short_form']
