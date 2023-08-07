@@ -890,6 +890,7 @@ class KB_pattern_writer(object):
                               label,
                               start,
                               template,
+                              anat_id=None,
                               anatomical_type='',
                               anon_anatomical_types=None,
                               index=False,
@@ -974,10 +975,13 @@ class KB_pattern_writer(object):
             return False
 
 
-        anat_id = self.anat_iri_gen.generate(start)
-
+        if anat_id == None:
+            anat_id = self.anat_iri_gen.generate(start)
+            channel_id = self.channel_iri_gen.generate(start)
+        else:
+            channel_id = anat_id.replace('VFB_','VFBc_')
         anat_id['label'] = label
-        channel_id = self.channel_iri_gen.generate(start)
+
         channel_id['label'] = label + '_c'
 
         anatomy_attributes['label'] = label
