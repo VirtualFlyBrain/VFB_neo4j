@@ -159,18 +159,23 @@ class FeatureMover(FB2Neo):
                                                  ("feature_type", "SC %"),
                                                  ("self_xref", "A http://n2o.neo/custom/self_xref")])
         template = pd.DataFrame.from_records([template_seed])
+        unmapped_FBgns = []
         for f in fbids:
-            row_od = collections.OrderedDict([])  # new template row as an empty ordered dictionary
-            for c in template.columns:  # make columns and blank data for new template row
-                row_od.update([(c, "")])
-            row_od["iri"] = feature_details[f].iri
-            row_od["label"] = feature_details[f].label
-            row_od["synonyms"] = '|'.join(feature_details[f].synonyms)
-            row_od["feature_type"] = "http://purl.obolibrary.org/obo/" + feature_types[f]
-            row_od["self_xref"] = "FlyBase"
-            new_row = pd.DataFrame.from_records([row_od])
-            template = pd.concat([template, new_row], ignore_index=True, sort=False)
+            if f in feature_details.keys():
+                row_od = collections.OrderedDict([])  # new template row as an empty ordered dictionary
+                for c in template.columns:  # make columns and blank data for new template row
+                    row_od.update([(c, "")])
+                row_od["iri"] = feature_details[f].iri
+                row_od["label"] = feature_details[f].label
+                row_od["synonyms"] = '|'.join(feature_details[f].synonyms)
+                row_od["feature_type"] = "http://purl.obolibrary.org/obo/" + feature_types[f]
+                row_od["self_xref"] = "FlyBase"
+                new_row = pd.DataFrame.from_records([row_od])
+                template = pd.concat([template, new_row], ignore_index=True, sort=False)
+            else:
+                unmapped_FBgns.append(f)
         template.to_csv(filename, sep="\t", header=True, index=False)
+        print("WARNING - some FBgns not found:", unmapped_FBgns)
 
 
     # Typing
