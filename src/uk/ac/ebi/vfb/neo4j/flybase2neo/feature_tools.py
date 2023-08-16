@@ -148,9 +148,12 @@ class FeatureMover(FB2Neo):
         self.addTypes2Neo(fbids=fbids, commit=commit)
         return feats
 
-    def feature_robot_template(self, fbids, filename):
+    def feature_robot_template(self, fbids, filename, skip_missing=False):
         """Takes a list of FBids, looks up info (via name_synonym_lookup) and makes a robot template.
-        Output filename should be specified (template will be a tsv)."""
+        Output filename should be specified (template will be a tsv).
+
+        Can optionally skip any fbid that is not found using skip_missing (default is to raise a KeyError)
+        - setting this as a filename will output a file of the FBids that were not found."""
         feature_details = self.name_synonym_lookup(fbids)
         feature_types = dict(self.grossType(fbids))
 
@@ -174,8 +177,19 @@ class FeatureMover(FB2Neo):
                 template = pd.concat([template, new_row], ignore_index=True, sort=False)
             else:
                 unmapped_FBgns.append(f)
+
+        if len(unmapped_FBgns) > 0:
+            if not skip_missing:
+                raise KeyError(unmapped_FBgns)
+            elif type(skip_missing) == str:
+                print("WARNING - some FBgns not found (see file %s):" % skip_missing, unmapped_FBgns)
+                with open(skip_missing, 'w') as fw:
+                    for l in unmapped_FBgns:
+                        fw.write(l + '\n')
+            else:
+                print("WARNING - some FBgns not found:", unmapped_FBgns)
+
         template.to_csv(filename, sep="\t", header=True, index=False)
-        print("WARNING - some FBgns not found:", unmapped_FBgns)
 
 
     # Typing
