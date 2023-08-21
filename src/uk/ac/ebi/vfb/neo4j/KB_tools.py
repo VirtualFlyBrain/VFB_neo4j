@@ -998,7 +998,7 @@ class KB_pattern_writer(object):
             anat_id = self.anat_iri_gen.generate(start)
             channel_id = self.channel_iri_gen.generate(start)
         else:
-            anat_id = update_anat_id(anat_id)
+            anat_id = self.update_anat_id(anat_id)
             channel_id = anat_id.replace('VFB_','VFBc_')
         anat_id['label'] = label
 
