@@ -884,6 +884,25 @@ class KB_pattern_writer(object):
         self.commit_log = []
         return out
 
+    def update_anat_id(anat_id):
+        if not isinstance(anat_id, str):
+            return anat_id
+    
+        if anat_id.startswith("http"):
+            # anat_id is an IRI
+            iri = anat_id
+            short_form = iri.split("/")[-1]  # Extract the part after the last "/"
+        elif anat_id.startswith("VFB_"):
+            # anat_id is a short form ID
+            short_form = anat_id
+            iri = f"http://VirtualFlyBrain.org/reports/{short_form}"
+        else:
+            # anat_id is neither an IRI nor a short form ID
+            return anat_id
+        
+        return {"iri": iri, "short_form": short_form}
+
+
     def add_anatomy_image_set(self,
                               dataset,
                               imaging_type,
@@ -979,6 +998,7 @@ class KB_pattern_writer(object):
             anat_id = self.anat_iri_gen.generate(start)
             channel_id = self.channel_iri_gen.generate(start)
         else:
+            anat_id = update_anat_id(anat_id)
             channel_id = anat_id.replace('VFB_','VFBc_')
         anat_id['label'] = label
 
