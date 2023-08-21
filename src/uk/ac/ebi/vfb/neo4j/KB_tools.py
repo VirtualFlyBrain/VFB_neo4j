@@ -884,7 +884,7 @@ class KB_pattern_writer(object):
         self.commit_log = []
         return out
 
-    def update_anat_id(anat_id):
+    def update_anat_id(anat_id, *args, **kwargs):
         if not isinstance(anat_id, str):
             return anat_id
     
