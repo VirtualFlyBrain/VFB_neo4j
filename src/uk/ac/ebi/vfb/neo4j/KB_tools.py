@@ -884,6 +884,7 @@ class KB_pattern_writer(object):
         self.commit_log = []
         return out
 
+    @staticmethod
     def update_anat_id(anat_id, *args, **kwargs):
         if not isinstance(anat_id, str):
             return anat_id
@@ -902,7 +903,7 @@ class KB_pattern_writer(object):
         
         return {"iri": iri, "short_form": short_form}
 
-
+    @staticmethod
     def update_channel_id(anat_id_dict):
         # Extract the IRI and short_form from the given dictionary
         iri = anat_id_dict['iri']
