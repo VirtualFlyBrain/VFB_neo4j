@@ -903,6 +903,24 @@ class KB_pattern_writer(object):
         return {"iri": iri, "short_form": short_form}
 
 
+    def update_channel_id(anat_id_dict):
+        # Extract the IRI and short_form from the given dictionary
+        iri = anat_id_dict['iri']
+        short_form = anat_id_dict['short_form']
+        
+        # Replace 'VFB_' with 'VFBc_' in both the IRI and short_form
+        new_iri = iri.replace('VFB_', 'VFBc_')
+        new_short_form = short_form.replace('VFB_', 'VFBc_')
+        
+        # Create the updated dictionary
+        updated_anat_id_dict = {
+            'iri': new_iri,
+            'short_form': new_short_form
+        }
+        
+        return updated_anat_id_dict
+
+
     def add_anatomy_image_set(self,
                               dataset,
                               imaging_type,
@@ -999,9 +1017,8 @@ class KB_pattern_writer(object):
             channel_id = self.channel_iri_gen.generate(start)
         else:
             anat_id = self.update_anat_id(anat_id)
-            channel_id = anat_id.replace('VFB_','VFBc_')
+            channel_id = update_channel_id(anat_id)
         anat_id['label'] = label
-
         channel_id['label'] = label + '_c'
 
         anatomy_attributes['label'] = label
