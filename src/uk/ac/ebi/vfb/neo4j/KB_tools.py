@@ -1017,7 +1017,7 @@ class KB_pattern_writer(object):
             channel_id = self.channel_iri_gen.generate(start)
         else:
             anat_id = self.update_anat_id(anat_id)
-            channel_id = update_channel_id(anat_id)
+            channel_id = self.update_channel_id(anat_id)
         anat_id['label'] = label
         channel_id['label'] = label + '_c'
 
