@@ -920,13 +920,6 @@ class KB_pattern_writer(object):
         }
         
         return updated_anat_id_dict
-    
-    def individual_exists(self, iri_or_short_form):
-        """Checks if an Individual with the given IRI or short_form exists."""
-        query = ("MATCH (n:Individual) WHERE n.iri = '%s' OR n.short_form = '%s' RETURN n" % (iri_or_short_form, iri_or_short_form))
-        r = self.nc.commit_list([query])
-        return len(r) > 0
-
 
     def add_anatomy_image_set(self,
                               dataset,
