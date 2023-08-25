@@ -920,6 +920,12 @@ class KB_pattern_writer(object):
         }
         
         return updated_anat_id_dict
+    
+    def individual_exists(self, iri_or_short_form):
+        """Checks if an Individual with the given IRI or short_form exists."""
+        query = ("MATCH (n:Individual) WHERE n.iri = '%s' OR n.short_form = '%s' RETURN n" % (iri_or_short_form, iri_or_short_form))
+        r = self.nc.commit_list([query])
+        return len(r) > 0
 
 
     def add_anatomy_image_set(self,
@@ -1019,6 +1025,12 @@ class KB_pattern_writer(object):
         else:
             anat_id = self.update_anat_id(anat_id)
             channel_id = self.update_channel_id(anat_id)
+            self.ec.roll_entity_check(labels=['Individual'],
+                                      match_on=match_on,
+                                      query=anat_id['short_form'])
+            if not self.ec._check_should_not_exist(hard_fail=True):
+                warnings.warn("Load fail: Existing anat_id referenced.")
+                return False
         anat_id['label'] = label
         channel_id['label'] = label + '_c'
 
