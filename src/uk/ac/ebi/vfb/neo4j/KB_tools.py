@@ -789,6 +789,22 @@ class EntityChecker(kb_writer):
             "RETURN s.short_form + ':' + r.accession AS result, "
             "'%s:%s' AS query" % (db, acc, db, acc))
 
+    def roll_new_entity_check(self, labels, query, match_on='short_form'):
+        """Roll a check and add it to the stack.
+        labels = list of Neo4J labels to match on. You must provide at least one.
+        match_on = property to match_on (default = short_form)
+        query = Value of property matched on for target entity.
+        """
+        if query in self.cache:
+            return True
+        lstring = ':'.join(labels)
+        self.should_not_exist.append("OPTIONAL MATCH (n:%s { %s : '%s'})"
+                                 " return n.short_form as result, "
+                                 "'%s' as query" % (lstring,
+                                                    match_on,
+                                                    query,
+                                                    query))
+
     def _check_should_not_exist(self, hard_fail=False):
         self.statements.extend(self.should_not_exist)
         self.should_not_exist.clear()
@@ -1018,10 +1034,10 @@ class KB_pattern_writer(object):
         else:
             anat_id = self.update_anat_id(anat_id)
             channel_id = self.update_channel_id(anat_id)
-            self.ec.roll_entity_check(labels=['Individual'],
+            self.ec.roll_new_entity_check(labels=['Individual'],
                                       match_on=match_on,
                                       query=anat_id['short_form'])
-            if not self.ec._check_should_not_exist(hard_fail=True):
+            if not self.ec.check(hard_fail=True):
                 warnings.warn("Load fail: Existing anat_id referenced.")
                 return False
         anat_id['label'] = label
