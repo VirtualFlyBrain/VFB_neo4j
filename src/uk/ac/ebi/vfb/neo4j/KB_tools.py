@@ -87,6 +87,9 @@ def contains_profanity(value, use_base36):
         return profanity.contains_profanity(" ".join(all_substrings))
     return False
 
+
+class kb_writer (object):
+      
     def __init__(self, endpoint, usr, pwd, hard_fail=False):
         self.nc = neo4j_connect(endpoint, usr, pwd)
         self.statements = []
