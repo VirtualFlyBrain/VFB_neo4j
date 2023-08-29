@@ -23,8 +23,8 @@ jobs:
         python-version: "3.7"
     - name: Start databases
       run: |
-        docker run -d --name db -p 7474:7474 -p 7687:7687 --env=NEO4J_AUTH=neo4j/test --env=NEOREADONLY=false --env=NEO4J_dbms_read__only=false --env=NEO4J_dbms_memory_heap_maxSize=1G --volume=$(pwd)/src/:/import/ virtualflybrain/docker-neo4j-knowledgebase
-        docker run -d --name pdb -p 7475:7474 -p 7688:7687 --env=NEO4J_AUTH=neo4j/test --env=NEOREADONLY=false --env=NEO4J_dbms_read__only=false --env=NEO4J_dbms_memory_heap_maxSize=1G --env=NEO4J_HEAP_MEMORY=2560 --volume=$(pwd)/src/:/import/ virtualflybrain/docker-vfb-neo4j-productiondb:pipeline2
+        docker run -d --name db -p 7474:7474 -p 7687:7687 --env=NEO4J_AUTH=neo4j/test --env=NEOREADONLY=false --env=NEO4J_dbms_read__only=false --env=NEO4J_dbms_memory_heap_maxSize=1G --volume=$(pwd)/src/:/import/ virtualflybrain/vfb-prod:kb-v4-2
+        docker run -d --name pdb -p 7475:7474 -p 7688:7687 --env=NEO4J_AUTH=neo4j/test --env=NEOREADONLY=false --env=NEO4J_dbms_read__only=false --env=NEO4J_dbms_memory_heap_maxSize=1G --env=NEO4J_HEAP_MEMORY=2560 --volume=$(pwd)/src/:/import/ virtualflybrain/docker-vfb-neo4j-productiondb
         sleep 60s
     - name: Install dependencies
       run: |
@@ -42,29 +42,38 @@ jobs:
       run: |
         git clone https://github.com/VirtualFlyBrain/VFB_connect.git
         pip install -r VFB_connect/requirements.txt
-    
+    - name: KB checks
+      timeout-minutes: 960
+      run: |
+        echo -e "KB check:"
+        sleep 190
+        export LANDING_PAGE="http://localhost:7474/browser/"  
+        Test () { export http_status=$(curl -s -i -u neo4j:test $LANDING_PAGE | grep HTTP/1.1 | awk {'print $2'}); echo "Returned status \"$http_status\""; if [ "$http_status" != "200" ]; then echo "Waiting for docker to finish building..."; iterations=$((iterations+1)); if [ "$iterations" != "100" ]; then sleep 1; Test; fi; else echo "$(date) - connected successfully"; fi; }
+        Test || :
+        sleep 30
+        curl -sSf -u neo4j:test "$LANDING_PAGE"
+    - name: PDB checks
+      timeout-minutes: 960
+      run: |
+        echo -e "PDB check:"
+        export LANDING_PAGE="http://localhost:7475/browser/"  
+        Test () { export http_status=$(curl -s -i -u neo4j:test $LANDING_PAGE | grep HTTP/1.1 | awk {'print $2'}); echo "Returned status \"$http_status\""; if [ "$http_status" != "200" ]; then echo "Waiting for docker to finish building..."; iterations=$((iterations+1)); if [ "$iterations" != "100" ]; then sleep 1; Test; fi; else echo "$(date) - connected successfully"; fi; }
+        Test || :
+        sleep 30
+        curl -sSf -u neo4j:test "$LANDING_PAGE"
     - name: KB startup log
+      if: always()
       run: |
         echo -e "KB log"
         docker logs db
-    
-    - name: KB checks
-      run: |
-        echo -e "KB check:"
-        curl -sSf -u neo4j:test "http://localhost:7474/db/data/"
     - name: PDB startup log
+      if: always()
       run: |
         echo -e "PDB log"
         docker logs pdb 
-    - name: PDB checks
-      run: |
-        echo -e "PDB check:"
-        curl -sSf -u neo4j:test "http://localhost:7475/db/data/"
-        
     - name: Run KB_tools_test
       run: |
         export PYTHONPATH=$PYTHONPATH":/"$(pwd)/VFB_connect/src
-        
         cd src
         python -m uk.ac.ebi.vfb.neo4j.test.KB_tools_test 
     - name: Run neo_tools_tests

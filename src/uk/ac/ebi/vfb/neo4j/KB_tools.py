@@ -13,6 +13,7 @@ from .neo4j_tools import neo4j_connect, results_2_dict_list
 from .SQL_tools import get_fb_conn, dict_cursor
 from ..curie_tools import map_iri
 import base36
+from better_profanity import profanity
 
 
 #  * OWL - Only edges of types Related, INSTANCEOF, SUBCLASSOF are exported to OWL.
@@ -68,7 +69,23 @@ def gen_id(idp, ID, length, id_name, use_base36=False):
     return {'short_form': k, 'acc_int': ID}  # useful to return ID to use for next round.
 
 
-class kb_writer(object):
+def contains_profanity(value, use_base36):
+    """
+    Checks if the input text has any swear words.
+    Parameters:
+        value: phrase to check
+        use_base36: boolean variable to enable/disable base36 validation
+    Return:
+        True if the input text has any swear words, False otherwise.
+    """
+    if use_base36:
+        min_length = 3
+        max_length = len(value)
+
+        all_substrings = [value[i:i + j] for i in range(len(value) - min_length) for j in
+                          range(min_length, max_length + 1)]
+        return profanity.contains_profanity(" ".join(all_substrings))
+    return False
 
     def __init__(self, endpoint, usr, pwd, hard_fail=False):
         self.nc = neo4j_connect(endpoint, usr, pwd)
@@ -185,7 +202,7 @@ class iri_generator(kb_writer):
             i = base36.loads(start)
         else:
             i = int(start)  # casting just in case
-        while i in self.lookup:
+        while i in self.lookup or contains_profanity(base36.dumps(i), self.use_base36):
             i += 1
         self.lookup.add(i)
         if self.use_base36:
@@ -260,7 +277,7 @@ class kb_owl_edge_writer(kb_writer):
             warnings.warn(m)
 
     def _add_triple(self, s, r, o, rtype, stype, otype,
-                    edge_annotations=None, match_on="iri", safe_label_edge=False):
+                    edge_annotations=None, match_on="iri", safe_label_edge=True):
         # Private method to set up data structures required for checking properties
         # prior to constructing cypher specifying triples for addition.
 
@@ -284,10 +301,12 @@ class kb_owl_edge_writer(kb_writer):
         for t in flat_list_triples:
             rel_map = self.properties[t['r']]
             if t['safe_label_edge']:
-                if 'label' in rel_map.keys() and rel_map['label']:
-                    rel = re.sub(' ', '_', rel_map['label'])
+                if 'sl' in rel_map.keys() and rel_map['sl']:
+                    rel = rel_map['sl']
+                elif 'label' in rel_map.keys() and rel_map['label']:
+                    rel = re.sub('\W', '_', rel_map['label'])
                 else:
-                    rel = rel_map[t['match_on']]
+                    rel = rel_map['short_form']
             else:
                 rel = rel_map[t['match_on']]
 
@@ -296,7 +315,7 @@ class kb_owl_edge_writer(kb_writer):
             out += "FOREACH (a IN CASE WHEN s IS NOT NULL THEN [s] ELSE [] END | " \
                    "FOREACH (b IN CASE WHEN o IS NOT NULL THEN [o] ELSE [] END | "
             if t['safe_label_edge']:
-                out += "MERGE (a)-[re:%s]->(b) SET re.type = '%s'" % (rel, t['rtype'])  # Might need work?
+                out += "MERGE (a)-[re:%s]->(b) SET re.type = '%s' " % (rel, t['rtype'])  # Might need work?
             else:
                 out += "MERGE (a)-[re:%s { %s: '%s' }]->(b) " % (t['rtype'],
                                                                  t['match_on'],
@@ -316,15 +335,14 @@ class kb_owl_edge_writer(kb_writer):
             self.statements.append(out)
 
     def _add_related_edge(self, s, r, o, stype, otype,
-                          edge_annotations=None, match_on="iri", safe_label_edge=False):
+                          edge_annotations=None, match_on="iri", safe_label_edge=True):
         if edge_annotations is None:
             edge_annotations = {}
         rtype = 'Related'
         self._add_triple(s, r, o, rtype, stype, otype,
                          edge_annotations, match_on, safe_label_edge=safe_label_edge)
 
-    def add_annotation_axiom(self, s, r, o, stype='', otype=':Individual', edge_annotations=None, match_on="iri",
-                             safe_label_edge=False):
+    def add_annotation_axiom(self, s, r, o, stype='', otype=':Individual', edge_annotations=None, match_on="iri", safe_label_edge=True):
         """Link an OWL entity to an Individual via an annotation axiom.
         s = property identifying subject entity ,
         r = property identifying relation (AnnotationProperty) ,
@@ -340,7 +358,7 @@ class kb_owl_edge_writer(kb_writer):
                          edge_annotations, match_on, safe_label_edge=safe_label_edge)
 
     def add_fact(self, s, r, o, edge_annotations=None,
-                 match_on="iri", safe_label_edge=False):
+                 match_on="iri", safe_label_edge=True):
 
         """Add OWL fact to statement stack.
         s = property identifying subject individual ,
@@ -363,14 +381,14 @@ class kb_owl_edge_writer(kb_writer):
         self.add_annotation_axiom(s=s,
                                   r='hasDbXref',
                                   o=x[0],
-                                  otype=':Site',
+                                  otype=':Individual',
                                   stype=stype,
-                                  edge_annotations={'accession': x[1]},
+                                  edge_annotations={'accession': [x[1]]},
                                   match_on='short_form',
                                   safe_label_edge=True)
 
     def add_anon_type_ax(self, s, r, o, edge_annotations=None,
-                         match_on="iri", safe_label_edge=False):
+                         match_on="iri", safe_label_edge=True):
         """Add OWL anonymous type axiom to statement stack.
         s = property identifying subject individual ,
         r = property identifying relation (ObjectProperty) ,
@@ -404,7 +422,7 @@ class kb_owl_edge_writer(kb_writer):
         self.statements.append(out)
 
     def add_anon_subClassOf_ax(self, s, r, o, edge_annotations=None,
-                               match_on="iri", safe_label_edge=False):
+                               match_on="iri", safe_label_edge=True):
         """Add OWL anonymous subClassOf axiom to statement stack.
         s = property identifying subject Class ,
         r = property identifying relation (ObjectProperty) ,
@@ -448,8 +466,9 @@ class kb_owl_edge_writer(kb_writer):
         out = self.output
         self.statements = []
         self.output = []
-        self.properties = {}  # Dict of properties
-        self.triples = {}  # Dict of lists of triples keyed on property
+        self.log = []
+        self.properties = {} # Dict of properties
+        self.triples = {} # Dict of lists of triples keyed on property
         return out
 
     def test_edge_addition(self):
@@ -503,9 +522,9 @@ class node_importer(kb_writer):
         """
         if attribute_dict is None: attribute_dict = {}
         short_form = re.split('[#/]', IRI)[-1]
-        statement = "MERGE (n:%s { iri: '%s' }) set n.short_form = '%s'" % (
-            (':'.join(labels)),
-            IRI, short_form)
+        statement = "MERGE (n:%s { iri: '%s' }) set n.short_form = '%s' set n:Entity " % (
+                    (':'.join(labels)),
+                     IRI, short_form)
         statement += self._set_attributes_from_dict(var='n',
                                                     attribute_dict=attribute_dict)
         self.statements.append(statement)
@@ -805,11 +824,27 @@ class EntityChecker(kb_writer):
         if ':'.join([db, str(acc)]) in self.cache:
             return True
         self.should_not_exist.append(
-            "OPTIONAL MATCH (s:Site { short_form: '%s' } )"
-            "<-[r:hasDbXref { accession: '%s' }]-(i:Individual) "
-            "WHERE exists(s.unique_id) AND s.unique_id=true "
+            "OPTIONAL MATCH (s:Individual { short_form: '%s' } )"
+            "<-[r:hasDbXref { accession: ['%s'] }]-(i:Individual) "
+            "WHERE (s:Site OR s:API) AND exists(s.unique_id) AND s.unique_id=[true] "
             "RETURN s.short_form + ':' + r.accession AS result, "
             "'%s:%s' AS query" % (db, acc, db, acc))
+
+    def roll_new_entity_check(self, labels, query, match_on='short_form'):
+        """Roll a check and add it to the stack.
+        labels = list of Neo4J labels to match on. You must provide at least one.
+        match_on = property to match_on (default = short_form)
+        query = Value of property matched on for target entity.
+        """
+        if query in self.cache:
+            return True
+        lstring = ':'.join(labels)
+        self.should_not_exist.append("OPTIONAL MATCH (n:%s { %s : '%s'})"
+                                 " return n.short_form as result, "
+                                 "'%s' as query" % (lstring,
+                                                    match_on,
+                                                    query,
+                                                    query))
 
     def _check_should_not_exist(self, hard_fail=False):
         self.statements.extend(self.should_not_exist)
@@ -884,8 +919,9 @@ class KB_pattern_writer(object):
             'channel': 'http://purl.obolibrary.org/obo/fbbt/vfb/VFBext_0000014',
             'confocal microscopy': 'http://purl.obolibrary.org/obo/FBbi_00000251',
             'SB-SEM': 'http://purl.obolibrary.org/obo/FBbi_00000585',
-            'TEM': 'http://purl.obolibrary.org/obo/FBbi_00000258'
-        }
+            'TEM': 'http://purl.obolibrary.org/obo/FBbi_00000258',
+            'X-ray computed tomography': 'http://purl.obolibrary.org/obo/FBbi_00001002'
+            }
 
     def commit(self, ni_chunk_length=5000, ew_chunk_length=2000, verbose=False):
         """Commits nodes then edges. Populate commit_log, returns False if log has content,
@@ -905,12 +941,50 @@ class KB_pattern_writer(object):
         self.commit_log = []
         return out
 
+    @staticmethod
+    def update_anat_id(anat_id, *args, **kwargs):
+        if not isinstance(anat_id, str):
+            return anat_id
+    
+        if anat_id.startswith("http"):
+            # anat_id is an IRI
+            iri = anat_id
+            short_form = iri.split("/")[-1]  # Extract the part after the last "/"
+        elif anat_id.startswith("VFB_"):
+            # anat_id is a short form ID
+            short_form = anat_id
+            iri = f"http://VirtualFlyBrain.org/reports/{short_form}"
+        else:
+            # anat_id is neither an IRI nor a short form ID
+            return anat_id
+        
+        return {"iri": iri, "short_form": short_form}
+
+    @staticmethod
+    def update_channel_id(anat_id_dict):
+        # Extract the IRI and short_form from the given dictionary
+        iri = anat_id_dict['iri']
+        short_form = anat_id_dict['short_form']
+        
+        # Replace 'VFB_' with 'VFBc_' in both the IRI and short_form
+        new_iri = iri.replace('VFB_', 'VFBc_')
+        new_short_form = short_form.replace('VFB_', 'VFBc_')
+        
+        # Create the updated dictionary
+        updated_anat_id_dict = {
+            'iri': new_iri,
+            'short_form': new_short_form
+        }
+        
+        return updated_anat_id_dict
+
     def add_anatomy_image_set(self,
                               dataset,
                               imaging_type,
                               label,
                               start,
                               template,
+                              anat_id=None,
                               anatomical_type='',
                               anon_anatomical_types=None,
                               index=False,
@@ -919,6 +993,7 @@ class KB_pattern_writer(object):
                               dbxrefs=None,
                               dbxref_strings=None,
                               image_filename='',
+                              force_image_release=False,
                               match_on='short_form',
                               orcid='',
                               type_edge_annotations=None,
@@ -943,6 +1018,7 @@ class KB_pattern_writer(object):
         hard_fail: Boolean.  If True, throw exception for uknown entitise referenced in args"""
 
         if anatomy_attributes is None: anatomy_attributes = {}
+        if not force_image_release: anatomy_attributes['block'] = ["New Images"]
         if anon_anatomical_types is None: anon_anatomical_types = []
         if dbxrefs is None: dbxrefs = {}
         if dbxref_strings is None: dbxref_strings = []
@@ -964,7 +1040,7 @@ class KB_pattern_writer(object):
             dbxrefs.update({x.split(':')[0]: x.split(':')[1] for x in dbxref_strings})
 
         for k in dbxrefs.keys():
-            self.ec.roll_entity_check(labels=['Site'],
+            self.ec.roll_entity_check(labels=['Individual'],
                                       match_on=match_on,
                                       query=k)
 
@@ -992,10 +1068,20 @@ class KB_pattern_writer(object):
             warnings.warn("Load fail: Unknown entities referenced.")
             return False
 
-        anat_id = self.anat_iri_gen.generate(start)
 
+        if anat_id == None:
+            anat_id = self.anat_iri_gen.generate(start)
+            channel_id = self.channel_iri_gen.generate(start)
+        else:
+            anat_id = self.update_anat_id(anat_id)
+            channel_id = self.update_channel_id(anat_id)
+            self.ec.roll_new_entity_check(labels=['Individual'],
+                                      match_on=match_on,
+                                      query=anat_id['short_form'])
+            if not self.ec.check(hard_fail=True):
+                warnings.warn("Load fail: Existing anat_id referenced.")
+                return False
         anat_id['label'] = label
-        channel_id = self.channel_iri_gen.generate(start)
         channel_id['label'] = label + '_c'
 
         anatomy_attributes['label'] = label
@@ -1020,9 +1106,9 @@ class KB_pattern_writer(object):
                                              r='hasDbXref',
                                              o=db,
                                              stype=':Individual',
-                                             otype=':Individual:Site',
+                                             otype=':Individual',
                                              match_on='short_form',
-                                             edge_annotations={'accession': acc},
+                                             edge_annotations={'accession': [acc]},
                                              safe_label_edge=True
                                              )
         if orcid:
@@ -1146,7 +1232,7 @@ class KB_pattern_writer(object):
                                          r='hasDbXref',
                                          o=site,
                                          stype=':Individual',
-                                         otype=':Individual:Site',
+                                         otype=':Individual',
                                          match_on='short_form',
                                          safe_label_edge=True)
         if pub:

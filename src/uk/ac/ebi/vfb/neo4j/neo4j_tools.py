@@ -64,12 +64,12 @@ class neo4j_connect():
         self.base_uri=base_uri
         self.usr = usr
         self.pwd = pwd
-        self.commit = "/db/data/transaction/commit"
-        self.headers = {}
+        self.commit = "/db/neo4j/tx/commit"
+        self.headers = {'Content-type': 'application/json'}
         if not self.test_connection():
-            print("Connecting to Neo4j v4+")
-            self.commit = "/db/neo4j/tx/commit"
-            self.headers = {'Content-type': 'application/json'}
+            print("Falling back to Neo4j v3 connection")
+            self.commit = "/db/data/transaction/commit"
+            self.headers = {}
             self.test_connection()
        
     def commit_list(self, statements, return_graphs = False):

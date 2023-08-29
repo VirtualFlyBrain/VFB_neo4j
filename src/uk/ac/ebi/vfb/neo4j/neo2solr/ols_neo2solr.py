@@ -16,9 +16,8 @@ parser.add_argument("solr_endpoint",
 args = parser.parse_args()
 
 
-matches = {'datasets': "MATCH (n:DataSet:Individual) ",
-           'expression_patterns': "MATCH (n:Expression_pattern)",
-           'pubs': "MATCH (n:pub)"}
+matches = {'individuals': "MATCH (n:Individual) WHERE NOT n.short_form STARTS WITH 'VFBc_' ",
+           'classes': "MATCH (n:Class) "}
 
 with_file = open("uk/ac/ebi/vfb/neo4j/neo2solr/ols_solr_rec_query.cypher", 'r')
 with_clause = with_file.read()
@@ -45,7 +44,7 @@ for m in matches.values():
         c = 0
       s += l
 # adding facets:
-with_file = open("uk/ac/ebi/vfb/neo4j/neo2solr/ols_solr_facets_query.cypher", 'r')
+with_file = open("uk/ac/ebi/vfb/neo4j/neo2solr/ols_solr_rec_query.cypher", 'r')
 with_clause = with_file.read()
 l = 2000
 s = 0
@@ -65,3 +64,4 @@ while not c < l:
     c = 0
   s += l
 
+print("Loading complete")
