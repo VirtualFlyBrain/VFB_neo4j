@@ -912,7 +912,7 @@ class KB_pattern_writer(object):
         elif anat_id.startswith("VFB_"):
             # anat_id is a short form ID
             short_form = anat_id
-            iri = f"http://VirtualFlyBrain.org/reports/{short_form}"
+            iri = f"http://virtualflybrain.org/reports/{short_form}"
         else:
             # anat_id is neither an IRI nor a short form ID
             return anat_id
