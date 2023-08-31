@@ -1,5 +1,7 @@
 from .fb_tools import FB2Neo, dict_list_2_dict
+from ..neo4j_tools import neo4j_connect, results_2_dict_list
 from ...curie_tools import map_iri
+from ..KB_tools import iri_generator
 import re
 import pandas as pd
 import warnings
@@ -38,7 +40,6 @@ def map_feature_type(fbid, ftype):
 # Using named tuples to standardise immutable objects for holding data.
 
 
-
 Feature = collections.namedtuple('Feature', ['symbol',
                                              'fbid',
                                              'synonyms',  # list of synonyms
@@ -69,7 +70,6 @@ class FeatureRelation:
     eps: Dict[str, Node] = field(default_factory=dict)
 
 
-
 # For splits
 # pub FBex tg comment split
 # + al
@@ -81,15 +81,12 @@ class FeatureRelation:
 # short_form IS a compound key! We know one half at the start, and whether it is DBD or AD, but we only get the other half just before the addition.  Solution is to have a separate, bespoke job to update lookup table.  This can happen during Split object generation.
 
 
-
-
-
-
 class FeatureMover(FB2Neo):
 
     def name_synonym_lookup(self, fbids):
         """Takes a list of fbids, returns a dictionary of Feature objects, keyed on fbid.
         Note - makes unicode name primary.  Makes everything else a synonym."""
+
         # Limitation - no concept of type: name (as opposed to symbol).
 
         def proc_feature(d, ds):
@@ -338,8 +335,7 @@ class FeatureMover(FB2Neo):
             self.ew.commit()
         return FeatureRelation(features=objects_pdm, edges=triples)
 
-    def generate_expression_patterns(self, features, feature_objects=False, add_features =True, commit=True):
-
+    def generate_expression_patterns(self, features, feature_objects=False, add_features=True, commit=True):
 
         """Takes a list of features as input,
         generates expression patterns for these features.
@@ -356,7 +352,6 @@ class FeatureMover(FB2Neo):
         if not features:
             warnings.warn("No features provided.")
             return False
-
 
         eps = {}
         triples = []
@@ -380,7 +375,6 @@ class FeatureMover(FB2Neo):
             ep = gen_ep_feat(feat)
             ad = {'label': ep.label, 'synonyms': ep.synonyms}
             eps[ep.short_form] = ep,
-
 
             # Generate label = 'label . expression pattern'
             # Add node
@@ -411,8 +405,7 @@ class FeatureMover(FB2Neo):
         # Better standardise output here?
         return FeatureRelation(features=features, edges=triples, eps=eps)
 
-
-    def gen_split_ep_feat(self, splits, add_feats = True, add_feature_details=False, commit=True):
+    def gen_split_ep_feat(self, splits, add_feats=True, add_feature_details=True, commit=True):
         """Adds split expression pattern nodes to Neo following
         Returns a dict of feature objects keyed on
         schema: (sep)-[:has_hemidriver]->(construct).
@@ -435,17 +428,15 @@ class FeatureMover(FB2Neo):
             else:
                 feats = self.name_synonym_lookup([s.ad, s.dbd])
 
-
             short_form = 'VFBexp_' + s.dbd + s.ad
             iri = map_iri('vfb') + short_form
             ad = {'label' : feats[s.dbd].label + ' ∩ ' +
                   feats[s.ad].label +' expression pattern',
                   'synonyms': list(s.synonyms),
                   'description': ['The sum of all cells at the intersection between '
-                                   'the expression patterns of %s and'
-                                   ' %s.' % (feats[s.dbd].label,
-                                             feats[s.ad].label)]}
-
+                                  'the expression patterns of %s and'
+                                  ' %s.' % (feats[s.dbd].label,
+                                            feats[s.ad].label)]}
 
             out[short_form] = {'attributes': ad, 'iri': iri,
                                short_form: short_form, 'xrefs': s.xrefs}
@@ -473,16 +464,151 @@ class FeatureMover(FB2Neo):
                                            o=s.dbd,
                                            match_on='short_form')
 
-
-
         if commit:
             self.ni.commit()
             self.ew.commit()
         return out
 
+    def add_genotype(self, genotype_components=None, add_feats=True, add_feature_details=True,
+                     commit=True, verbose=False, short_form=None):
+        """Adds/updates genotypes.
+        schema: (genotype)-[:has_part]->(allele)
+        genotype_components should be a list of FB IDs (if specified).
+        Returns dictionary for genotype if genotype is added or updated {short_form: '', label: '', synonyms: ''}.
+        Specifying the short_form using short_form= can update or create a genotype with this short_form.
+        A short_form may be specified with no genotype_components to update using the existing components.
+        If a genotype composed of genotype_components already exists, no changes will be made to the database. If no
+        short form was specified, the matching genotype will be returned, otherwise False will be returned.
+        """
 
+        # look for existing node if short_form given
+        if short_form:
+            q = [("MATCH (h:Feature:Class)<-[r {short_form:'has_part'}]-(g {short_form:'%s'})-[:INSTANCEOF]->"
+                  "(x {short_form:'GENO_0000536'}) RETURN DISTINCT COLLECT(h.short_form) AS features" % short_form)]
+            r = self.nc.commit_list(q)
+            rd = results_2_dict_list(r)
+            existing_genotype_components = rd[0]['features']
+            if not genotype_components:  # no new feat
+                if verbose:
+                    print("No features specified, using existing features based on genotype short_form...")
+                if not existing_genotype_components:  # no new or old feat
+                    print("No features associated with genotype, please specify")
+                    return False
+                else:  # old but no new feat
+                    if verbose:
+                        print("Identified features:", existing_genotype_components)
+                    genotype_components = existing_genotype_components
+            elif existing_genotype_components:  # new feat and old feat
+                if sorted(existing_genotype_components) == sorted(genotype_components):
+                    if verbose:
+                        print("Existing genotype matches specified genotype_components")
+                else:  # new feat different to old
+                    for f in existing_genotype_components:
+                        if f not in genotype_components:
+                            s = [("MATCH (g {short_form:'%s'})-[r {short_form:'has_part'}]->"
+                                 "(f:Feature {short_form:'%s'}) DELETE r") % (short_form, f)]
+                            self.ew.statements.extend(s)
+                            if verbose:
+                                print("Feature %s will no longer be associated with this genotype" % f)
 
+        elif not genotype_components:
+            print("Genotype short_form or genotype_components must be specified")
+            return False
 
+        # get features in genotype_components from FlyBase
+        if add_feats:
+            if add_feature_details:
+                feats = self.add_features(genotype_components)
+            else:
+                feats = self.name_synonym_lookup(genotype_components)
+                for k, v in feats.items():
+                    # labels is neo4j node labels
+                    self.ni.add_node(labels=['Class', 'Feature'],
+                                     IRI=map_iri('fb') + k,
+                                     attribute_dict={'label': v.label})
+        else:
+            feats = self.name_synonym_lookup(genotype_components)
 
+        # synonym (FlyBase IDs)
+        feat_IDs = [n.short_form for n in feats.values()]  # list of FB IDs of features in genotype_components
+        feat_IDs.sort()
+        genotype_synonym = 'genotype consisting of ' + ', '.join(feat_IDs)
 
+        # check whether synonym already exists on a VFBgeno
+        nc = neo4j_connect(base_uri=self.ni.nc.base_uri, usr=self.ni.nc.usr, pwd=self.ni.nc.pwd)
 
+        q = [("MATCH (n:Individual) WHERE n.short_form =~ 'VFBgeno_[0-9]{8}' AND n.synonyms = '%s' "
+              "RETURN n.short_form AS short_form, n.label AS label, n.synonyms AS synonyms"
+              % genotype_synonym)]
+
+        if verbose:
+            print("Checking for this genotype in database, running query: " + q[0])
+
+        r = nc.commit_list(statements=q)
+        existing_genotype = results_2_dict_list(r)
+
+        # handling genotype with matching synonym
+        if existing_genotype:
+            if existing_genotype[0]['short_form'] != short_form:  # different genotype has same components
+                print("Genotype with specified features already exists:")
+                print(existing_genotype[0])
+                print("No changes committed to database")
+                if short_form:  # cannot make/update desired node
+                    return False
+                else:  # do not need to make a new node - returns existing node
+                    return existing_genotype[0]
+            elif verbose and short_form:  # match is to itself - continuing to update label
+                print("No conflict with existing genotypes, updating...")
+        elif verbose:
+            print("Genotype not already in database")
+
+        # IRI
+        if short_form:
+            iri = {'short_form': short_form, 'iri': map_iri('vfb') + short_form}
+        else:
+            genotype_iri = iri_generator(endpoint=self.ni.nc.base_uri, usr=self.ni.nc.usr,
+                                         pwd=self.ni.nc.pwd, idp='VFBgeno')
+            # these are the endpoint, usr and pwd used to set up self (FeatureMover object), idp is namespace
+
+            iri = genotype_iri.generate(start=0)
+            # iri['iri'] is long form, iri['short_form'] is short form
+
+        # label
+        feat_names = [n.label for n in feats.values()]  # list of labels of features in genotype_components
+        feat_names.sort()
+        genotype_name = 'genotype consisting of ' + ', '.join(feat_names)
+
+        new_genotype = {'short_form': iri['short_form'], 'label': genotype_name, 'synonym': genotype_synonym}
+
+        # add genotype node
+        self.ni.add_node(labels=['Individual'],
+                         IRI=iri['iri'],
+                         attribute_dict={'label': genotype_name, 'synonyms': genotype_synonym})
+
+        # make instance of 'genotype'
+        self.ew.add_named_type_ax(s=iri['short_form'],
+                                  o='GENO_0000536',  # 'genotype' from GENO ontology
+                                  match_on='short_form')
+
+        #  add features as parts of genotype
+        for f in feats:
+            self.ew.add_annotation_axiom(s=iri['short_form'],
+                                         stype=':Individual',
+                                         otype=':Class',
+                                         r='has_part',
+                                         o=f,
+                                         match_on='short_form')
+
+        if commit:
+            node_commit_out = self.ni.commit(verbose=verbose)
+            if not node_commit_out:
+                print("Problem loading nodes.")
+                return False
+            edge_commit_out = self.ew.commit(verbose=verbose)
+            if not edge_commit_out:
+                print("Problem loading edges.")
+                return False
+            if verbose:
+                print("Genotype is now:", new_genotype)
+
+        return new_genotype
