@@ -128,8 +128,8 @@ def proc_splits(eng):
                 m2 = re.match('.*{.*(DBD|AD).*}', m.group(2))
                 # If it is a split:
                 if m2:
-                    hemidriver_id = m.group(1)
-                    hemidriver_type = m2.group(1)
+                    hemidriver_id = m.group(1).replace('"', '')
+                    hemidriver_type = m2.group(1).replace('"', '')
                     # link hemidriver to feature_expression table in temp DB
                     eng.execute('UPDATE feature_expression SET hemidriver = "%s" '
                                 'WHERE tg = "%s" '
