@@ -134,7 +134,7 @@ def proc_splits(eng):
                     eng.execute('UPDATE feature_expression SET hemidriver = "%s" '
                                 'WHERE tg = "%s" '
                                 'AND comment = "%s" '
-                                '' % (hemidriver_id, f['tg'], f['comment']))
+                                '' % (hemidriver_id, f['tg'].replace('"', ''), f['comment'].replace('"', '')))
                     # If the hemidriver is a DBD:
                     if hemidriver_type == 'DBD':
                         dbd = hemidriver_id
@@ -152,7 +152,7 @@ def proc_splits(eng):
                                 'WHERE tg = "%s" '
                                 'AND comment = "%s" '
                                 '' % ('VFBexp_' + dbd + ad,
-                                      f['tg'], f['comment']))
+                                      f['tg'].replace('"', ''), f['comment'].replace('"', '')))
 
                 else:
                     warnings.warn("Can't identify AD vs DBD in %s "
