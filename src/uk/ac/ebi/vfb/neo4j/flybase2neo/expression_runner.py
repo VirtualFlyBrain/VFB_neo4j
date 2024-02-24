@@ -255,8 +255,17 @@ for fep_c in feps_chunked:
     print (now.strftime("%Y-%m-%d %H:%M:%S"))
     exp_write = ExpressionWriter(args.endpoint, args.usr, args.pwd)
     exp_write.get_expression([d['fbex'] for d in dc])
+    # Initialize a counter for debugging
+    counter = 0
+    total_records = len(dc)
+    print(f"Processing {total_records} records.")
     for r in dc:
         exp_write.write_expression(pub=r['fbrf'], ep=r['ep'], fbex=r['fbex'])
+        counter += 1
+        # Print progress every 100 records
+        if counter % 100 == 0 or counter == total_records:
+          print(f"Processed {counter} of {total_records} records at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+
     now = datetime.datetime.now()
     print ("Start commit:")
     print (now.strftime("%Y-%m-%d %H:%M:%S"))
