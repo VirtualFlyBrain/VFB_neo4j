@@ -618,12 +618,17 @@ class node_importer(kb_writer):
         """
         def convert_to_short_form(iri):
             """
-            Convert any type of id to a short form (with an underscore).
+            Convert any (: or _) id to a short form.
+            Returns input if ID doesn't match pattern.
             """
             pattern = re.compile("([A-Za-z]+)[_:]([0-9]+)$")
             m = re.search(pattern, iri)
-            short_form = m.group(1) + "_" + m.group(2)
-            return short_form
+
+            if m:
+                short_form = m.group(1) + '_' + m.group(2)
+                return short_form
+            else:
+                return iri
 
         def command_writer(old_id, new_id):
             """
