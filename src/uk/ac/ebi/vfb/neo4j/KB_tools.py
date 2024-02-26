@@ -629,8 +629,8 @@ class node_importer(kb_writer):
             """
             Returns cypher commands for merging old_id (IRI) and new_id (short) in KB.
             """
-            command_1 = ("MATCH (c:Class {iri: '%s'})<-[r:Related]-(i:Individual), "
-                         "(c2:Class {short_form: '%s'}) MERGE (c2)<-[r2:Related]-(i) "
+            command_1 = ("MATCH (c:Class {iri: '%s'})<-[r {type:'Related'}]-(i:Individual), "
+                         "(c2:Class {short_form: '%s'}) MERGE (c2)<-[r2 {type:'Related'}]-(i) "
                          "SET r2=properties(r) DELETE r") % (old_id, new_id)
             command_2 = ("MATCH (c:Class {iri: '%s'})<-[r:INSTANCEOF]-(i:Individual), "
                          "(c2:Class {short_form: '%s'}) MERGE (c2)<-[r2:INSTANCEOF]-(i) "
