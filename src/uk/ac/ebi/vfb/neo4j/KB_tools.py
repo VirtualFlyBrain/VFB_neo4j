@@ -666,7 +666,7 @@ class node_importer(kb_writer):
         failed_mappings = []
         for i in ob_term_ids:
             try:
-                x = term_replacement_command_writer(i, mapping_dict[i])
+                x = self.term_replacement_command_writer(old_id=i, new_id=mapping_dict[i])
                 self.statements.extend(x)
             except KeyError:
                 failed_mappings.append(convert_to_short_form(i))
