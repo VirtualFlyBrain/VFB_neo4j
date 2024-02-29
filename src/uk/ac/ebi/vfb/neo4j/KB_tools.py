@@ -6,6 +6,7 @@ Created on Mar 6, 2017
 import warnings
 import re
 import json
+import pandas as pd
 #import psycopg2
 import requests
 from .neo4j_tools import neo4j_connect, results_2_dict_list
@@ -611,6 +612,25 @@ class node_importer(kb_writer):
             print("No obsolete nodes in use.")
             return False
 
+    def term_replacement_command_writer(self, old_id, new_id):
+        """
+        Returns cypher commands for merging old_id (IRI) and new_id (short) in KB.
+        """
+        # get all relationships (need to specify each one in a separate command)
+        q = "match ()-[r]->() return distinct TYPE(r) AS rel_types"
+        d = results_2_dict_list(self.nc.commit_list([q]))
+        rel_types = pd.DataFrame.from_dict(data=d)
+
+        # make a command to replace usage for every relationship type
+        commands = []
+        for t in rel_types['rel_types']:
+            new_command = ("MATCH (c:Class {iri: '%s'})<-[r:%s]-(i:Individual), "
+                           "(c2:Class {short_form: '%s'}) MERGE (c2)<-[r2:%s]-(i) "
+                           "SET r2=properties(r) DELETE r") % (old_id, t, new_id, t)
+            commands.append(new_command)
+
+        return commands
+
     def merge_obsoletes(self, ob_term_ids, graph):
         """
         Maps a list of full length IRIs to their 'term replaced by', where possible.
@@ -630,18 +650,6 @@ class node_importer(kb_writer):
             else:
                 return iri
 
-        def command_writer(old_id, new_id):
-            """
-            Returns cypher commands for merging old_id (IRI) and new_id (short) in KB.
-            """
-            command_1 = ("MATCH (c:Class {iri: '%s'})<-[r:Related]-(i:Individual), "
-                         "(c2:Class {short_form: '%s'}) MERGE (c2)<-[r2:Related]-(i) "
-                         "SET r2=properties(r) DELETE r") % (old_id, new_id)
-            command_2 = ("MATCH (c:Class {iri: '%s'})<-[r:INSTANCEOF]-(i:Individual), "
-                         "(c2:Class {short_form: '%s'}) MERGE (c2)<-[r2:INSTANCEOF]-(i) "
-                         "SET r2=properties(r) DELETE r") % (old_id, new_id)
-            return command_1, command_2
-
         # get mappings based on term_replaced_by (IAO_0100001)
         mapping_dict = {}
         for i in ob_term_ids:
@@ -658,7 +666,7 @@ class node_importer(kb_writer):
         failed_mappings = []
         for i in ob_term_ids:
             try:
-                x = command_writer(i, mapping_dict[i])
+                x = self.term_replacement_command_writer(old_id=i, new_id=mapping_dict[i])
                 self.statements.extend(x)
             except KeyError:
                 failed_mappings.append(convert_to_short_form(i))
