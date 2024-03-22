@@ -25,6 +25,9 @@ with_clause = with_file.read()
 nc = neo4j_connect(args.pdb_endpoint, 'neo4j', 'neo4j')
 
 solr = pysolr.Solr(args.solr_endpoint, always_commit=True)
+# Delete existing documents where short_form starts with 'VFB_'. This resolves dumps steps failure to remove_embargoed_data
+solr.delete(q='short_form:VFB_*')
+
 l = 2000
 for m in matches.values():
     s = 0
