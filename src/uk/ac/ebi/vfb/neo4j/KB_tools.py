@@ -1050,7 +1050,7 @@ class KB_pattern_writer(object):
             self.ec.roll_new_entity_check(labels=['Individual'],
                                       match_on=match_on,
                                       query=anat_id['short_form'])
-            if not self.ec.check(hard_fail=True):
+            if not self.ec.check(hard_fail=hard_fail):
                 warnings.warn("Load fail: Existing anat_id referenced.")
                 return False
         anat_id['label'] = label
