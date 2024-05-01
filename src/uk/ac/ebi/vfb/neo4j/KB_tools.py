@@ -515,7 +515,7 @@ class node_importer(kb_writer):
         self.add_constraints(uniqs, indexes)
         self.commit()
             
-    def add_node(self, labels, IRI, attribute_dict=None):
+    def add_node(self, labels, IRI, attribute_dict=None, allow_duplicates=False):
         """Adds or updates a node.
         Node uniqueness specified by IRI + labels.
         Derives short_form using has or / as delimiter
@@ -802,13 +802,14 @@ class EntityChecker(kb_writer):
             "RETURN s.short_form + ':' + r.accession AS result, "
             "'%s:%s' AS query" % (db, acc, db, acc))
 
-    def roll_new_entity_check(self, labels, query, match_on='short_form'):
+    def roll_new_entity_check(self, labels, query, match_on='short_form', allow_duplicates=False):
         """Roll a check and add it to the stack.
         labels = list of Neo4J labels to match on. You must provide at least one.
         match_on = property to match_on (default = short_form)
         query = Value of property matched on for target entity.
+        allow_duplicates = If True, will not check for duplicates in the DB.
         """
-        if query in self.cache:
+        if query in self.cache or allow_duplicates:
             return True
         lstring = ':'.join(labels)
         self.should_not_exist.append("OPTIONAL MATCH (n:%s { %s : '%s'})"
@@ -969,6 +970,7 @@ class KB_pattern_writer(object):
                               match_on='short_form',
                               orcid='',
                               type_edge_annotations=None,
+                              allow_duplicates=False,
                               hard_fail=True):
         """Adds typed inds for an anatomical individual and channel, 
         linked to each other and to the specified template.
@@ -986,7 +988,7 @@ class KB_pattern_writer(object):
         start: Start of range for generation of new accessions
         dbxrefs: dict of DB:accession pairs
         anatomy_attributes: Dict of property:value for anatomy node
-
+        allow_duplicates: Boolean.  If True, allow overwiting of esiting images for flush and replace DataSets
         hard_fail: Boolean.  If True, throw exception for uknown entitise referenced in args"""
 
         if anatomy_attributes is None: anatomy_attributes = {}
@@ -1049,7 +1051,7 @@ class KB_pattern_writer(object):
             channel_id = self.update_channel_id(anat_id)
             self.ec.roll_new_entity_check(labels=['Individual'],
                                       match_on=match_on,
-                                      query=anat_id['short_form'])
+                                      query=anat_id['short_form'], allow_duplicates=allow_duplicates)
             if not self.ec.check(hard_fail=hard_fail):
                 warnings.warn("Load fail: Existing anat_id referenced.")
                 return False
@@ -1064,7 +1066,7 @@ class KB_pattern_writer(object):
 
         self.ni.add_node(labels=self_labels,
                          IRI=anat_id['iri'],
-                         attribute_dict=anatomy_attributes)
+                         attribute_dict=anatomy_attributes, allow_duplicates=allow_duplicates)
         #dataset_short_form = self.ni.nc.commit_list(["MATCH (ds:DataSet) WHERE ds.label = %s RETURN ds.short_form" % dataset])
         self.ew.add_annotation_axiom(s=anat_id[match_on],
                                      r='source',
