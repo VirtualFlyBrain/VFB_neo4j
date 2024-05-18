@@ -548,13 +548,14 @@ class node_importer(kb_writer):
         """
         if attribute_dict is None: attribute_dict = {}
         short_form = re.split('[#/]', IRI)[-1]
+        logging.debug(f"Adding node with labels: {labels}, IRI: {IRI}, short_form: {short_form}, attributes: {attribute_dict}, allow_duplicates: {allow_duplicates}")
         statement = "MERGE (n:%s { iri: '%s' }) set n.short_form = '%s' set n:Entity " % (
                     (':'.join(labels)),
                      IRI, short_form)
         statement += self._set_attributes_from_dict(var='n',
                                                     attribute_dict=attribute_dict)
         self.statements.append(statement)
-
+        logging.debug(f"Generated statement: {statement}")
     
     def update_from_obograph(self, file_path = '', url = '', include_properties=False, commit=True):
         """Update property and class nodes from an OBOgraph file
