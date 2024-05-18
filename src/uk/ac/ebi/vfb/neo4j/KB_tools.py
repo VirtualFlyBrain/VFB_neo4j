@@ -3,6 +3,7 @@ Created on Mar 6, 2017
 
 @author: davidos
 '''
+import logging
 import warnings
 import re
 import json
@@ -990,15 +991,24 @@ class KB_pattern_writer(object):
         anatomy_attributes: Dict of property:value for anatomy node
         allow_duplicates: Boolean.  If True, allow overwiting of esiting images for flush and replace DataSets
         hard_fail: Boolean.  If True, throw exception for uknown entitise referenced in args"""
-
+    
+        logging.debug("Starting add_anatomy_image_set with parameters:")
+        logging.debug(f"dataset={dataset}, imaging_type={imaging_type}, label={label}, start={start}, "
+                      f"template={template}, anat_id={anat_id}, anatomical_type={anatomical_type}, "
+                      f"anon_anatomical_types={anon_anatomical_types}, index={index}, center={center}, "
+                      f"anatomy_attributes={anatomy_attributes}, dbxrefs={dbxrefs}, dbxref_strings={dbxref_strings}, "
+                      f"image_filename={image_filename}, force_image_release={force_image_release}, "
+                      f"match_on={match_on}, orcid={orcid}, type_edge_annotations={type_edge_annotations}, "
+                      f"allow_duplicates={allow_duplicates}, hard_fail={hard_fail}")
+    
         if anatomy_attributes is None: anatomy_attributes = {}
         if not force_image_release: anatomy_attributes['block'] = ["New Images"]
         if anon_anatomical_types is None: anon_anatomical_types = []
         if dbxrefs is None: dbxrefs = {}
         if dbxref_strings is None: dbxref_strings = []
-
+    
         if type_edge_annotations is None: type_edge_annotations = {}
-
+    
         if not template == 'self':
             self.ec.roll_entity_check(labels=['Individual'],
                                       match_on=match_on,
@@ -1012,17 +1022,17 @@ class KB_pattern_writer(object):
         if dbxref_strings:
             # Add checking dbxref strings for ':'
             dbxrefs.update({x.split(':')[0]:x.split(':')[1] for x in dbxref_strings})
-
+    
         for k in dbxrefs.keys():
             self.ec.roll_entity_check(labels=['Individual'],
                                       match_on=match_on,
                                       query=k)
-
+    
         if orcid:
             self.ec.roll_entity_check(labels=['Person'],
                                       match_on=match_on,
                                       query=orcid)
-
+    
         for ax in anon_anatomical_types:
             self.ec.roll_entity_check(labels=['Property'],
                                       match_on=match_on,
@@ -1030,51 +1040,53 @@ class KB_pattern_writer(object):
             self.ec.roll_entity_check(labels=['Class'],
                                       match_on=match_on,
                                       query=ax[1])
-
+    
         if dbxrefs:
             for db, acc in dbxrefs.items():
                 self.ec.roll_dbxref_check(db, acc)
             if not self.ec.check(hard_fail=hard_fail):
-                warnings.warn("Load fail: Cross-referenced enties already exist.")
+                warnings.warn("Load fail: Cross-referenced entities already exist.")
+                logging.debug("Cross-referenced entities already exist.")
                 return False
-
+    
         if not self.ec.check(hard_fail=hard_fail):
             warnings.warn("Load fail: Unknown entities referenced.")
+            logging.debug("Unknown entities referenced.")
             return False
-
-
-        if anat_id == None:
+    
+        if anat_id is None:
             anat_id = self.anat_iri_gen.generate(start)
             channel_id = self.channel_iri_gen.generate(start)
+            logging.debug(f"Generated new anat_id: {anat_id}, channel_id: {channel_id}")
         else:
             anat_id = self.update_anat_id(anat_id)
             channel_id = self.update_channel_id(anat_id)
+            logging.debug(f"Updated anat_id: {anat_id}, channel_id: {channel_id}")
             self.ec.roll_new_entity_check(labels=['Individual'],
-                                      match_on=match_on,
-                                      query=anat_id['short_form'], allow_duplicates=allow_duplicates)
+                                          match_on=match_on,
+                                          query=anat_id['short_form'], allow_duplicates=allow_duplicates)
             if not self.ec.check(hard_fail=hard_fail):
                 warnings.warn("Load fail: Existing anat_id referenced.")
+                logging.debug("Existing anat_id referenced.")
                 return False
         anat_id['label'] = label
         channel_id['label'] = label + '_c'
-
+    
         anatomy_attributes['label'] = label
         self_labels = ["Individual"]
         if template == 'self':
             self_labels.append("Template")
-
-
+    
         self.ni.add_node(labels=self_labels,
                          IRI=anat_id['iri'],
                          attribute_dict=anatomy_attributes, allow_duplicates=allow_duplicates)
-        #dataset_short_form = self.ni.nc.commit_list(["MATCH (ds:DataSet) WHERE ds.label = %s RETURN ds.short_form" % dataset])
         self.ew.add_annotation_axiom(s=anat_id[match_on],
                                      r='source',
                                      o=dataset,
                                      stype=':Individual',
                                      match_on=match_on,
                                      safe_label_edge=True)
-
+    
         if dbxrefs:
             for db, acc in dbxrefs.items():
                 self.ew.add_annotation_axiom(s=anat_id['short_form'],
@@ -1084,69 +1096,58 @@ class KB_pattern_writer(object):
                                              otype=':Individual',
                                              match_on='short_form',
                                              edge_annotations={'accession': [acc]},
-                                             safe_label_edge=True
-                                             )
+                                             safe_label_edge=True)
         if orcid:
             self.ew.add_annotation_axiom(s=anat_id['short_form'],
                                          r='contributor',
                                          o=orcid,
                                          stype=':Individual',
-                                         match_on='short_form')  # This assumes matching on short form!
-
+                                         match_on='short_form')
+    
         self.ni.add_node(labels=self_labels,
                          IRI=channel_id['iri'],
-                         attribute_dict={'label': label + '_c'}
-                         )
-        # Add a query to look up template channel, assuming template anat ind spec
-        #q = "MATCH (c:Individual)-[:Related { short_form : 'depicts' }]" \
-        #    "->(t:Individual { iri : '%s' }) RETURN c.iri" % template
-        #x = results_2_dict_list(self.ni.nc.commit_list([q]))
-        #template = x['c.iri']
-
-        # Add typing as channel.  This takes no vars so match_on can be fixed.
+                         attribute_dict={'label': label + '_c'})
+    
         self.ew.add_named_type_ax(s=channel_id['short_form'],
                                   o='VFBext_0000014',
                                   match_on='short_form')
-
-
-        # Imaging modality - currently works on internal lookup in script.  Should probably be dynamic with DB
+    
         self.ew.add_anon_type_ax(s=channel_id['iri'],
                                  r=self.relation_lookup['is specified output of'],
                                  o=self.class_lookup[imaging_type])
-
+    
         if anatomical_type:
             self.ew.add_named_type_ax(s=anat_id[match_on],
                                       o=anatomical_type,
                                       match_on=match_on,
                                       edge_annotations=type_edge_annotations)
-        # Add facts
-
-        # This takes no vars so match_on can be fixed.
+    
         self.ew.add_fact(s=channel_id['iri'],
                          r=self.relation_lookup['depicts'],
                          o=anat_id['iri'])
-
+    
         edge_annotations = {}
         if index: edge_annotations['index'] = index
         if center: edge_annotations['center'] = center
         if image_filename: edge_annotations['filename'] = image_filename
-
+    
         if template == 'self':
             template = channel_id['short_form']
-
+    
         self.ew.add_fact(s=channel_id['short_form'],
                          r=get_sf(self.relation_lookup['in register with']),
                          o=template,
                          edge_annotations=edge_annotations,
                          match_on='short_form',
                          safe_label_edge=True)
-
+    
         for ax in anon_anatomical_types:
             self.ew.add_anon_type_ax(s=anat_id[match_on],
                                      r=ax[0],
                                      o=ax[1],
                                      match_on='short_form')
-
+    
+        logging.debug("Anatomy image set added successfully.")
         return {'channel': channel_id, 'anatomy': anat_id }
 
     def add_dataSet(self, name,
