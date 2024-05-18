@@ -154,10 +154,7 @@ class iri_generator(kb_writer):
                  start=0):
         super().__init__(endpoint, usr, pwd)
         self.use_base36 = use_base36
-        self._configure(idp=idp,
-                        acc_length=acc_length,
-                        base=base)
-
+        self._configure(idp=idp, acc_length=acc_length, base=base)
 
     def _configure(self, idp, acc_length, base):
         self.acc_length = acc_length
@@ -168,15 +165,13 @@ class iri_generator(kb_writer):
         self.statements.append("MATCH (i:Individual) "
                                "WHERE i.short_form =~ '%s_[0-9a-z]{%d}' "  # Note POSIX regex rqd
                                "RETURN i.short_form as short_form, "
-                               "i.label as label" % (idp,
-                                                     acc_length))
+                               "i.label as label" % (idp, acc_length))
         r = self.commit()
         if r:
             results = results_2_dict_list(r)
             for res in results:
                 self.id_name[res['short_form']] = res['label']
                 acc = res['short_form'].split('_')[1]
-                # This does not scale well.  Better to roll lookup from some designated start?
                 if not self.use_base36:
                     try:
                         self.lookup.add(int(acc))
@@ -190,14 +185,40 @@ class iri_generator(kb_writer):
             return False
 
     def set_channel_config(self):
-        self._configure(idp='VFBc', acc_length=8, base=map_iri('vfb'), )
+        self._configure(idp='VFBc', acc_length=8, base=map_iri('vfb'))
 
     def generate(self, start, label=''):
         acc = self._get_new_accession(start)
         short_form = self._gen_short_form(acc)
-        iri = self.base + short_form
-        self.id_name[short_form] = label
-        return {'iri': iri, 'short_form': short_form}
+        if self.idp == 'VFB':
+            channel_short_form = self._gen_channel_short_form(acc)
+            iri = self.base + short_form
+            channel_iri = self.base + channel_short_form
+
+            while short_form in self.id_name or channel_short_form in self.id_name:
+                if self.use_base36:
+                    acc = base36.dumps(base36.loads(acc) + 1)
+                else:
+                    acc += 1
+                short_form = self._gen_short_form(acc)
+                channel_short_form = self._gen_channel_short_form(acc)
+                iri = self.base + short_form
+                channel_iri = self.base + channel_short_form
+
+            self.id_name[short_form] = label
+            self.id_name[channel_short_form] = label + '_c'
+            return {'iri': iri, 'short_form': short_form, 'channel_iri': channel_iri, 'channel_short_form': channel_short_form}
+        else:
+            iri = self.base + short_form
+            while short_form in self.id_name:
+                if self.use_base36:
+                    acc = base36.dumps(base36.loads(acc) + 1)
+                else:
+                    acc += 1
+                short_form = self._gen_short_form(acc)
+                iri = self.base + short_form
+            self.id_name[short_form] = label
+            return {'iri': iri, 'short_form': short_form}
 
     def _get_new_accession(self, start):
         if self.use_base36:
@@ -214,6 +235,9 @@ class iri_generator(kb_writer):
 
     def _gen_short_form(self, accession):
         return self.idp + '_' + str(accession).zfill(self.acc_length)
+
+    def _gen_channel_short_form(self, accession):
+        return 'VFBc_' + str(accession).zfill(self.acc_length)
 
 class kb_owl_edge_writer(kb_writer):
     """A class wrapping methods for updating imported entities in the KB.
