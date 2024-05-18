@@ -923,19 +923,51 @@ class KB_pattern_writer(object):
             }
 
     def commit(self, ni_chunk_length=5000, ew_chunk_length=2000, verbose=False):
-        """Commits nodes then edges. Populate commit_log, returns False if log has content,
-        otherwise returns True."""
-        self.ec.log = []
-        self.ni.commit(verbose=verbose, chunk_length=ni_chunk_length)
-        self.ew.commit(verbose=verbose, chunk_length=ew_chunk_length)
-        self.commit_log = []
-        self.commit_log.extend(self.ni.log + self.ew.log)
-        if self.commit_log:
+        """
+        Commits nodes then edges. Populate commit_log, returns False if log has content,
+        otherwise returns True.
+        
+        Parameters:
+        ni_chunk_length (int): Chunk length for node commit.
+        ew_chunk_length (int): Chunk length for edge commit.
+        verbose (bool): Verbosity flag.
+        
+        Returns:
+        bool: True if commit log is empty, False otherwise.
+        """
+        try:
+            logging.debug("Starting commit process.")
+            self.commit_log = []  # Reset commit log before starting
+
+            logging.debug("Committing nodes with chunk length %d.", ni_chunk_length)
+            self.ni.commit(verbose=verbose, chunk_length=ni_chunk_length)
+
+            logging.debug("Committing edges with chunk length %d.", ew_chunk_length)
+            self.ew.commit(verbose=verbose, chunk_length=ew_chunk_length)
+
+            # Combine logs from ni and ew
+            self.commit_log.extend(self.ni.log + self.ew.log)
+            logging.debug("Combined commit log: %s", self.commit_log)
+
+            if self.commit_log:
+                logging.warning("Commit process encountered issues: %s", self.commit_log)
+                return False
+            else:
+                logging.info("Commit process completed successfully with no issues.")
+                return True
+
+        except Exception as e:
+            logging.error("An error occurred during the commit process: %s", e, exc_info=True)
+            self.commit_log.append(str(e))
             return False
-        else:
-            return True
 
     def get_log(self):
+        """
+        Returns the commit log and clears it.
+
+        Returns:
+        list: The current commit log.
+        """
         out = self.commit_log[:]
         self.commit_log = []
         return out
