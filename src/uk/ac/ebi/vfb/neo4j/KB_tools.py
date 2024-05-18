@@ -1070,12 +1070,12 @@ class KB_pattern_writer(object):
                 self.ec.roll_dbxref_check(db, acc)
             if not self.ec.check(hard_fail=hard_fail):
                 warnings.warn("Load fail: Cross-referenced entities already exist.")
-                logging.debug("Cross-referenced entities already exist.")
+                logging.debug("Load fail: Cross-referenced entities already exist.")
                 return False
     
         if not self.ec.check(hard_fail=hard_fail):
             warnings.warn("Load fail: Unknown entities referenced.")
-            logging.debug("Unknown entities referenced.")
+            logging.debug("Load fail: Unknown entities referenced.")
             return False
     
         if anat_id is None:
@@ -1091,7 +1091,7 @@ class KB_pattern_writer(object):
                                           query=anat_id['short_form'], allow_duplicates=allow_duplicates)
             if not self.ec.check(hard_fail=hard_fail):
                 warnings.warn("Load fail: Existing anat_id referenced.")
-                logging.debug("Existing anat_id referenced.")
+                logging.debug("Load fail: Existing anat_id referenced.")
                 return False
         anat_id['label'] = label
         channel_id['label'] = label + '_c'
@@ -1101,9 +1101,12 @@ class KB_pattern_writer(object):
         if template == 'self':
             self_labels.append("Template")
     
+        logging.debug(f"Adding node for anat_id: {anat_id}")
         self.ni.add_node(labels=self_labels,
                          IRI=anat_id['iri'],
                          attribute_dict=anatomy_attributes, allow_duplicates=allow_duplicates)
+        
+        logging.debug(f"Adding annotation axiom for anat_id: {anat_id[match_on]} to dataset: {dataset}")
         self.ew.add_annotation_axiom(s=anat_id[match_on],
                                      r='source',
                                      o=dataset,
@@ -1113,6 +1116,7 @@ class KB_pattern_writer(object):
     
         if dbxrefs:
             for db, acc in dbxrefs.items():
+                logging.debug(f"Adding dbxref {db}:{acc} to anat_id: {anat_id['short_form']}")
                 self.ew.add_annotation_axiom(s=anat_id['short_form'],
                                              r='hasDbXref',
                                              o=db,
@@ -1122,30 +1126,36 @@ class KB_pattern_writer(object):
                                              edge_annotations={'accession': [acc]},
                                              safe_label_edge=True)
         if orcid:
+            logging.debug(f"Adding contributor orcid: {orcid} to anat_id: {anat_id['short_form']}")
             self.ew.add_annotation_axiom(s=anat_id['short_form'],
                                          r='contributor',
                                          o=orcid,
                                          stype=':Individual',
                                          match_on='short_form')
     
+        logging.debug(f"Adding node for channel_id: {channel_id}")
         self.ni.add_node(labels=self_labels,
                          IRI=channel_id['iri'],
                          attribute_dict={'label': label + '_c'})
     
+        logging.debug(f"Adding named type axiom for channel_id: {channel_id['short_form']}")
         self.ew.add_named_type_ax(s=channel_id['short_form'],
                                   o='VFBext_0000014',
                                   match_on='short_form')
     
+        logging.debug(f"Adding anon type axiom for channel_id: {channel_id['iri']}")
         self.ew.add_anon_type_ax(s=channel_id['iri'],
                                  r=self.relation_lookup['is specified output of'],
                                  o=self.class_lookup[imaging_type])
     
         if anatomical_type:
+            logging.debug(f"Adding named type axiom for anat_id: {anat_id[match_on]} to anatomical_type: {anatomical_type}")
             self.ew.add_named_type_ax(s=anat_id[match_on],
                                       o=anatomical_type,
                                       match_on=match_on,
                                       edge_annotations=type_edge_annotations)
     
+        logging.debug(f"Adding fact depicts: {channel_id['iri']} to {anat_id['iri']}")
         self.ew.add_fact(s=channel_id['iri'],
                          r=self.relation_lookup['depicts'],
                          o=anat_id['iri'])
@@ -1158,6 +1168,7 @@ class KB_pattern_writer(object):
         if template == 'self':
             template = channel_id['short_form']
     
+        logging.debug(f"Adding fact in register with: {channel_id['short_form']} to template: {template}")
         self.ew.add_fact(s=channel_id['short_form'],
                          r=get_sf(self.relation_lookup['in register with']),
                          o=template,
@@ -1166,6 +1177,7 @@ class KB_pattern_writer(object):
                          safe_label_edge=True)
     
         for ax in anon_anatomical_types:
+            logging.debug(f"Adding anon type axiom for anat_id: {anat_id[match_on]} with relation: {ax[0]} and object: {ax[1]}")
             self.ew.add_anon_type_ax(s=anat_id[match_on],
                                      r=ax[0],
                                      o=ax[1],
