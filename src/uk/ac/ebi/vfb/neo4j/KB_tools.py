@@ -8,8 +8,10 @@ import warnings
 import re
 import json
 import pandas as pd
+import http.client
 #import psycopg2
 import requests
+from requests.exceptions import ChunkedEncodingError
 from .neo4j_tools import neo4j_connect, results_2_dict_list
 from .SQL_tools import get_fb_conn, dict_cursor
 from ..curie_tools import map_iri
@@ -114,7 +116,7 @@ class kb_writer (object):
                     chunk_length=chunk_length)
                 self.statements = []
                 return self.output
-            except http.client.RemoteDisconnected as e:
+            except (http.client.RemoteDisconnected, ChunkedEncodingError, ConnectionResetError) as e:
                 retries += 1
                 if retries >= max_retries:
                     raise e
