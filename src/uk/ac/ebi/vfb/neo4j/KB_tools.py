@@ -92,21 +92,35 @@ class kb_writer (object):
       
     def __init__(self, endpoint, usr, pwd, hard_fail=False):
         self.nc = neo4j_connect(endpoint, usr, pwd)
+        self.endpoint = endpoint
+        self.usr = usr 
+        self.pwd = pwd
         self.statements = []
         self.output = []
         self.log = []
 
-    def _commit(self, verbose=False, chunk_length=5000):
+    def _commit(self, verbose=False, chunk_length=5000, max_retries=5, delay=5):
         """Commits Cypher statements stored in object.
         Flushes existing statement list.
         Returns REST API output.
-        Optionally set verbosity and chunk length for commits."""
-        self.output = self.nc.commit_list_in_chunks(
-                                      statements=self.statements,
-                                      verbose=verbose,
-                                      chunk_length=chunk_length)
-        self.statements = []
-        return self.output
+        Optionally set verbosity and chunk length for commits.
+        Retries the commit in case of RemoteDisconnected errors."""
+        retries = 0
+        while retries < max_retries:
+            try:
+                self.output = self.nc.commit_list_in_chunks(
+                    statements=self.statements,
+                    verbose=verbose,
+                    chunk_length=chunk_length)
+                self.statements = []
+                return self.output
+            except http.client.RemoteDisconnected as e:
+                retries += 1
+                if retries >= max_retries:
+                    raise e
+                print(f"RemoteDisconnected encountered. Retrying {retries}/{max_retries} in {delay} seconds...")
+                time.sleep(delay)
+                self.nc = neo4j_connect(self.endpoint, self.usr, self.pwd)  # Re-establish the connection
 
     def commit(self, verbose=False, chunk_length=5000):
         return self._commit(verbose, chunk_length)
