@@ -69,34 +69,42 @@ def dict_list_2_dict(key, dict_list, pfunc, sort = True):
         old_key = current_key
     return result
 
-
 class FB2Neo(object):
     """A general class for moving content between FB and Neo.
     Includes connections to FB and neo4J and a generic method for running queries
     SubClass this for specific transfer jobs."""
-    
+
     def __init__(self, endpoint, usr, pwd, file_path=''):
         """Specify Neo4J server endpoint, username and password"""
         self._init(endpoint, usr, pwd)
         self.file_path = file_path  # A path for temp csv files  # This really should be pushed up to neo4J connect (via KB tools)
-
 
     def _init(self, endpoint, usr, pwd):
         self.conn = get_fb_conn()
         self.ew = kb_owl_edge_writer(endpoint, usr, pwd)
         self.ni = node_importer(endpoint, usr, pwd)
         self.nc = self.ni.nc
-        self.fb_base_URI = 'http://www.flybase.org/reports/' # Should use curie_tools
+        self.fb_base_URI = 'http://www.flybase.org/reports/'  # Should use curie_tools
 
-
-    def query_fb(self, query):
-        """Runs a query of public Flybase, 
-        returns results as interable of dicts keyed on columns names"""
-        cursor = self.conn.cursor()  # Investigate using with statement
-        cursor.execute(query)
-        dc = dict_cursor(cursor)
-        cursor.close()
-        return dc
+    def query_fb(self, query, max_retries=5, delay=5):
+        """Runs a query of public Flybase,
+        returns results as iterable of dicts keyed on columns names
+        Retries the query in case of an OperationalError"""
+        retries = 0
+        while retries < max_retries:
+            try:
+                cursor = self.conn.cursor()  # Investigate using with statement
+                cursor.execute(query)
+                dc = dict_cursor(cursor)
+                cursor.close()
+                return dc
+            except OperationalError as e:
+                retries += 1
+                if retries >= max_retries:
+                    raise e
+                print(f"OperationalError encountered. Retrying {retries}/{max_retries} in {delay} seconds...")
+                time.sleep(delay)
+                self.conn = get_fb_conn()  # Re-establish the connection
 
     def commit_via_csv(self, statement, dict_list):
         df = pd.DataFrame.from_records(dict_list)
@@ -106,9 +114,9 @@ class FB2Neo(object):
                            sep="\t")
         # add something to delete csv here.
 
-        
     def close(self):
         self.conn.close()  # Investigate implementing using with statement.  Then method not required.
+
 
 
 
