@@ -6,3 +6,4 @@
 .spyproject/vcs.ini
 .spyproject/workspace.ini
 venv/
+.vscode/settings.json

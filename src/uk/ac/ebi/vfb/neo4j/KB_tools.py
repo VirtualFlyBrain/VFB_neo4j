@@ -8,11 +8,12 @@ import time
 import warnings
 import re
 import json
+from xmlrpc.client import ProtocolError
 import pandas as pd
 import http.client
 #import psycopg2
 import requests
-from requests.exceptions import ChunkedEncodingError
+from requests.exceptions import ChunkedEncodingError, ConnectionError, InvalidChunkLength
 from .neo4j_tools import neo4j_connect, results_2_dict_list
 from .SQL_tools import get_fb_conn, dict_cursor
 from ..curie_tools import map_iri
@@ -102,7 +103,7 @@ class kb_writer (object):
         self.output = []
         self.log = []
 
-    def _commit(self, verbose=False, chunk_length=5000, max_retries=5, delay=5):
+    def _commit(self, verbose=False, chunk_length=5000, max_retries=5, delay=30):
         """Commits Cypher statements stored in object.
         Flushes existing statement list.
         Returns REST API output.
@@ -117,7 +118,7 @@ class kb_writer (object):
                     chunk_length=chunk_length)
                 self.statements = []
                 return self.output
-            except (http.client.RemoteDisconnected, ChunkedEncodingError, ConnectionResetError) as e:
+            except (http.client.RemoteDisconnected, ChunkedEncodingError, ConnectionError, ProtocolError, InvalidChunkLength) as e:
                 retries += 1
                 if retries >= max_retries:
                     raise e
