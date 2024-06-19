@@ -8,12 +8,12 @@ import time
 import warnings
 import re
 import json
-from xmlrpc.client import ProtocolError
+from urllib3.exceptions import ProtocolError, InvalidChunkLength
 import pandas as pd
 import http.client
 #import psycopg2
 import requests
-from requests.exceptions import ChunkedEncodingError, ConnectionError, InvalidChunkLength
+from requests.exceptions import ChunkedEncodingError, ConnectionError
 from .neo4j_tools import neo4j_connect, results_2_dict_list
 from .SQL_tools import get_fb_conn, dict_cursor
 from ..curie_tools import map_iri
