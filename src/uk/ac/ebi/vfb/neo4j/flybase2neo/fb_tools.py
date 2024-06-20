@@ -87,7 +87,7 @@ class FB2Neo(object):
         self.nc = self.ni.nc
         self.fb_base_URI = 'http://www.flybase.org/reports/'  # Should use curie_tools
 
-    def query_fb(self, query, max_retries=5, delay=5):
+    def query_fb(self, query, max_retries=5, delay=30):
         """Runs a query of public Flybase,
         returns results as iterable of dicts keyed on columns names
         Retries the query in case of an OperationalError"""
