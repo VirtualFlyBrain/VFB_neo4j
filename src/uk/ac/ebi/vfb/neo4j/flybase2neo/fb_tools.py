@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import psycopg2
+from psycopg2 import OperationalError
 from ..KB_tools import KB_pattern_writer, node_importer, kb_owl_edge_writer
 import pandas as pd
 from operator import itemgetter
