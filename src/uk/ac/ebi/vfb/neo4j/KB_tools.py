@@ -125,7 +125,11 @@ class kb_writer (object):
                     raise e
                 print(f"Connection error encountered: {e}. Retrying {retries}/{max_retries} in {delay} seconds...")
                 time.sleep(delay)
-                self.nc = neo4j_connect(self.endpoint, self.usr, self.pwd)  # Re-establish the connection
+                try:
+                    self.nc = neo4j_connect(self.endpoint, self.usr, self.pwd)  # Re-establish the connection
+                except Exception as reconnection_error:
+                    print(f"Error while attempting to reconnect: {reconnection_error}")
+                    raise reconnection_error
 
     def commit(self, verbose=False, chunk_length=5000):
         return self._commit(verbose, chunk_length)
