@@ -97,7 +97,7 @@ class kb_writer (object):
     def __init__(self, endpoint, usr, pwd, hard_fail=False):
         self.nc = neo4j_connect(endpoint, usr, pwd)
         self.endpoint = endpoint
-        self.usr = usr 
+        self.usr = usr
         self.pwd = pwd
         self.statements = []
         self.output = []
@@ -269,6 +269,9 @@ class kb_owl_edge_writer(kb_writer):
 
     def __init__(self, endpoint, usr, pwd, hard_fail=False):
         self.nc = neo4j_connect(endpoint, usr, pwd)
+        self.endpoint = endpoint
+        self.usr = usr
+        self.pwd = pwd
         self.statements = []
         self.output = []
         # An objecty representation of properties might be more easily maintainable.
