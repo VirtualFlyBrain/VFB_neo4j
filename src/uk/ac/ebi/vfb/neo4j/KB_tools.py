@@ -108,7 +108,7 @@ class kb_writer (object):
         Flushes existing statement list.
         Returns REST API output.
         Optionally set verbosity and chunk length for commits.
-        Retries the commit in case of RemoteDisconnected errors."""
+        Retries the commit in case of connection errors."""
         retries = 0
         while retries < max_retries:
             try:
@@ -121,8 +121,9 @@ class kb_writer (object):
             except (http.client.RemoteDisconnected, ChunkedEncodingError, ConnectionError, ProtocolError, InvalidChunkLength) as e:
                 retries += 1
                 if retries >= max_retries:
+                    print(f"Maximum retries reached. Last error: {e}")
                     raise e
-                print(f"RemoteDisconnected encountered. Retrying {retries}/{max_retries} in {delay} seconds...")
+                print(f"Connection error encountered: {e}. Retrying {retries}/{max_retries} in {delay} seconds...")
                 time.sleep(delay)
                 self.nc = neo4j_connect(self.endpoint, self.usr, self.pwd)  # Re-establish the connection
 
