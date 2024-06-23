@@ -3,6 +3,7 @@ import psycopg2
 from psycopg2 import OperationalError
 from ..KB_tools import KB_pattern_writer, node_importer, kb_owl_edge_writer
 import pandas as pd
+import time
 from operator import itemgetter
 
 '''
