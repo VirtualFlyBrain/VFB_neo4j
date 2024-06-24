@@ -180,6 +180,7 @@ def results_2_dict_list(results):
 
 def escape_string(strng):
     if type(strng) == str:
+        strng = re.replace(u'\xa0', u' ')
         strng = re.sub(r'\\', r'\\\\', strng)
         strng = re.sub('"', '\\"', strng)
     return strng
