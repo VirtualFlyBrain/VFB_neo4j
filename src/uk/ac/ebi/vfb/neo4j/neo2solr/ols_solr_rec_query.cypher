@@ -8,11 +8,11 @@ WITH collect(DISTINCT {
      shortform_autosuggest:[n.short_form, replace(n.short_form,'_',':'), replace(n.short_form,'_',' ')], 
      obo_id: replace(n.short_form,'_',':'), 
      obo_id_autosuggest:[n.short_form, replace(n.short_form,'_',':'), replace(n.short_form,'_',' ')],
-     label: n.label, 
-     label_autosuggest: [n.label, replace(n.label,'-',' '), replace(n.label,'_',' ')], 
+     label: coalesce(n.label,''), 
+     label_autosuggest: coalesce([n.label, replace(n.label,'-',' '), replace(n.label,'_',' ')],[]), 
      synonym: syn, 
      synonym_autosuggest: syn, 
-     autosuggest: [n.label] + syn, 
+     autosuggest: coalesce([n.label] + syn, [] + syn, []), 
      facets_annotation: labels(n),
      unique_facets: coalesce([] + n.uniqueFacets, [])
      }) AS doc
