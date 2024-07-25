@@ -168,14 +168,14 @@ class neo4j_connect():
         return [x['k'] for x in d]
         
 def results_2_dict_list(results):
-    """Takes JSON results from a neo4J query and turns them into a list of dicts.
-    """
+    """Takes JSON results from a neo4J query and turns them into a list of dicts."""
     dc = []
     for n in results:
-        # Add conditional to skip any failures
-        if n:
+        if n and 'data' in n and 'columns' in n:
             for d in n['data']:
                 dc.append(dict(zip(n['columns'], d['row'])))
+        else:
+            warnings.warn(f"Unexpected result format or missing keys in: {n}")
     return dc
 
 def escape_string(strng):
