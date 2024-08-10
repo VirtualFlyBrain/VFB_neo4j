@@ -1,6 +1,7 @@
 from .fb_tools import FB2Neo, dict_list_2_dict
 from ...curie_tools import map_iri
 import re
+import pandas as pd
 import warnings
 from dataclasses import dataclass, field
 from typing import List, Dict, Set
@@ -134,17 +135,62 @@ class FeatureMover(FB2Neo):
             return False
         feats = self.name_synonym_lookup(fbids)
         proc_names = [f.__dict__ for f in feats.values()]
+
         for d in proc_names:
             d['synonyms'] = '|'.join(d['synonyms'])
-        statement = "MERGE (n:Class { short_form : line.short_form } ) " \
+        statement = "MERGE (n:Class:Entity { short_form : line.short_form } ) " \
                     "SET n.label = line.label SET n.synonyms = split(line.synonyms, '|') " \
                     "SET n.iri = 'http://flybase.org/reports/' + line.short_form " \
-                    "SET n:Feature"
+                    "SET n:Feature SET n.self_xref = ['FlyBase']"
 
         if commit:
             self.commit_via_csv(statement, proc_names)
         self.addTypes2Neo(fbids=fbids, commit=commit)
         return feats
+
+    def feature_robot_template(self, fbids, filename, skip_missing=False):
+        """Takes a list of FBids, looks up info (via name_synonym_lookup) and makes a robot template.
+        Output filename should be specified (template will be a tsv).
+
+        Can optionally skip any fbid that is not found using skip_missing (default is to raise a KeyError)
+        - setting this as a filename will output a file of the FBids that were not found."""
+        feature_details = self.name_synonym_lookup(fbids)
+        feature_types = dict(self.grossType(fbids))
+
+        template_seed = collections.OrderedDict([('iri', 'ID'), ("label", "A rdfs:label"),
+                                                 ("synonyms", "A oboInOwl:hasExactSynonym SPLIT=|"),
+                                                 ("feature_type", "SC %"),
+                                                 ("self_xref", "A http://n2o.neo/custom/self_xref")])
+        template = pd.DataFrame.from_records([template_seed])
+        unmapped_FBgns = []
+        for f in fbids:
+            if f in feature_details.keys():
+                row_od = collections.OrderedDict([])  # new template row as an empty ordered dictionary
+                for c in template.columns:  # make columns and blank data for new template row
+                    row_od.update([(c, "")])
+                row_od["iri"] = feature_details[f].iri
+                row_od["label"] = feature_details[f].label
+                row_od["synonyms"] = '|'.join(feature_details[f].synonyms)
+                row_od["feature_type"] = "http://purl.obolibrary.org/obo/" + feature_types[f]
+                row_od["self_xref"] = "FlyBase"
+                new_row = pd.DataFrame.from_records([row_od])
+                template = pd.concat([template, new_row], ignore_index=True, sort=False)
+            else:
+                unmapped_FBgns.append(f)
+
+        if len(unmapped_FBgns) > 0:
+            if not skip_missing:
+                raise KeyError(unmapped_FBgns)
+            elif type(skip_missing) == str:
+                print("WARNING - some FBgns not found (see file %s):" % skip_missing, unmapped_FBgns)
+                with open(skip_missing, 'w') as fw:
+                    for l in unmapped_FBgns:
+                        fw.write(l + '\n')
+            else:
+                print("WARNING - some FBgns not found:", unmapped_FBgns)
+
+        template.to_csv(filename, sep="\t", header=True, index=False)
+
 
     # Typing
 
@@ -227,7 +273,8 @@ class FeatureMover(FB2Neo):
                          "JOIN feature o ON fr.object_id=o.feature_id " \
                          "WHERE s.uniquename IN ('%s') " \
                          "AND r.name = '%s' " \
-                         "AND o.uniquename ~ '%s.+'"
+                         "AND o.uniquename ~ '%s.+'" \
+                         "AND NOT o.is_obsolete"
         query = query_template % ("','".join(subject_ids), chado_rel, o_idp)
         dc = self.query_fb(query)
         results = []
@@ -337,8 +384,8 @@ class FeatureMover(FB2Neo):
 
             # Generate label = 'label . expression pattern'
             # Add node
-
-            self.ni.add_node(labels=['Class'],
+            # Specification of labels here assumes existing nodes correctly labelled. Should be safe in p2
+            self.ni.add_node(labels=['Class', 'Expression_pattern'],
                              IRI=ep.iri,
                              attribute_dict=ad)
 
@@ -393,7 +440,7 @@ class FeatureMover(FB2Neo):
             iri = map_iri('vfb') + short_form
             ad = {'label' : feats[s.dbd].label + ' ∩ ' +
                   feats[s.ad].label +' expression pattern',
-                  'synonyms': s.synonyms,
+                  'synonyms': list(s.synonyms),
                   'description': ['The sum of all cells at the intersection between '
                                    'the expression patterns of %s and'
                                    ' %s.' % (feats[s.dbd].label,
@@ -407,8 +454,9 @@ class FeatureMover(FB2Neo):
                 self.ew.add_xref(s=short_form,
                                  xref=x,
                                  stype=':Class')
-
-            self.ni.add_node(labels=['Class'],
+            # Hacking additional labels here
+            # Should be safe for merge in pipeline 2 with appropriate config
+            self.ni.add_node(labels=['Class', 'Split', 'Expression_pattern'],
                              IRI=iri,
                              attribute_dict=ad)
 

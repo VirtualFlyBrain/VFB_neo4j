@@ -32,12 +32,12 @@ nc = neo4j_connect(base_uri = args.endpoint,
 
 # Hack to deal with descrepancy in xref property labels between sources:
 
-nc.commit_list(["MATCH (p:Property { short_form: 'hasDbXref' }) SET p.label = 'hasDbXref' "])
+#nc.commit_list(["MATCH (p:Property { short_form: 'hasDbXref' }) SET p.label = 'hasDbXref' "])
 
 sr = nc.commit_list(["MATCH (s:Site) RETURN collect (s.short_form) as Sites"])
 sites = results_2_dict_list(sr)[0]['Sites']
 
-query = "MATCH (c:Class) WHERE exists(c.obo_xref) return c.short_form, c.obo_xref "
+query = "MATCH (c:Class) WHERE exists(c.database_cross_reference) return c.short_form, c.database_cross_reference "
 
 r = nc.commit_list([query])
 
@@ -52,20 +52,23 @@ ew = kb_owl_edge_writer(args.endpoint, args.usr, args.pwd)
 
 for d in dc:
     c = d['c.short_form']
-    xrefs = d['c.obo_xref']
+    xrefs = d['c.database_cross_reference']
     for x in xrefs:
-        xds = json.loads(x)
-        db = xds['database']
-        acc = xds['id']
+        if not len(x.split(':')) == 2:
+            continue
+        db = x.split(':')[0]
+        acc = x.split(':')[1]
         if db in sites:
             ew.add_annotation_axiom(s=c,
                                     r='hasDbXref',
                                     o=db,
+                                    stype=':Entity',
                                     edge_annotations={
-                                        "accession": acc,
+                                        "accession": [acc],
                                     },
                                     match_on='short_form',
                                     safe_label_edge=True
+
                                     )
 
 ew.commit(chunk_length=1000)

@@ -2,6 +2,7 @@ import sys
 from uk.ac.ebi.vfb.neo4j.flybase2neo.pub_tools import pubMover
 from uk.ac.ebi.vfb.neo4j.neo4j_tools import neo4j_connect, results_2_dict_list, chunks
 import warnings
+import argparse
 
 """Populate pub data.  Should be run as a final step, once all content added."""
 
@@ -9,15 +10,28 @@ import warnings
 ## TODO: Add authors (P3)
 ## TODO: Add pub relationships (P3)
 
-base_uri = sys.argv[1]
-usr = sys.argv[2]
-pwd = sys.argv[3]
 
-nc = neo4j_connect(base_uri, usr, pwd)
-pm = pubMover(base_uri, usr, pwd)
+parser = argparse.ArgumentParser()
+parser.add_argument('--test', help='Run in test mode. '
+                    'runs with limits on cypher queries and additions.',
+                    action="store_true", default=False)
+parser.add_argument("endpoint",
+                    help="Endpoint for connection to neo4J prod")
+parser.add_argument("usr",
+                    help="username")
+parser.add_argument("pwd",
+                    help="password")
+args = parser.parse_args()
+
+nc = neo4j_connect(args.endpoint, args.usr, args.pwd)
+pm = pubMover(args.endpoint, args.usr, args.pwd)
+
+limit = ''
+if args.test:
+    limit = 'limit 25'
 
 # Pull all pub FBrfs from graph
-statements = ['MATCH (pub) RETURN DISTINCT pub.short_form'] # Needs to be shifted to short_form - coord with KB.
+statements = ['MATCH (pub:pub) WHERE pub.short_form =~ "FBrf[0-9]{7}" RETURN DISTINCT pub.short_form ' + limit]
 results = nc.commit_list(statements)
 if results:
     dc = results_2_dict_list(results)
@@ -28,9 +42,9 @@ if results:
         for pc in pub_chunks:
             pm.move(pc)
     else:
-        warnings.warn("No pubs found in %s" % base_uri)
+        warnings.warn("No pubs found in %s" % args.endpoint)
 else:
-    warnings.warn("No pubs found in %s" % base_uri)
+    warnings.warn("No pubs found in %s" % args.endpoint)
 
 
 

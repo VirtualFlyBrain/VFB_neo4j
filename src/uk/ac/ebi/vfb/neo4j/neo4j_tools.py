@@ -64,7 +64,13 @@ class neo4j_connect():
         self.base_uri=base_uri
         self.usr = usr
         self.pwd = pwd
-        self.test_connection()
+        self.commit = "/db/neo4j/tx/commit"
+        self.headers = {'Content-type': 'application/json'}
+        if not self.test_connection():
+            print("Falling back to Neo4j v3 connection")
+            self.commit = "/db/data/transaction/commit"
+            self.headers = {}
+            self.test_connection()
        
     def commit_list(self, statements, return_graphs = False):
         """Commit a list of statements to neo4J DB via REST API.
@@ -163,21 +169,21 @@ class neo4j_connect():
         return [x['k'] for x in d]
         
 def results_2_dict_list(results):
-    """Takes JSON results from a neo4J query and turns them into a list of dicts.
-    """
+    """Takes JSON results from a neo4J query and turns them into a list of dicts."""
     dc = []
     for n in results:
-        # Add conditional to skip any failures
-        if n:
+        if n and 'data' in n and 'columns' in n:
             for d in n['data']:
                 dc.append(dict(zip(n['columns'], d['row'])))
+        else:
+            warnings.warn(f"Unexpected result format or missing keys in: {n}")
     return dc
 
 def escape_string(strng):
     if type(strng) == str:
+        strng = re.sub(u'\xa0', u' ', strng)
         strng = re.sub(r'\\', r'\\\\', strng)
-        strng = re.sub("'", "\\'", strng)
-        strng = re.sub('"', '\\"', strng)        
+        strng = re.sub('"', '\\"', strng)
     return strng
 
 def dict_2_mapString(d):

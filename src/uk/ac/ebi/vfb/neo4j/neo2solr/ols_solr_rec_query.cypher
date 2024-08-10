@@ -1,28 +1,19 @@
+WITH n SKIP 0 LIMIT 2000 
+OPTIONAL MATCH (n)-[s:has_reference {typ:'syn'}]->(:pub) 
+WITH n, coalesce(collect(DISTINCT s.value[0]), []) + coalesce(n.synonyms, []) as syn
 WITH collect(DISTINCT {
-     id: "vfb:class:" + coalesce(n.iri,n.short_form,"XXX"), 
-     iri: coalesce(n.iri,n.short_form,"XXX"), 
+     id: coalesce(n.iri,n.short_form,"XXX"), 
+     iri: [coalesce(n.iri,n.short_form,"XXX")], 
      short_form: coalesce(n.short_form,"XXX"), 
-     shortform_autosuggest:[n.short_form], 
-     obo_id: n.short_form, 
-     label: n.label, 
-     label_autosuggest: n.label, 
-     label_autosuggest_ws: n.label, 
-     label_autosuggest_e: n.label, 
-     synonym: n.synonyms, 
-     synonym_autosuggest: coalesce(n.synonyms, []), 
-     synonym_autosuggest_ws: coalesce(n.synonyms, []), 
-     synonym_autosuggest_e: coalesce(n.synonyms, []), 
-     autosuggest: [n.label] + n.synonyms, 
-     autosuggest_e:[n.label] + n.synonyms, 
-     description: [coalesce(n.description, n.label)], 
+     shortform_autosuggest:[n.short_form, replace(n.short_form,'_',':'), replace(n.short_form,'_',' ')], 
+     obo_id: replace(n.short_form,'_',':'), 
+     obo_id_autosuggest:[n.short_form, replace(n.short_form,'_',':'), replace(n.short_form,'_',' ')],
+     label: coalesce(n.label,''), 
+     label_autosuggest: coalesce([n.label, replace(n.label,'-',' '), replace(n.label,'_',' ')],[]), 
+     synonym: syn, 
+     synonym_autosuggest: syn, 
+     autosuggest: coalesce([n.label] + syn, [] + syn, []), 
      facets_annotation: labels(n),
-     ontology_name: 'vfb', 
-     ontology_title: 'Virtual Fly Brain Knowledge Base', 
-     ontology_prefix: 'VFB', 
-     ontology_iri: 'http://purl.obolibrary.org/obo/fbbt/vfb/vfb.owl', 
-     type: 'class', 
-     is_defining_ontology: true, 
-     has_children: false, 
-     is_root: true}) AS doc
+     unique_facets: coalesce([] + n.uniqueFacets, [])
+     }) AS doc
 RETURN REDUCE(output = [], r IN doc | output + r) AS flat
-

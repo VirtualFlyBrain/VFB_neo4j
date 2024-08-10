@@ -28,6 +28,15 @@ def node_must_have_iri(nc):
     else:
         print('PASSED: node_must_have_iri[x]')
 
+def qsl_must_not_have_spaces(nc):
+    q_nodes_wo_iri = 'MATCH (n) WHERE n.qsl contains " " RETURN n LIMIT 3'
+    r = query(q_nodes_wo_iri,nc)
+    if r!=False:
+        print("FAIL: There are qsl's with spaces!")
+        print(r)
+    else:
+        print('PASSED: qsl_must_not_have_spaces[x]')
+
 def node_must_have_nonemptyiri(nc):
     q_nodes_wo_iri = 'MATCH (n) WHERE (n.iri=\'\') RETURN n LIMIT 3'
     r = query(q_nodes_wo_iri,nc)
@@ -175,6 +184,7 @@ node_only_one_base_type(nc)
 print('')
 print('Every property nodes must have a qsl')
 properties_must_have_qsl(nc)
+qsl_must_not_have_spaces(nc)
 
 print('')
 print('Every relationship must have an IRI related to a property')

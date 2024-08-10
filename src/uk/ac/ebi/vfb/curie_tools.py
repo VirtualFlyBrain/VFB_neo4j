@@ -6,7 +6,8 @@ Created on Mar 6, 2017
 
 iri_map = {'obo': 'http://purl.obolibrary.org/obo/',
            'vfb': 'http://virtualflybrain.org/reports/',
-           'fb' : 'http://flybase.org/reports/',
+           'fb': 'http://flybase.org/reports/',
+           'FlyBase': 'http://flybase.org/reports/',
            'data': 'http://virtualflybrain.org/data/'}
 
 def map_iri(curie):

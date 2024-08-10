@@ -1,0 +1,106 @@
+# This workflow will install Python dependencies, run tests and lint with a single version of Python
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
+
+name: Python application
+
+on:
+  push:
+    branches: '**'
+    tags: '**'
+  pull_request:
+    branches: '**'
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v2
+      with:
+        python-version: "3.7"
+    - name: Start databases
+      run: |
+        docker run -d --name db -p 7474:7474 -p 7687:7687 --env=NEO4J_AUTH=neo4j/test --env=NEOREADONLY=false --env=NEO4J_dbms_read__only=false --env=NEO4J_dbms_memory_heap_maxSize=1G --volume=$(pwd)/src/:/import/ virtualflybrain/vfb-prod:kb-v4-2
+        docker run -d --name pdb -p 7475:7474 -p 7688:7687 --env=NEO4J_AUTH=neo4j/test --env=NEOREADONLY=false --env=NEO4J_dbms_read__only=false --env=NEO4J_dbms_memory_heap_maxSize=1G --env=NEO4J_HEAP_MEMORY=2560 --volume=$(pwd)/src/:/import/ virtualflybrain/docker-vfb-neo4j-productiondb
+        sleep 60s
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+    - name: Lint with flake8
+      continue-on-error: true
+      run: |
+        # stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    - name: Install VFBconnect
+      run: |
+        git clone https://github.com/VirtualFlyBrain/VFB_connect.git
+        pip install -r VFB_connect/requirements.txt
+    - name: KB checks
+      timeout-minutes: 960
+      run: |
+        echo -e "KB check:"
+        sleep 190
+        export LANDING_PAGE="http://localhost:7474/browser/"  
+        Test () { export http_status=$(curl -s -i -u neo4j:test $LANDING_PAGE | grep HTTP/1.1 | awk {'print $2'}); echo "Returned status \"$http_status\""; if [ "$http_status" != "200" ]; then echo "Waiting for docker to finish building..."; iterations=$((iterations+1)); if [ "$iterations" != "200" ]; then sleep 1; Test; fi; else echo "$(date) - connected successfully"; fi; }
+        Test || :
+        sleep 30
+        curl -sSf -u neo4j:test "$LANDING_PAGE"
+    - name: PDB checks
+      timeout-minutes: 960
+      run: |
+        echo -e "PDB check:"
+        export LANDING_PAGE="http://localhost:7475/browser/"  
+        Test () { export http_status=$(curl -s -i -u neo4j:test $LANDING_PAGE | grep HTTP/1.1 | awk {'print $2'}); echo "Returned status \"$http_status\""; if [ "$http_status" != "200" ]; then echo "Waiting for docker to finish building..."; iterations=$((iterations+1)); if [ "$iterations" != "200" ]; then sleep 1; Test; fi; else echo "$(date) - connected successfully"; fi; }
+        Test || :
+        sleep 30
+        curl -sSf -u neo4j:test "$LANDING_PAGE"
+    - name: KB startup log
+      if: always()
+      run: |
+        echo -e "KB log"
+        docker logs db
+    - name: PDB startup log
+      if: always()
+      run: |
+        echo -e "PDB log"
+        docker logs pdb 
+    - name: Run KB_tools_test
+      run: |
+        export PYTHONPATH=$PYTHONPATH":/"$(pwd)/VFB_connect/src
+        cd src
+        python -m uk.ac.ebi.vfb.neo4j.test.KB_tools_test 
+    - name: Run neo_tools_tests
+      run: |
+        export PYTHONPATH=$PYTHONPATH":/"$(pwd)/VFB_connect/src
+        cd src
+        python -m uk.ac.ebi.vfb.neo4j.test.neo_tools_tests
+    - name: Run feature_tools_tests
+      run: |
+        export PYTHONPATH=$PYTHONPATH":/"$(pwd)/VFB_connect/src
+        cd src
+        python -m uk.ac.ebi.vfb.neo4j.flybase2neo.test.feature_tools_tests
+    - name: Run pub_tools_tests
+      run: |
+        export PYTHONPATH=$PYTHONPATH":/"$(pwd)/VFB_connect/src
+        cd src
+        python -m uk.ac.ebi.vfb.neo4j.flybase2neo.test.pub_tools_tests
+    - name: Run flybase2neo expression_runner test
+      run: |
+        export PYTHONPATH=$PYTHONPATH":/"$(pwd)/VFB_connect/src
+        export IMPORT=$(pwd)/src/
+        cd src
+        python -m uk.ac.ebi.vfb.neo4j.flybase2neo.expression_runner --test http://localhost:7475 neo4j test $IMPORT 
+    - name: Run flybase2neo add_refs_for_anat 
+      run: |
+        export PYTHONPATH=$PYTHONPATH":/"$(pwd)/VFB_connect/src
+        cd src
+        python -m uk.ac.ebi.vfb.neo4j.flybase2neo.add_refs_for_anat http://localhost:7475 neo4j test
+    
+    
