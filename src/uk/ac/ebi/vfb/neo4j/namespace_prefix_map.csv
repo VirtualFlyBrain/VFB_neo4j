@@ -1,0 +1,24 @@
+﻿ http://purl.obolibrary.org/obo/BFO_,bfo
+ http://purl.obolibrary.org/obo/CARO_,caro
+http://creativecommons.org/ns#,cc
+ http://purl.org/dc/elements/1.1/,dce
+ http://purl.org/dc/terms/,dct
+ http://purl.obolibrary.org/obo/FBbt_,fbbt
+ http://purl.obolibrary.org/obo/fbbt#,fbbthash
+ http://purl.obolibrary.org/obo/fbbt.owl#,fbbtowl
+ http://purl.obolibrary.org/obo/fbbt/vfb#,fvfbh
+http://purl.obolibrary.org/obo/fbcv#,fbcv
+ http://flybase.org/reports/,fbr
+ http://xmlns.com/foaf/0.1/,foaf
+ http://purl.obolibrary.org/obo/GO_,go
+ http://purl.obolibrary.org/obo/IAO_,iao
+ http://purl.obolibrary.org/obo/,obo
+ http://purl.obolibrary.org/obo/OBI_,obo
+ http://www.geneontology.org/formats/oboInOwl#,oio
+ http://purl.obolibrary.org/obo/PATO_,pato
+ http://purl.obolibrary.org/obo/RO_,ro
+ http://purl.obolibrary.org/obo/SO_,so
+ http://purl.obolibrary.org/obo/UBREL_,ubr
+ http://purl.obolibrary.org/obo/fbbt/vfb/,fvfb
+ http://www.virtualflybrain.org/owl/,vfb
+ http://virtualflybrain.org/reports/,vfbr
