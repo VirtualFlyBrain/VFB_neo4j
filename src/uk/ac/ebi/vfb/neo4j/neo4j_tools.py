@@ -70,7 +70,8 @@ class neo4j_connect():
             print("Falling back to Neo4j v3 connection")
             self.commit = "/db/data/transaction/commit"
             self.headers = {}
-            self.test_connection()
+            if not self.test_connection():
+                raise Exception("Failed to connect to Neo4j.")
        
     def commit_list(self, statements, return_graphs = False):
         """Commit a list of statements to neo4J DB via REST API.
