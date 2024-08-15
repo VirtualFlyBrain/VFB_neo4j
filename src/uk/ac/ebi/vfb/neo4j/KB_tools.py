@@ -1127,7 +1127,8 @@ class KB_pattern_writer(object):
             if not self.ec.check(hard_fail=hard_fail):
                 warnings.warn("Load fail: Cross-referenced entities already exist.")
                 logging.debug("Load fail: Cross-referenced entities already exist.")
-                return False
+                if not allow_duplicates:
+                    return False
     
         if not self.ec.check(hard_fail=hard_fail):
             warnings.warn("Load fail: Unknown entities referenced.")
