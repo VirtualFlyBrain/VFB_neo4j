@@ -1124,7 +1124,7 @@ class KB_pattern_writer(object):
         if dbxrefs:
             for db, acc in dbxrefs.items():
                 self.ec.roll_dbxref_check(db, acc)
-            if not self.ec.check(hard_fail=hard_fail):
+            if not allow_duplicates and not self.ec.check(hard_fail=hard_fail):
                 warnings.warn("Load fail: Cross-referenced entities already exist.")
                 logging.debug("Load fail: Cross-referenced entities already exist.")
                 return False
