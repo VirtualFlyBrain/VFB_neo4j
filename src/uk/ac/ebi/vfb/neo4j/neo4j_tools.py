@@ -89,8 +89,7 @@ class neo4j_connect():
                 cstatements.append({'statement': s}) # rows an columns are returned by default.
         payload = {'statements': cstatements}
         headers = self.headers
-        response = requests.post(url = "%s%s"
-                                 % (self.base_uri, self.commit), auth = (self.usr, self.pwd) ,
+        response = requests.post(url = self.base_uri + self.commit, auth = (self.usr, self.pwd) ,
                                   data = json.dumps(payload), headers=headers)
         if self.rest_return_check(response):
             return response.json()['results']
