@@ -180,7 +180,7 @@ def results_2_dict_list(results):
                     warnings.warn(f"Unexpected result format or missing keys in: {n}")
     else:
         warnings.warn("No results returned.")
-        warnings.warn(results.to_string())
+        warnings.warn(results)
         raise Exception("Query Failed to run on Neo4j.")
     return dc
 
