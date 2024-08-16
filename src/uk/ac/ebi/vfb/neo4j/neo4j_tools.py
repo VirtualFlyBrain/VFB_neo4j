@@ -179,9 +179,25 @@ def results_2_dict_list(results):
                 else:
                     warnings.warn(f"Unexpected result format or missing keys in: {n}")
     else:
-        warnings.warn("No results returned.")
-        warnings.warn(results)
-        raise Exception("Query Failed to run on Neo4j.")
+        if results is None:
+            warnings.warn("No results returned: results object is None.")
+            raise Exception("Query Failed to run on Neo4j.")
+
+        if not isinstance(results, (str, bytes)):
+            try:
+                # Attempt to convert results to a string for safe output
+                results_str = str(results)
+            except Exception as e:
+                # If conversion fails, warn about the type of the results
+                warnings.warn(f"Failed to convert results to string. Original type: {type(results)}. Error: {e}")
+                raise Exception("Query Failed to run on Neo4j.")
+            else:
+                warnings.warn(f"Unexpected results type. Output: {results_str}")
+                raise Exception("Query Failed to run on Neo4j.")
+        else:
+            warnings.warn("No results returned.")
+            warnings.warn(results)
+            raise Exception("Query Failed to run on Neo4j.")
     return dc
 
 def escape_string(strng):
