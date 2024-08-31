@@ -54,7 +54,7 @@ def export_entities(nc, entity_count, outfile):
         page_count = page_count + 1
         page_start = page_start + page_size
 
-def export_relations(nc, outfile):
+def export_relations(nc, entity_count, outfile):
     page_size = (entity_count // 4) + 10  # create 4 chunks
     page_start = 0
     page_count = 0 
@@ -90,5 +90,5 @@ print('Exporting KB')
 entity_count = get_entity_count(nc)
 print("Entity count: " + str(entity_count))
 export_entities(nc, entity_count, outfile)
-export_relations(nc, outfile)
+export_relations(nc, entity_count, outfile)
 
