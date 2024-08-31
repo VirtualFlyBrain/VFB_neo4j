@@ -54,24 +54,31 @@ def export_entities(nc, entity_count, outfile):
         page_count = page_count + 1
         page_start = page_start + page_size
 
-def export_relations(nc, entity_count, outfile):
-    page_size = (entity_count // 4) + 10  # create 4 chunks
-    page_start = 0
-    page_count = 0 
-
+def export_relations(nc, outfile):
     file_path = Path(outfile)
     file_name_without_extension = file_path.stem
     file_extension = file_path.suffix
     parent_directory = file_path.parent
 
-    while page_start < entity_count:
-        q_generate = f'CALL ebi.spot.neo4j2owl.exportOWLEdges({page_start},{page_size})'
-        o = query(q_generate,nc)[0]['o']
-        part_name = f"{file_name_without_extension}_rels_{page_count}{file_extension}"
-        part_path = os.path.join(parent_directory, part_name)
-        write_ontology(o, part_path)
-        page_count = page_count + 1
-        page_start = page_start + page_size
+    q_generate = 'CALL ebi.spot.neo4j2owl.exportOWLEdges("subclassOf")'
+    o = query(q_generate,nc)[0]['o']
+    out_name = f"{file_name_without_extension}_rels_0{file_extension}"
+    write_ontology(o, os.path.join(parent_directory, out_name))
+
+    q_generate = 'CALL ebi.spot.neo4j2owl.exportOWLEdges("instanceOf")'
+    o = query(q_generate,nc)[0]['o']
+    out_name = f"{file_name_without_extension}_rels_1{file_extension}"
+    write_ontology(o, os.path.join(parent_directory, out_name))
+
+    q_generate = 'CALL ebi.spot.neo4j2owl.exportOWLEdges("annotationProperty")'
+    o = query(q_generate,nc)[0]['o']
+    out_name = f"{file_name_without_extension}_rels_2{file_extension}"
+    write_ontology(o, os.path.join(parent_directory, out_name))
+
+    q_generate = 'CALL ebi.spot.neo4j2owl.exportOWLEdges("objectProperty")'
+    o = query(q_generate,nc)[0]['o']
+    out_name = f"{file_name_without_extension}_rels_3{file_extension}"
+    write_ontology(o, os.path.join(parent_directory, out_name))
 
 kb=sys.argv[1]
 user=sys.argv[2]
@@ -90,5 +97,5 @@ print('Exporting KB')
 entity_count = get_entity_count(nc)
 print("Entity count: " + str(entity_count))
 export_entities(nc, entity_count, outfile)
-export_relations(nc, entity_count, outfile)
+export_relations(nc, outfile)
 
