@@ -60,6 +60,11 @@ def export_relations(nc, outfile):
     file_extension = file_path.suffix
     parent_directory = file_path.parent
 
+    q_generate = 'CALL ebi.spot.neo4j2owl.exportOWLEdges("objectProperty")'
+    o = query(q_generate,nc)[0]['o']
+    out_name = f"{file_name_without_extension}_rels_3{file_extension}"
+    write_ontology(o, os.path.join(parent_directory, out_name))
+
     q_generate = 'CALL ebi.spot.neo4j2owl.exportOWLEdges("subclassOf")'
     o = query(q_generate,nc)[0]['o']
     out_name = f"{file_name_without_extension}_rels_0{file_extension}"
@@ -73,11 +78,6 @@ def export_relations(nc, outfile):
     q_generate = 'CALL ebi.spot.neo4j2owl.exportOWLEdges("annotationProperty")'
     o = query(q_generate,nc)[0]['o']
     out_name = f"{file_name_without_extension}_rels_2{file_extension}"
-    write_ontology(o, os.path.join(parent_directory, out_name))
-
-    q_generate = 'CALL ebi.spot.neo4j2owl.exportOWLEdges("objectProperty")'
-    o = query(q_generate,nc)[0]['o']
-    out_name = f"{file_name_without_extension}_rels_3{file_extension}"
     write_ontology(o, os.path.join(parent_directory, out_name))
 
 kb=sys.argv[1]
