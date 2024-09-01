@@ -70,10 +70,13 @@ def export_relations(nc, outfile):
     out_name = f"{file_name_without_extension}_rels_1{file_extension}"
     write_ontology(o, os.path.join(parent_directory, out_name))
 
-    q_generate = 'CALL ebi.spot.neo4j2owl.exportOWLEdges("annotationProperty", 0, 1)'
-    o = query(q_generate,nc)[0]['o']
-    out_name = f"{file_name_without_extension}_rels_2{file_extension}"
-    write_ontology(o, os.path.join(parent_directory, out_name))
+    # Generate annotation properties in chunks
+    chunk_count = 5
+    for i in range(chunk_count):
+        q_generate = f'CALL ebi.spot.neo4j2owl.exportOWLEdges("annotationProperty", {i}, {chunk_count})'
+        o = query(q_generate,nc)[0]['o']
+        out_name = f"{file_name_without_extension}_rels_2_{i}{file_extension}"
+        write_ontology(o, os.path.join(parent_directory, out_name))
 
     # Generate object properties in chunks
     chunk_count = 5
