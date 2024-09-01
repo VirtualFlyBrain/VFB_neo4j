@@ -60,25 +60,29 @@ def export_relations(nc, outfile):
     file_extension = file_path.suffix
     parent_directory = file_path.parent
 
-    q_generate = 'CALL ebi.spot.neo4j2owl.exportOWLEdges("objectProperty")'
-    o = query(q_generate,nc)[0]['o']
-    out_name = f"{file_name_without_extension}_rels_3{file_extension}"
-    write_ontology(o, os.path.join(parent_directory, out_name))
-
-    q_generate = 'CALL ebi.spot.neo4j2owl.exportOWLEdges("subclassOf")'
+    q_generate = 'CALL ebi.spot.neo4j2owl.exportOWLEdges("subclassOf", 0, 1)'
     o = query(q_generate,nc)[0]['o']
     out_name = f"{file_name_without_extension}_rels_0{file_extension}"
     write_ontology(o, os.path.join(parent_directory, out_name))
 
-    q_generate = 'CALL ebi.spot.neo4j2owl.exportOWLEdges("instanceOf")'
+    q_generate = 'CALL ebi.spot.neo4j2owl.exportOWLEdges("instanceOf", 0, 1)'
     o = query(q_generate,nc)[0]['o']
     out_name = f"{file_name_without_extension}_rels_1{file_extension}"
     write_ontology(o, os.path.join(parent_directory, out_name))
 
-    q_generate = 'CALL ebi.spot.neo4j2owl.exportOWLEdges("annotationProperty")'
+    q_generate = 'CALL ebi.spot.neo4j2owl.exportOWLEdges("annotationProperty", 0, 1)'
     o = query(q_generate,nc)[0]['o']
     out_name = f"{file_name_without_extension}_rels_2{file_extension}"
     write_ontology(o, os.path.join(parent_directory, out_name))
+
+    # Generate object properties in chunks
+    chunk_count = 5
+    for i in range(chunk_count):
+        q_generate = 'CALL ebi.spot.neo4j2owl.exportOWLEdges("objectProperty", i, chunk_count)'
+        o = query(q_generate,nc)[0]['o']
+        out_name = f"{file_name_without_extension}_rels_3_{i}{file_extension}"
+        write_ontology(o, os.path.join(parent_directory, out_name))
+        
 
 kb=sys.argv[1]
 user=sys.argv[2]
