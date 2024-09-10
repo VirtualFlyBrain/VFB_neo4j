@@ -1,5 +1,6 @@
 import sys
 import os
+import time  # Import time for adding delay
 from pathlib import Path
 from uk.ac.ebi.vfb.neo4j.KB_tools import kb_owl_edge_writer
 from uk.ac.ebi.vfb.neo4j.neo4j_tools import results_2_dict_list
@@ -38,7 +39,7 @@ def get_entity_count(kb, user, password):
     return result[0]['count']
 
 # Function to export entities in chunks
-def export_entities(kb, user, password, entity_count, outfile):
+def export_entities(kb, user, password, entity_count, outfile, delay=30):
     page_size = (entity_count // 4) + 10  # Create 4 chunks
     page_start = 0
     page_count = 0
@@ -58,8 +59,10 @@ def export_entities(kb, user, password, entity_count, outfile):
         page_count += 1
         page_start += page_size
 
+        time.sleep(delay)  # Add a delay between each query to allow Neo4j to clean up
+
 # Function to export relations in chunks
-def export_relations(kb, user, password, outfile):
+def export_relations(kb, user, password, outfile, delay=2):
     file_path = Path(outfile)
     file_name_without_extension = file_path.stem
     file_extension = file_path.suffix
@@ -77,6 +80,8 @@ def export_relations(kb, user, password, outfile):
         o = query(q_generate, kb, user, password)[0]['o']
         out_name = f"{file_name_without_extension}_{file_suffix}{file_extension}"
         write_ontology(o, os.path.join(parent_directory, out_name))
+        
+        time.sleep(delay)  # Add a delay between each query to allow Neo4j to clean up
 
     # Generate annotation properties in chunks
     chunk_count = 10
@@ -86,12 +91,16 @@ def export_relations(kb, user, password, outfile):
         out_name = f"{file_name_without_extension}_rels_2_{i}{file_extension}"
         write_ontology(o, os.path.join(parent_directory, out_name))
 
+        time.sleep(delay)  # Add a delay between each query to allow Neo4j to clean up
+
     # Generate object properties in chunks
     for i in range(chunk_count):
         q_generate = f'CALL ebi.spot.neo4j2owl.exportOWLEdges("objectProperty", {i}, {chunk_count})'
         o = query(q_generate, kb, user, password)[0]['o']
         out_name = f"{file_name_without_extension}_rels_3_{i}{file_extension}"
         write_ontology(o, os.path.join(parent_directory, out_name))
+
+        time.sleep(delay)  # Add a delay between each query to allow Neo4j to clean up
 
 # Main execution
 kb = sys.argv[1]
