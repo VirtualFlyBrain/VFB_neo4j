@@ -10,8 +10,9 @@ def get_new_connection(kb, user, password):
     return edge_writer.nc
 
 # Function to execute a query
-def query(query, nc):
+def query(query, kb, user, password):
     print('Q: ' + query)
+    nc = get_new_connection(kb, user, password)  # Create new connection for each query
     q = nc.commit_list([query])
     if not q:
         return False
@@ -32,10 +33,8 @@ def write_ontology(ont, path):
 
 # Function to get entity count
 def get_entity_count(kb, user, password):
-    nc = get_new_connection(kb, user, password)
     q_count = 'MATCH (n:Entity) RETURN count(*) AS count'
-    result = query(q_count, nc)
-    nc.close()  # Drop the connection
+    result = query(q_count, kb, user, password)
     return result[0]['count']
 
 # Function to export entities in chunks
@@ -50,13 +49,11 @@ def export_entities(kb, user, password, entity_count, outfile):
     parent_directory = file_path.parent
 
     while page_start < entity_count:
-        nc = get_new_connection(kb, user, password)  # Re-establish connection for each chunk
         q_generate = f'CALL ebi.spot.neo4j2owl.exportOWLNodes({page_start},{page_size})'
-        o = query(q_generate, nc)[0]['o']
+        o = query(q_generate, kb, user, password)[0]['o']
         part_name = f"{file_name_without_extension}_part_{page_count}{file_extension}"
         part_path = os.path.join(parent_directory, part_name)
         write_ontology(o, part_path)
-        nc.close()  # Drop the connection after each chunk
 
         page_count += 1
         page_start += page_size
@@ -76,31 +73,25 @@ def export_relations(kb, user, password, outfile):
     
     # Export subclassOf and instanceOf edges
     for relation_type, file_suffix in relation_types:
-        nc = get_new_connection(kb, user, password)  # Re-establish connection
         q_generate = f'CALL ebi.spot.neo4j2owl.exportOWLEdges("{relation_type}", 0, 1)'
-        o = query(q_generate, nc)[0]['o']
+        o = query(q_generate, kb, user, password)[0]['o']
         out_name = f"{file_name_without_extension}_{file_suffix}{file_extension}"
         write_ontology(o, os.path.join(parent_directory, out_name))
-        nc.close()  # Drop connection after each chunk
 
     # Generate annotation properties in chunks
     chunk_count = 10
     for i in range(chunk_count):
-        nc = get_new_connection(kb, user, password)  # Re-establish connection for each chunk
         q_generate = f'CALL ebi.spot.neo4j2owl.exportOWLEdges("annotationProperty", {i}, {chunk_count})'
-        o = query(q_generate, nc)[0]['o']
+        o = query(q_generate, kb, user, password)[0]['o']
         out_name = f"{file_name_without_extension}_rels_2_{i}{file_extension}"
         write_ontology(o, os.path.join(parent_directory, out_name))
-        nc.close()  # Drop connection after each chunk
 
     # Generate object properties in chunks
     for i in range(chunk_count):
-        nc = get_new_connection(kb, user, password)  # Re-establish connection for each chunk
         q_generate = f'CALL ebi.spot.neo4j2owl.exportOWLEdges("objectProperty", {i}, {chunk_count})'
-        o = query(q_generate, nc)[0]['o']
+        o = query(q_generate, kb, user, password)[0]['o']
         out_name = f"{file_name_without_extension}_rels_3_{i}{file_extension}"
-        write_ontology(o, os.path.join(parent_directory, out_name))
-        nc.close()  # Drop connection after each chunk
+        write_ontology(o, os.path.join(parent_directory, out_name)
 
 # Main execution
 kb = sys.argv[1]
