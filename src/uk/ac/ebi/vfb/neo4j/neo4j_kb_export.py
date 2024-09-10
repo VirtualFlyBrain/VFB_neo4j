@@ -91,7 +91,7 @@ def export_relations(kb, user, password, outfile):
         q_generate = f'CALL ebi.spot.neo4j2owl.exportOWLEdges("objectProperty", {i}, {chunk_count})'
         o = query(q_generate, kb, user, password)[0]['o']
         out_name = f"{file_name_without_extension}_rels_3_{i}{file_extension}"
-        write_ontology(o, os.path.join(parent_directory, out_name)
+        write_ontology(o, os.path.join(parent_directory, out_name))
 
 # Main execution
 kb = sys.argv[1]
