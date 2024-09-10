@@ -11,10 +11,10 @@ def get_new_connection(kb, user, password):
     return edge_writer.nc
 
 # Function to execute a query
-def query(query, kb, user, password):
-    print('Q: ' + query)
+def query(query_str, kb, user, password):
+    print('Q: ' + query_str)
     nc = get_new_connection(kb, user, password)  # Create new connection for each query
-    q = nc.commit_list([query])
+    q = nc.commit_list([query_str])
     if not q:
         return False
     dc = results_2_dict_list(q)
@@ -38,6 +38,11 @@ def get_entity_count(kb, user, password):
     result = query(q_count, kb, user, password)
     return result[0]['count']
 
+# Function to clear query caches
+def clear_query_caches(kb, user, password):
+    print("Clearing query caches")
+    query("CALL db.clearQueryCaches();", kb, user, password)
+
 # Function to export entities in chunks
 def export_entities(kb, user, password, entity_count, outfile, delay=30):
     page_size = (entity_count // 4) + 10  # Create 4 chunks
@@ -50,16 +55,21 @@ def export_entities(kb, user, password, entity_count, outfile, delay=30):
     parent_directory = file_path.parent
 
     while page_start < entity_count:
+        print(f"Processing page {page_count}")
         q_generate = f'CALL ebi.spot.neo4j2owl.exportOWLNodes({page_start},{page_size})'
         o = query(q_generate, kb, user, password)[0]['o']
         part_name = f"{file_name_without_extension}_part_{page_count}{file_extension}"
         part_path = os.path.join(parent_directory, part_name)
         write_ontology(o, part_path)
 
+        # Clear query caches between chunks
+        clear_query_caches(kb, user, password)
+
         page_count += 1
         page_start += page_size
 
-        time.sleep(delay)  # Add a delay between each query to allow Neo4j to clean up
+        # Add delay to allow Neo4j to clean up memory
+        time.sleep(delay)
 
 # Function to export relations in chunks
 def export_relations(kb, user, password, outfile, delay=2):
@@ -76,31 +86,33 @@ def export_relations(kb, user, password, outfile, delay=2):
     
     # Export subclassOf and instanceOf edges
     for relation_type, file_suffix in relation_types:
+        print(f"Exporting {relation_type}")
         q_generate = f'CALL ebi.spot.neo4j2owl.exportOWLEdges("{relation_type}", 0, 1)'
         o = query(q_generate, kb, user, password)[0]['o']
         out_name = f"{file_name_without_extension}_{file_suffix}{file_extension}"
         write_ontology(o, os.path.join(parent_directory, out_name))
-        
-        time.sleep(delay)  # Add a delay between each query to allow Neo4j to clean up
 
-    # Generate annotation properties in chunks
+        # Clear query caches between relation type exports
+        clear_query_caches(kb, user, password)
+
+        # Add delay to allow Neo4j to clean up memory
+        time.sleep(delay)
+
+    # Generate annotation properties and object properties in chunks
     chunk_count = 10
-    for i in range(chunk_count):
-        q_generate = f'CALL ebi.spot.neo4j2owl.exportOWLEdges("annotationProperty", {i}, {chunk_count})'
-        o = query(q_generate, kb, user, password)[0]['o']
-        out_name = f"{file_name_without_extension}_rels_2_{i}{file_extension}"
-        write_ontology(o, os.path.join(parent_directory, out_name))
+    for relation_type in ["annotationProperty", "objectProperty"]:
+        for i in range(chunk_count):
+            print(f"Exporting {relation_type} chunk {i}")
+            q_generate = f'CALL ebi.spot.neo4j2owl.exportOWLEdges("{relation_type}", {i}, {chunk_count})'
+            o = query(q_generate, kb, user, password)[0]['o']
+            out_name = f"{file_name_without_extension}_rels_{relation_type}_{i}{file_extension}"
+            write_ontology(o, os.path.join(parent_directory, out_name))
 
-        time.sleep(delay)  # Add a delay between each query to allow Neo4j to clean up
+            # Clear query caches between property type chunks
+            clear_query_caches(kb, user, password)
 
-    # Generate object properties in chunks
-    for i in range(chunk_count):
-        q_generate = f'CALL ebi.spot.neo4j2owl.exportOWLEdges("objectProperty", {i}, {chunk_count})'
-        o = query(q_generate, kb, user, password)[0]['o']
-        out_name = f"{file_name_without_extension}_rels_3_{i}{file_extension}"
-        write_ontology(o, os.path.join(parent_directory, out_name))
-
-        time.sleep(delay)  # Add a delay between each query to allow Neo4j to clean up
+            # Add delay to allow Neo4j to clean up memory
+            time.sleep(delay)
 
 # Main execution
 kb = sys.argv[1]
