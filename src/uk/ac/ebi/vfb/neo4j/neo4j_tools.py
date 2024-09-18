@@ -7,8 +7,9 @@ import re
 import time
 from datetime import datetime, timedelta
 import math
-#import token
 import argparse
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 
 '''
@@ -72,31 +73,55 @@ class neo4j_connect():
             self.headers = {}
             if not self.test_connection():
                 raise Exception("Failed to connect to Neo4j.")
-       
-    def commit_list(self, statements, return_graphs = False):
-        """Commit a list of statements to neo4J DB via REST API.
-        Prints requests status and warnings if any problems with commit.
-            - statements = list of cypher statements as strings
-            - return_graphs, optionally specify graphs to be returned in JSON results.
-        Errors prompt warnings, not exceptions, and cause return  = FALSE.
-        Returns results list of results or False if any errors are encountered."""
-        cstatements = []
-        if return_graphs:
-            for s in statements:
-                cstatements.append({'statement': s, "resultDataContents" : [ "row", "graph" ]})
-        else:        
-            for s in statements:
-                cstatements.append({'statement': s}) # rows an columns are returned by default.
-        payload = {'statements': cstatements}
-        headers = self.headers
-        response = requests.post(url = self.base_uri + self.commit, auth = (self.usr, self.pwd) ,
-                                  data = json.dumps(payload), headers=headers)
+
+def commit_list(self, statements, return_graphs=False, max_retries=3):
+    """Commit a list of statements to neo4J DB via REST API.
+    Prints requests status and warnings if any problems with commit.
+        - statements = list of cypher statements as strings
+        - return_graphs, optionally specify graphs to be returned in JSON results.
+    Errors prompt warnings, not exceptions, and cause return = FALSE.
+    Returns results list of results or False if any errors are encountered."""
+
+    cstatements = []
+    if return_graphs:
+        for s in statements:
+            cstatements.append({'statement': s, "resultDataContents": ["row", "graph"]})
+    else:
+        for s in statements:
+            cstatements.append({'statement': s})  # Rows and columns are returned by default.
+    payload = {'statements': cstatements}
+    headers = self.headers
+
+    # Create a session object
+    session = requests.Session()
+    retries = Retry(
+        total=max_retries,
+        backoff_factor=10,  # Exponential backoff factor (e.g., 1, 2, 4 seconds)
+        status_forcelist=[500, 502, 503, 504],
+        allowed_methods=["POST"],
+        raise_on_status=False,
+        raise_on_redirect=False
+    )
+    adapter = HTTPAdapter(max_retries=retries)
+    session.mount('http://', adapter)
+    session.mount('https://', adapter)
+
+    try:
+        response = session.post(
+            url=self.base_uri + self.commit,
+            auth=(self.usr, self.pwd),
+            data=json.dumps(payload),
+            headers=headers
+        )
         if self.rest_return_check(response):
             return response.json()['results']
         else:
             return False
-        
-        
+    except requests.exceptions.RequestException as e:
+        # Log the error or handle it as needed
+        print(f"An error occurred: {e}")
+        return False
+
     def commit_list_in_chunks(self, statements, verbose=False, chunk_length=1000):
         """Commit a list of statements to neo4J DB via REST API, split into chunks.
         cypher_statments = list of cypher statements as strings
