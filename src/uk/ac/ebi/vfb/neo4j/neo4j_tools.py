@@ -75,13 +75,13 @@ class neo4j_connect():
                 raise Exception("Failed to connect to Neo4j.")
 
 def commit_list(self, statements, return_graphs=False, max_retries=3):
-    """Commit a list of statements to neo4J DB via REST API.
+    """Commit a list of statements to Neo4j DB via REST API.
     Prints requests status and warnings if any problems with commit.
-        - statements = list of cypher statements as strings
-        - return_graphs, optionally specify graphs to be returned in JSON results.
-    Errors prompt warnings, not exceptions, and cause return = FALSE.
+        - statements: list of Cypher statements as strings
+        - return_graphs: optionally specify graphs to be returned in JSON results.
+    Errors prompt warnings, not exceptions, and cause return = False.
     Returns results list of results or False if any errors are encountered."""
-
+    
     cstatements = []
     if return_graphs:
         for s in statements:
@@ -92,35 +92,28 @@ def commit_list(self, statements, return_graphs=False, max_retries=3):
     payload = {'statements': cstatements}
     headers = self.headers
 
-    # Create a session object
-    session = requests.Session()
-    retries = Retry(
-        total=max_retries,
-        backoff_factor=10,  # Exponential backoff factor (e.g., 1, 2, 4 seconds)
-        status_forcelist=[500, 502, 503, 504],
-        allowed_methods=["POST"],
-        raise_on_status=False,
-        raise_on_redirect=False
-    )
-    adapter = HTTPAdapter(max_retries=retries)
-    session.mount('http://', adapter)
-    session.mount('https://', adapter)
-
-    try:
-        response = session.post(
-            url=self.base_uri + self.commit,
-            auth=(self.usr, self.pwd),
-            data=json.dumps(payload),
-            headers=headers
-        )
-        if self.rest_return_check(response):
-            return response.json()['results']
-        else:
-            return False
-    except requests.exceptions.RequestException as e:
-        # Log the error or handle it as needed
-        print(f"An error occurred: {e}")
-        return False
+    attempt = 0
+    while attempt < max_retries:
+        try:
+            response = requests.post(
+                url=self.base_uri + self.commit,
+                auth=(self.usr, self.pwd),
+                data=json.dumps(payload),
+                headers=headers
+            )
+            if self.rest_return_check(response):
+                return response.json()['results']
+            else:
+                return False
+        except requests.exceptions.ConnectionError as e:
+            attempt += 1
+            print(f"ConnectionError on attempt {attempt}: {e}")
+            if attempt == max_retries:
+                print("Max retries reached. Operation failed.")
+                return False
+            wait_time = 2 ** attempt  # Exponential backoff
+            print(f"Retrying in {wait_time} seconds...")
+            time.sleep(wait_time)
 
     def commit_list_in_chunks(self, statements, verbose=False, chunk_length=1000):
         """Commit a list of statements to neo4J DB via REST API, split into chunks.
