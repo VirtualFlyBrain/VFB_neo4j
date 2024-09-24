@@ -16,7 +16,7 @@ parser.add_argument("solr_endpoint",
 args = parser.parse_args()
 
 
-matches = {'individuals': "MATCH (n:Individual) WHERE NOT n.short_form STARTS WITH 'VFBc_' ",
+matches = {'individuals': "MATCH (n:Individual) WHERE NOT n.short_form STARTS WITH 'VFBc_' AND NOT n.short_form starts with 'VFB_internal' ",
            'classes': "MATCH (n:Class) "}
 
 with_file = open("uk/ac/ebi/vfb/neo4j/neo2solr/ols_solr_rec_query.cypher", 'r')
