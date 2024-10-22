@@ -194,7 +194,7 @@ class pubLink():
         self.node_writer.statements = list(set(self.node_writer.statements))
         
         # Remove duplicates from the edge writer statements
-        self.edge_writer.statements = list(set(self.edge_writer.statements))
+        self.edge_witer.statements = list(set(self.edge_witer.statements))
         
         # Commit the unique statements
         self.node_writer.commit(chunk_length=1000, verbose=True)
