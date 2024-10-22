@@ -187,8 +187,9 @@ feps_chunked = chunks(feps, 2000)
 
 
 for fep_c in feps_chunked:
+    print(f"Processing chunk of {len(fep_c)} records...")
 
-    # Using SQLITE for tracking/lookup.  Loading via DataFrame
+    # Using SQLITE for tracking/lookup. Loading via DataFrame
 
     # TODO: check whether indexing relevant elements of df will improve performance
     fep_df = pd.DataFrame.from_records(fep_c)
@@ -197,11 +198,16 @@ for fep_c in feps_chunked:
     extra_columns = ['al', 'tg', 'ep', 'hemidriver']
     for c in extra_columns:
         fep_df[c] = np.NaN
+
     # Seed SQL DB for tracking
     engine = create_engine('sqlite://', echo=False)
     fep_df.to_sql('feature_expression', con=engine)
+    print("Loaded feature_expression into temporary SQLite database.")
+
     gps = list(fep_df['gp'])
     gp2al = fm.gp2allele(gps)  # A list of triples (as python tuples)
+    print(f"Retrieved {len(gp2al)} allele mappings for gene products.")
+
     allele_ids = []
     for t in gp2al:
         engine.execute("UPDATE feature_expression SET al = '%s'"
@@ -209,15 +215,21 @@ for fep_c in feps_chunked:
         allele_ids.append(t[2])
     # Add alleles (starting point for graph).
     if not allele_ids:
+        print("No alleles found for current chunk. Skipping...")
         continue
+
     alleles = fm.add_features(allele_ids)
+    print(f"Added {len(alleles)} alleles to the graph.")
+
     # Only add pubs where allele is present
     q = engine.execute("SELECT fbrf from feature_expression WHERE al IS NOT NULL")
     pubs = [i[0] for i in q.fetchall()]
+    print(f"Found {len(pubs)} publications to move.")
     pm.move(pubs)
 
     # Add genes linked to alleles (these don't need to be in the table)
     fm.add_feature_relations(fm.allele2Gene(alleles))
+    print("Added gene relations for alleles.")
 
     # Find transgenes, add them to table and link them to alleles
     al2tg = fm.allele2transgene(allele_ids)
@@ -227,50 +239,58 @@ for fep_c in feps_chunked:
                        "WHERE al = '%s'" % (t[2], t[0]))
         allele_ids.append(t[0])
     transgenes = fm.add_feature_relations(al2tg)  # Dict tg_id: feature object
+    print(f"Added {len(transgenes)} transgenes and linked them to alleles.")
 
     # Find and process splits
+    splits = proc_splits(engine)
+    print(f"Processed {len(splits)} split hemidrivers.")
+
+    q = engine.execute("SELECT hemidriver from feature_expression WHERE hemidriver IS NOT NULL")
+    hemidrivers = [i[0] for i in q.fetchall()]
+    print(f"Found {len(hemidrivers)} hemidrivers to add to graph.")
+    fm.add_features(hemidrivers)
+    fm.gen_split_ep_feat(splits)
 
     # Add regular expression patterns
     q = engine.execute("SELECT tg FROM feature_expression WHERE comment IS NULL AND tg is NOT NULL")
     non_split_tgs = [i[0] for i in q.fetchall()]
+    print(f"Found {len(non_split_tgs)} transgenes without splits to generate expression patterns.")
+
     if non_split_tgs:
         eps = fm.generate_expression_patterns(non_split_tgs)
         if eps:
             for e in eps.edges:
                 engine.execute("UPDATE feature_expression SET ep = '%s'"
                                "WHERE tg = '%s'" % (e[0], e[2]))
+            print(f"Generated {len(eps.edges)} expression patterns.")
 
-    # TODO - add code to add graph for split hemidriver !
-    splits = proc_splits(engine)
-    q = engine.execute("SELECT hemidriver from feature_expression WHERE hemidriver IS NOT NULL")
-    hemidrivers = [i[0] for i in q.fetchall()] # Just get the function to return or add them!
-    fm.add_features(hemidrivers)
-    fm.gen_split_ep_feat(splits)
-
+    # Write expressions to the graph
     q = engine.execute("SELECT fbrf, ep, fbex FROM feature_expression "
                        "WHERE ep IS NOT NULL")
     dc = dict_cursor(q.cursor)
+    total_records = len(dc)
+    print(f"Preparing to write {total_records} expressions to the graph.")
     now = datetime.datetime.now()
+    total_records = len(dc)
     print ("Start collecting:")
+    print(f"Preparing to write {total_records} expressions to the graph.")
     print (now.strftime("%Y-%m-%d %H:%M:%S"))
     exp_write = ExpressionWriter(args.endpoint, args.usr, args.pwd)
     exp_write.get_expression([d['fbex'] for d in dc])
     # Initialize a counter for debugging
     counter = 0
-    total_records = len(dc)
-    print(f"Processing {total_records} records.")
     for r in dc:
         exp_write.write_expression(pub=r['fbrf'], ep=r['ep'], fbex=r['fbex'])
         counter += 1
-        # Print progress every 100 records
         if counter % 100 == 0 or counter == total_records:
-          print(f"Processed {counter} of {total_records} records at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            print(f"Processed {counter} of {total_records} records at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
     now = datetime.datetime.now()
     print ("Start commit:")
+    print("Committing expressions to the graph...")
     print (now.strftime("%Y-%m-%d %H:%M:%S"))
     exp_write.commit()
-    now = datetime.datetime.now()
+    print(f"Finished committing expressions at {now.strftime('%Y-%m-%d %H:%M:%S')}.")
     print ("Finished commit:")
     print (now.strftime("%Y-%m-%d %H:%M:%S"))
     exp_write = None
