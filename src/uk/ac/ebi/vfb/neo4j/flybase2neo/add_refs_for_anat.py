@@ -190,15 +190,15 @@ class pubLink():
                             self.write_pub_link(d['short_form'], s, type=k)
 
     def commit(self):
-    # Remove duplicates from the node writer statements
-    self.node_writer.statements = list(set(self.node_writer.statements))
-    
-    # Remove duplicates from the edge writer statements
-    self.edge_writer.statements = list(set(self.edge_writer.statements))
-    
-    # Commit the unique statements
-    self.node_writer.commit(chunk_length=1000, verbose=True)
-    self.edge_witer.commit(chunk_length=1000, verbose=True)
+        # Remove duplicates from the node writer statements
+        self.node_writer.statements = list(set(self.node_writer.statements))
+        
+        # Remove duplicates from the edge writer statements
+        self.edge_writer.statements = list(set(self.edge_writer.statements))
+        
+        # Commit the unique statements
+        self.node_writer.commit(chunk_length=1000, verbose=True)
+        self.edge_witer.commit(chunk_length=1000, verbose=True)
 
 def __main__():
     pl = pubLink(endpoint=args.endpoint,
