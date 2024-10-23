@@ -132,24 +132,31 @@ class FB2Neo(object):
                 # For numbers and booleans
                 return str(value).lower()
     
+        # **Preprocess the statement_template to remove spaces inside placeholders**
+        import re
+        statement_template = re.sub(r'{\s*([^}]+?)\s*}', r'{\1}', statement_template)
+    
         batch_size = 1000  # Adjust batch size as needed
         for batch in chunks(dict_list, batch_size):
             statements = []
             for line in batch:
-                # Escape the values
+                # Escape and substitute values into the statement template
                 escaped_values = {key: cypher_escape(value) for key, value in line.items()}
                 # Create a new dictionary with 'line.' prefixed to keys
                 escaped_line = {'line.' + key: value for key, value in escaped_values.items()}
+    
                 try:
                     statement = statement_template.format(**escaped_line)
                     statements.append(statement)
                 except KeyError as e:
                     warnings.warn(f"Missing key {e} in line: {line}")
                     continue  # Skip this line if a key is missing
+    
             # Optionally, print the first statement for verification
             if statements:
                 print("First Cypher command in the batch:")
                 print(statements[0])
+    
             # Now send the statements via commit_list
             self.nc.commit_list(statements)
 
