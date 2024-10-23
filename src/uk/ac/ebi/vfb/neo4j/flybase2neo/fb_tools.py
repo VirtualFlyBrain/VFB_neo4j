@@ -6,6 +6,7 @@ import pandas as pd
 import time
 from operator import itemgetter
 from ..neo4j_tools import chunks
+import warnings
 
 '''
 Created on 4 Feb 2016
