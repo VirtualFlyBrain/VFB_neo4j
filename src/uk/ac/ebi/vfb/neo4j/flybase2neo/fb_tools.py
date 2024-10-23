@@ -110,8 +110,14 @@ class FB2Neo(object):
                 time.sleep(delay)
                 self.conn = get_fb_conn()  # Re-establish the connection
 
+    def clean_placeholders(template):
+        import re
+        # This pattern matches placeholders like { line.short_form } with possible spaces
+        pattern = re.compile(r'{\s*([^{}\s]+(?:\.[^{}\s]+)*)\s*}')
+        return pattern.sub(lambda m: '{' + m.group(1).strip() + '}', template)
+
+    
     def commit_via_csv(self, statement_template, dict_list):
-        """Modified commit_via_csv to handle placeholders with 'line.' prefix."""
         if not dict_list:
             warnings.warn("No data provided to commit_via_csv.")
             return False
@@ -132,16 +138,21 @@ class FB2Neo(object):
                 # For numbers and booleans
                 return str(value).lower()
     
+        # Clean the placeholders in the statement_template
+        statement_template = clean_placeholders(statement_template)
+    
         batch_size = 1000  # Adjust batch size as needed
         for batch in chunks(dict_list, batch_size):
             statements = []
             for line in batch:
                 # Escape the values
-                escaped_values = {key: cypher_escape(value) for key, value in line.items()}
-                # Add 'line.' prefix to keys
-                escaped_line = {'line.' + key: value for key, value in escaped_values.items()}
-                # Also include original keys in case they are used without 'line.'
-                escaped_line.update(escaped_values)
+                escaped_values = {key.strip(): cypher_escape(value) for key, value in line.items()}
+                # Handle 'line.' prefixes in placeholders
+                escaped_line = {}
+                for key, value in escaped_values.items():
+                    key_stripped = key.strip()
+                    escaped_line[key_stripped] = value
+                    escaped_line['line.' + key_stripped] = value  # Include keys with 'line.' prefix
     
                 try:
                     statement = statement_template.format(**escaped_line)
@@ -157,7 +168,6 @@ class FB2Neo(object):
     
             # Now send the statements via commit_list
             self.nc.commit_list(statements)
-
 
 
     def close(self):
