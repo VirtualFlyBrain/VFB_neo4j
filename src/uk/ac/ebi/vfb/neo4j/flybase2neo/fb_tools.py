@@ -109,13 +109,6 @@ class FB2Neo(object):
                 print(f"OperationalError encountered. Retrying {retries}/{max_retries} in {delay} seconds...")
                 time.sleep(delay)
                 self.conn = get_fb_conn()  # Re-establish the connection
-
-    def clean_placeholders(template):
-        import re
-        # This pattern matches placeholders like { line.short_form } with possible spaces
-        pattern = re.compile(r'{\s*([^{}\s]+(?:\.[^{}\s]+)*)\s*}')
-        return pattern.sub(lambda m: '{' + m.group(1).strip() + '}', template)
-
     
     def commit_via_csv(self, statement_template, dict_list):
         if not dict_list:
@@ -137,7 +130,13 @@ class FB2Neo(object):
             else:
                 # For numbers and booleans
                 return str(value).lower()
-    
+                
+        def clean_placeholders(template):
+            import re
+            # This pattern matches placeholders like { line.short_form } with possible spaces
+            pattern = re.compile(r'{\s*([^{}\s]+(?:\.[^{}\s]+)*)\s*}')
+            return pattern.sub(lambda m: '{' + m.group(1).strip() + '}', template)
+
         # Clean the placeholders in the statement_template
         statement_template = clean_placeholders(statement_template)
     
