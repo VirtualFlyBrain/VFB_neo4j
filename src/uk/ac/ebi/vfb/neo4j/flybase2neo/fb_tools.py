@@ -109,20 +109,43 @@ class FB2Neo(object):
                 time.sleep(delay)
                 self.conn = get_fb_conn()  # Re-establish the connection
 
-    def commit_via_csv(self, statement, dict_list):
-        """Modified commit_via_csv to send data directly via commit_list using UNWIND."""
+    def commit_via_csv(self, statement_template, dict_list):
+        """Modified commit_via_csv to generate Cypher statements by substituting values from dict_list."""
         if not dict_list:
             warnings.warn("No data provided to commit_via_csv.")
             return False
-        # Build the Cypher query with UNWIND
-        cypher = """
-        UNWIND $batch AS line
-        """ + statement
-        # Now send the statement and parameters via commit_list
+    
+        # Helper function to escape values for Cypher
+        def cypher_escape(value):
+            if isinstance(value, str):
+                # Escape backslashes and single quotes
+                value = value.replace("\\", "\\\\").replace("'", "\\'")
+                return f"'{value}'"
+            elif isinstance(value, list):
+                # Recursively escape each item in the list
+                escaped_items = [cypher_escape(item) for item in value]
+                return "[" + ", ".join(escaped_items) + "]"
+            elif value is None:
+                return 'null'
+            else:
+                # For numbers and booleans
+                return str(value).lower()
+    
         # Optionally, split dict_list into batches if needed
         batch_size = 1000  # Adjust batch size as needed
         for batch in chunks(dict_list, batch_size):
-            self.nc.commit_list([{'statement': cypher, 'parameters': {'batch': batch}}])
+            statements = []
+            for line in batch:
+                # Escape and substitute values into the statement template
+                escaped_line = {key: cypher_escape(value) for key, value in line.items()}
+                try:
+                    statement = statement_template.format(**escaped_line)
+                    statements.append(statement)
+                except KeyError as e:
+                    warnings.warn(f"Missing key {e} in line: {line}")
+                    continue  # Skip this line if a key is missing
+            # Now send the statements via commit_list
+            self.nc.commit_list(statements)
 
     def close(self):
         self.conn.close()  # Investigate implementing using with statement.  Then method not required.
