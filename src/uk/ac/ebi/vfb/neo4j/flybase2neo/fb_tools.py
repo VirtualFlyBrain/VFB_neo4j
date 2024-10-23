@@ -132,18 +132,25 @@ class FB2Neo(object):
                 # For numbers and booleans
                 return str(value).lower()
     
-        # **Preprocess the statement_template to remove spaces inside placeholders**
+        # **Preprocess the statement_template to remove spaces inside placeholders and within placeholder names**
         import re
-        statement_template = re.sub(r'{\s*([^}]+?)\s*}', r'{\1}', statement_template)
+    
+        def clean_placeholders(template):
+            # Match placeholders and remove spaces inside braces and within placeholder names
+            def replacer(match):
+                placeholder = match.group(1)
+                cleaned_placeholder = placeholder.strip()
+                return '{' + cleaned_placeholder + '}'
+            return re.sub(r'{([^}]*)}', replacer, template)
+    
+        statement_template = clean_placeholders(statement_template)
     
         batch_size = 1000  # Adjust batch size as needed
         for batch in chunks(dict_list, batch_size):
             statements = []
             for line in batch:
                 # Escape and substitute values into the statement template
-                escaped_values = {key: cypher_escape(value) for key, value in line.items()}
-                # Create a new dictionary with 'line.' prefixed to keys
-                escaped_line = {'line.' + key: value for key, value in escaped_values.items()}
+                escaped_line = {key.strip(): cypher_escape(value) for key, value in line.items()}
     
                 try:
                     statement = statement_template.format(**escaped_line)
@@ -159,6 +166,7 @@ class FB2Neo(object):
     
             # Now send the statements via commit_list
             self.nc.commit_list(statements)
+
 
 
     def close(self):
