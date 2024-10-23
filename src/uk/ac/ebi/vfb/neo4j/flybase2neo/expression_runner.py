@@ -239,7 +239,7 @@ for fep_c in feps_chunked:
                        "WHERE al = '%s'" % (t[2], t[0]))
         allele_ids.append(t[0])
     transgenes = fm.add_feature_relations(al2tg)  # Dict tg_id: feature object
-    print(f"Added {len(transgenes)} transgenes and linked them to alleles.")
+    print(f"Added {len(al2tg)} transgenes and linked them to alleles.")
 
     # Find and process splits
     splits = proc_splits(engine)
