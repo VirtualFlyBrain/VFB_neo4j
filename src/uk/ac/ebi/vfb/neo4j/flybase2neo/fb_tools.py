@@ -111,6 +111,7 @@ class FB2Neo(object):
                 self.conn = get_fb_conn()  # Re-establish the connection
     
     def commit_via_csv(self, statement_template, dict_list):
+        """Modified commit_via_csv to ensure placeholders, keys, and values match exactly without extra spaces."""
         if not dict_list:
             warnings.warn("No data provided to commit_via_csv.")
             return False
@@ -118,6 +119,8 @@ class FB2Neo(object):
         # Helper function to escape values for Cypher
         def cypher_escape(value):
             if isinstance(value, str):
+                # Strip leading/trailing spaces from string values
+                value = value.strip()
                 # Escape backslashes and single quotes
                 value = value.replace("\\", "\\\\").replace("'", "\\'")
                 return f"'{value}'"
@@ -144,14 +147,23 @@ class FB2Neo(object):
         for batch in chunks(dict_list, batch_size):
             statements = []
             for line in batch:
+                # Strip spaces from keys and string values in the line dictionary
+                cleaned_line = {}
+                for key, value in line.items():
+                    key = key.strip()
+                    if isinstance(value, str):
+                        value = value.strip()
+                    cleaned_line[key] = value
+    
                 # Escape the values
-                escaped_values = {key.strip(): cypher_escape(value) for key, value in line.items()}
+                escaped_values = {key: cypher_escape(value) for key, value in cleaned_line.items()}
+    
                 # Handle 'line.' prefixes in placeholders
                 escaped_line = {}
                 for key, value in escaped_values.items():
-                    key_stripped = key.strip()
-                    escaped_line[key_stripped] = value
-                    escaped_line['line.' + key_stripped] = value  # Include keys with 'line.' prefix
+                    # Include keys with and without 'line.' prefix
+                    escaped_line[key] = value
+                    escaped_line['line.' + key] = value
     
                 try:
                     statement = statement_template.format(**escaped_line)
