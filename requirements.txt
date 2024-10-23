@@ -8,3 +8,4 @@ base36
 vfb_connect
 better_profanity
 SQLAlchemy>=1.0,<2.0
+dataclasses
