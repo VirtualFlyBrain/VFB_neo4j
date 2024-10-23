@@ -111,7 +111,7 @@ class FB2Neo(object):
                 self.conn = get_fb_conn()  # Re-establish the connection
 
     def commit_via_csv(self, statement_template, dict_list):
-        """Modified commit_via_csv to generate Cypher statements by substituting values from dict_list."""
+        """Modified commit_via_csv to handle placeholders with 'line.' prefix."""
         if not dict_list:
             warnings.warn("No data provided to commit_via_csv.")
             return False
@@ -132,25 +132,16 @@ class FB2Neo(object):
                 # For numbers and booleans
                 return str(value).lower()
     
-        # **Preprocess the statement_template to remove spaces inside placeholders and within placeholder names**
-        import re
-    
-        def clean_placeholders(template):
-            # Match placeholders and remove spaces inside braces and within placeholder names
-            def replacer(match):
-                placeholder = match.group(1)
-                cleaned_placeholder = placeholder.strip()
-                return '{' + cleaned_placeholder + '}'
-            return re.sub(r'{([^}]*)}', replacer, template)
-    
-        statement_template = clean_placeholders(statement_template)
-    
         batch_size = 1000  # Adjust batch size as needed
         for batch in chunks(dict_list, batch_size):
             statements = []
             for line in batch:
-                # Escape and substitute values into the statement template
-                escaped_line = {key.strip(): cypher_escape(value) for key, value in line.items()}
+                # Escape the values
+                escaped_values = {key: cypher_escape(value) for key, value in line.items()}
+                # Add 'line.' prefix to keys
+                escaped_line = {'line.' + key: value for key, value in escaped_values.items()}
+                # Also include original keys in case they are used without 'line.'
+                escaped_line.update(escaped_values)
     
                 try:
                     statement = statement_template.format(**escaped_line)
