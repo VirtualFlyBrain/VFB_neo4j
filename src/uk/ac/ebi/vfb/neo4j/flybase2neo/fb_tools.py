@@ -109,12 +109,19 @@ class FB2Neo(object):
                 self.conn = get_fb_conn()  # Re-establish the connection
 
     def commit_via_csv(self, statement, dict_list):
-        df = pd.DataFrame.from_records(dict_list)
-        df.to_csv(self.file_path + "tmp.csv", sep='\t')
-        self.nc.commit_csv("file:///" + "tmp.csv",
-                           statement=statement,
-                           sep="\t")
-        # add something to delete csv here.
+        """Modified commit_via_csv to send data directly via commit_list using UNWIND."""
+        if not dict_list:
+            warnings.warn("No data provided to commit_via_csv.")
+            return False
+        # Build the Cypher query with UNWIND
+        cypher = """
+        UNWIND $batch AS line
+        """ + statement
+        # Now send the statement and parameters via commit_list
+        # Optionally, split dict_list into batches if needed
+        batch_size = 1000  # Adjust batch size as needed
+        for batch in chunks(dict_list, batch_size):
+            self.nc.commit_list([{'statement': cypher, 'parameters': {'batch': batch}}])
 
     def close(self):
         self.conn.close()  # Investigate implementing using with statement.  Then method not required.
