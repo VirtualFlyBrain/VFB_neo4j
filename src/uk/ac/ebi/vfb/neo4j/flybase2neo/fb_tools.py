@@ -151,6 +151,7 @@ class FB2Neo(object):
                 cleaned_line = {}
                 for key, value in line.items():
                     key = key.strip()
+                    value = value.strip()
                     if isinstance(value, str):
                         value = value.strip()
                     cleaned_line[key] = value
@@ -161,8 +162,7 @@ class FB2Neo(object):
                 # Handle 'line.' prefixes in placeholders
                 escaped_line = {}
                 for key, value in escaped_values.items():
-                    # Include keys with and without 'line.' prefix
-                    escaped_line[key] = value
+                    # Include keys with 'line.' prefix
                     escaped_line['line.' + key] = value
     
                 try:
