@@ -1,6 +1,6 @@
 WITH n SKIP 0 LIMIT 2000 
 OPTIONAL MATCH (n)-[s:has_reference {typ:'syn'}]->(:pub) 
-WITH n, coalesce(collect(DISTINCT s.value[0]), []) + coalesce(n.synonyms, []) as syn
+WITH n, coalesce(collect(DISTINCT s.value[0]), []) + coalesce(n.synonyms, []) + coalesce(n.symbol, []) as syn
 WITH collect(DISTINCT {
      id: coalesce(n.iri,n.short_form,"XXX"), 
      iri: [coalesce(n.iri,n.short_form,"XXX")], 
