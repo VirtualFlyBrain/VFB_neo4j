@@ -42,6 +42,9 @@ def get_entity_count(kb, user, password):
 def clear_query_caches(kb, user, password):
     print("Clearing query caches")
     query("CALL db.clearQueryCaches();", kb, user, password)
+    # Run a system command to suggest GC
+    query("CALL dbms.listTransactions();", kb, user, password)  # Force transaction cleanup
+    time.sleep(5)  # Give Neo4j time to process GC
 
 # Function to export entities in chunks
 def export_entities(kb, user, password, entity_count, outfile, delay=30):
