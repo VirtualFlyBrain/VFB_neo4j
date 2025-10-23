@@ -48,7 +48,7 @@ def clear_query_caches(kb, user, password):
 
 # Function to export entities in chunks
 def export_entities(kb, user, password, entity_count, outfile, delay=30):
-    page_size = min(5000, (entity_count // 10) + 10) # Smaller chunks, more iterations
+    page_size = min(5000, (entity_count // 20) + 10) # Smaller chunks, more iterations
     page_start = 0
     page_count = 0
 
