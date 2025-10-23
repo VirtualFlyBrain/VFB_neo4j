@@ -102,7 +102,7 @@ def export_relations(kb, user, password, outfile, delay=2):
         time.sleep(delay)
 
     # Generate annotation properties and object properties in chunks
-    chunk_count = 20
+    chunk_count = 50
     for relation_type in ["annotationProperty", "objectProperty"]:
         for i in range(chunk_count):
             print(f"Exporting {relation_type} chunk {i}")
