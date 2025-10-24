@@ -41,7 +41,10 @@ def get_entity_count(kb, user, password):
 # Function to clear query caches
 def clear_query_caches(kb, user, password):
     print("Clearing query caches")
+    query("CALL dbms.listPools();", kb, user, password)
+    query("CALL dbms.queryJmx('java.lang:type=Memory');", kb, user, password)
     query("CALL db.clearQueryCaches();", kb, user, password)
+    query("CALL db.checkpoint();", kb, user, password)
     # Run a system command to suggest GC
     query("CALL dbms.listTransactions();", kb, user, password)  # Force transaction cleanup
     time.sleep(5)  # Give Neo4j time to process GC
