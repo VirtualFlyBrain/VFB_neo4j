@@ -42,7 +42,7 @@ def get_entity_count(kb, user, password):
 def clear_query_caches(kb, user, password):
     print("Clearing query caches")
     query("CALL dbms.listPools();", kb, user, password)
-    query("CALL dbms.queryJmx('java.lang:type=Memory');", kb, user, password)
+    query("CALL dbms.queryJmx('java.lang:type=Memory') YIELD attributes RETURN attributes.HeapMemoryUsage;", kb, user, password)
     query("CALL db.clearQueryCaches();", kb, user, password)
     query("CALL db.checkpoint();", kb, user, password)
     # Run a system command to suggest GC
