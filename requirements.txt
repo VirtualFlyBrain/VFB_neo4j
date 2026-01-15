@@ -9,3 +9,4 @@ vfb_connect
 better_profanity
 SQLAlchemy>=1.0,<2.0
 dataclasses
+urllib3>=2.5.0 # not directly required, pinned by Snyk to avoid a vulnerability
