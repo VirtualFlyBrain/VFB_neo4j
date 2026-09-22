@@ -103,7 +103,16 @@ class neo4j_connect():
                 if self.rest_return_check(response):
                     return response.json()['results']
                 else:
-                    return False
+                    # Non-200 (e.g. transient 415/502 from a gateway/proxy) -
+                    # retry with backoff like a ConnectionError, rather than
+                    # failing on the first bad response.
+                    attempt += 1
+                    if attempt >= max_retries:
+                        print("Max retries reached after non-OK response. Operation failed.")
+                        return False
+                    wait_time = 2 ** attempt  # Exponential backoff: 2, 4, 8 seconds
+                    print(f"Retrying in {wait_time} seconds after non-OK response (attempt {attempt})...")
+                    time.sleep(wait_time)
             except requests.exceptions.ConnectionError as e:
                 attempt += 1
                 print(f"ConnectionError on attempt {attempt}: {e}")
