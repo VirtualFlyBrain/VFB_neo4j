@@ -75,7 +75,7 @@ else:
 # def proc_splits(fep_chunk):
 #     """Find splits. Modify fep datastructure to incorporate details."""
 #     hemidrivers = []
-#     fep_chunk['split'] = np.NaN
+#     fep_chunk['split'] = np.nan
 #     for i, f in fep_chunk.iterrows():
 #         if f['comment']:
 #             m = re.match("^when combined with @(FB.{9}):(.+)@.*", f['comment'])
@@ -194,10 +194,10 @@ for fep_c in feps_chunked:
     # TODO: check whether indexing relevant elements of df will improve performance
     fep_df = pd.DataFrame.from_records(fep_c)
     # The folloging sub is =needed for is NULL queries
-    fep_df.replace(to_replace=[None], value=np.NaN, inplace=True)
+    fep_df.replace(to_replace=[None], value=np.nan, inplace=True)
     extra_columns = ['al', 'tg', 'ep', 'hemidriver']
     for c in extra_columns:
-        fep_df[c] = np.NaN
+        fep_df[c] = np.nan
 
     # Seed SQL DB for tracking
     engine = create_engine('sqlite://', echo=False)
