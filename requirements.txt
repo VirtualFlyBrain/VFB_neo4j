@@ -1,11 +1,12 @@
 requests
 pymysql
 psycopg2-binary
-pandas
+pandas<2.2  # pandas>=2.2 to_sql needs SQLAlchemy 2, which pandasql does not support (SQLAlchemy pinned below)
 pandasql
 pysolr
 base36
 vfb_connect
 better_profanity
 SQLAlchemy>=1.0,<2.0
+numpy<2  # the pandas<2.2 wheels are built against NumPy 1
 dataclasses
