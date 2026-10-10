@@ -4,6 +4,7 @@ Created on Mar 6, 2017
 @author: davidos
 '''
 import logging
+import os
 import time
 import warnings
 import re
@@ -88,6 +89,16 @@ def contains_profanity(value, use_base36):
     return False
 
 
+
+
+def unwind_enabled():
+    """Opt-in (VFB_NEO4J_UNWIND=1): kb_owl_edge_writer sends parameterised UNWIND batches instead of one literal
+    statement per edge. Off by default so existing KB loaders behave exactly as before."""
+    return os.environ.get('VFB_NEO4J_UNWIND', '').lower() in ('1', 'true', 'yes')
+
+
+def unwind_rows():
+    return max(1, int(os.environ.get('VFB_NEO4J_UNWIND_ROWS', '1000')))
 
 class kb_writer (object):
       
@@ -344,7 +355,8 @@ class kb_owl_edge_writer(kb_writer):
 
     def _construct_triples(self):
         # Private method to construct triples once properties have been checked.
-
+        if unwind_enabled():
+            return self._construct_triples_unwind()
         flat_list_triples = [item for sublist in self.triples.values() for item in sublist]
         for t in flat_list_triples:
             rel_map = self.properties[t['r']]
@@ -382,6 +394,62 @@ class kb_owl_edge_writer(kb_writer):
             out += ")) RETURN { `%s`: count(s), `%s`: count(o) } as match_count" % (t['s'], t['o'])
             self.statements.append(out)
 
+
+    def _construct_triples_unwind(self):
+        """Same edges as _construct_triples, written as parameterised UNWIND batches: one statement per
+        (relation, subject/object label, match property, edge kind) carrying up to unwind_rows() triples, instead
+        of one literal statement per triple that Neo4j must parse and plan separately (~16 ms each; a batch of
+        1000 rows takes ~0.1 s). Triples keep their order, so a later triple's annotations still win on a merged edge.
+        Values are passed as parameters, so strings need no escaping and floats keep full precision."""
+        groups = {}
+        for t in [item for sublist in self.triples.values() for item in sublist]:
+            rel_map = self.properties[t['r']]
+            if t['safe_label_edge']:
+                if 'sl' in rel_map.keys() and rel_map['sl']:
+                    rel = rel_map['sl']
+                elif 'label' in rel_map.keys() and rel_map['label']:
+                    rel = re.sub(r'\W', '_', rel_map['label'])
+                else:
+                    rel = rel_map['short_form']
+            else:
+                rel = rel_map[t['match_on']]
+            key = (t['r'], t['stype'], t['otype'], t['match_on'], t['safe_label_edge'], t['rtype'], rel)
+            ann = {k: v for k, v in t['edge_annotations'].items() if type(v) in (int, float, str, list, bool)}
+            for k in set(t['edge_annotations']) - set(ann):  # as _set_attributes_from_dict: skip, don't null
+                warnings.warn("Can't use a %s as an attribute value in Cypher. Key %s Value :%s"
+                              % (type(t['edge_annotations'][k]), k, str(t['edge_annotations'][k])))
+            # store exactly what the literal statements stored: floats went through '%f' (6 dp), and list items
+            # through escape_string + Python repr, which leaves backslashes doubled (strings were not)
+            for k, v in ann.items():
+                if type(v) == float:
+                    ann[k] = float('%f' % v)
+                elif type(v) == list:
+                    ann[k] = [self.escape_string(i) for i in v]
+            groups.setdefault(key, []).append({'s': t['s'], 'o': t['o'], 'a': ann})
+        size = unwind_rows()
+        for (r, stype, otype, match_on, safe, rtype, rel), rows in groups.items():
+            rel_map = self.properties[r]
+            q = "UNWIND $rows AS row " \
+                "OPTIONAL MATCH (s%s { %s: row.s }) " \
+                "OPTIONAL MATCH (o%s { %s: row.o }) " % (stype, match_on, otype, match_on)
+            q += "FOREACH (a IN CASE WHEN s IS NOT NULL THEN [s] ELSE [] END | " \
+                 "FOREACH (b IN CASE WHEN o IS NOT NULL THEN [o] ELSE [] END | "
+            params = {}
+            if safe:
+                q += "MERGE (a)-[re:`%s`]->(b) SET re.type = $rtype " % rel
+                params['rtype'] = rtype
+            else:
+                q += "MERGE (a)-[re:`%s` { `%s`: $rel }]->(b) " % (rtype, match_on)
+                params['rel'] = rel
+            q += "SET re += row.a "
+            for prop in ('label', 'short_form', 'iri'):
+                if rel_map[prop] and ((not match_on == prop) or safe):
+                    q += "SET re.%s = $%s " % (prop, prop)
+                    params[prop] = rel_map[prop]
+            q += ")) WITH row, count(s) AS sc, count(o) AS oc " \
+                 "RETURN { s: row.s, o: row.o, s_found: sc, o_found: oc } AS unwind_match_count"
+            for i in range(0, len(rows), size):
+                self.statements.append({'statement': q, 'parameters': dict(params, rows=rows[i:i + size])})
 
     def _add_related_edge(self, s, r, o, stype, otype,
                           edge_annotations=None, match_on="iri", safe_label_edge=True):
@@ -509,6 +577,8 @@ class kb_owl_edge_writer(kb_writer):
 
         self.check_properties()
         self._construct_triples()
+        if unwind_enabled():
+            chunk_length = max(1, chunk_length // unwind_rows())  # statements now carry unwind_rows() triples each
         self._commit(verbose, chunk_length)
         self.test_edge_addition() # Do something with return value?
         # At this point - resetting all attributes except connection to default.
@@ -525,7 +595,10 @@ class kb_owl_edge_writer(kb_writer):
         """Tests lists of return values from REST API for edge creation
         """
         dc = results_2_dict_list(self.output)
-        missed_edges = [x['match_count'] for x in dc if x and (0 in x['match_count'].values())]
+        missed_edges = [x['match_count'] for x in dc if x and 'match_count' in x and (0 in x['match_count'].values())]
+        missed_edges += [{u['s']: u['s_found'], u['o']: u['o_found']} for u in
+                         (x['unwind_match_count'] for x in dc if x and 'unwind_match_count' in x)
+                         if not (u['s_found'] and u['o_found'])]
         if missed_edges:
             for e in missed_edges:
                 m = "No match found for %s" % str([k for k, v in e.items() if not v])

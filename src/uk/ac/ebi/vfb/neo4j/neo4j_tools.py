@@ -82,12 +82,12 @@ class neo4j_connect():
         Returns results list of results or False if any errors are encountered."""
         
         cstatements = []
-        if return_graphs:
-            for s in statements:
-                cstatements.append({'statement': s, "resultDataContents": ["row", "graph"]})
-        else:
-            for s in statements:
-                cstatements.append({'statement': s})  # Rows and columns are returned by default.
+        # A statement is a Cypher string, or a dict {'statement': ..., 'parameters': {...}} (parameterised batch).
+        for s in statements:
+            cs = dict(s) if isinstance(s, dict) else {'statement': s}  # Rows and columns are returned by default.
+            if return_graphs:
+                cs["resultDataContents"] = ["row", "graph"]
+            cstatements.append(cs)
         payload = {'statements': cstatements}
         headers = self.headers
 
@@ -141,9 +141,10 @@ class neo4j_connect():
         for c in chunked_statements:
             if verbose:
                 start_time = time.time()
+                first = c[0]['statement'] if isinstance(c[0], dict) else c[0]
                 print("Processing chunk of %d of %d starting with: %s" % (i,
-                                                                          c_no, 
-                                                                          c[0].encode('utf8')))
+                                                                          c_no,
+                                                                          first[:300].encode('utf8')))
             r = self.commit_list(c)
             if verbose:
                 t = time.time() - start_time
