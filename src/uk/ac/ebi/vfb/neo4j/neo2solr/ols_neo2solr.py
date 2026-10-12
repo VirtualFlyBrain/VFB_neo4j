@@ -18,6 +18,7 @@ import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import pysolr
+import resource
 
 parser = argparse.ArgumentParser()
 parser.add_argument("pdb_endpoint", help="Endpoint for connection to neo4J prod")
@@ -99,6 +100,7 @@ def run_pass(name, match, facets_only):
     ids, nulls = short_forms(match)
     if args.limit:
         ids = ids[:args.limit]
+    print(f"maxrss after id list {resource.getrusage(resource.RUSAGE_SELF).ru_maxrss // 1024} MB", flush=True)
     print(f"pass {name}: {len(ids)} records by short_form, {nulls} without a short_form", flush=True)
     batches = [ids[i:i + args.batch] for i in range(0, len(ids), args.batch)]
     done = 0
@@ -107,7 +109,7 @@ def run_pass(name, match, facets_only):
         for n, fut in enumerate(as_completed(futures), 1):
             done += fut.result()          # a Solr error propagates and fails the step
             if n % 25 == 0 or n == len(futures):
-                print(f"pass {name}: {n}/{len(futures)} batches, {done} records", flush=True)
+                print(f"pass {name}: {n}/{len(futures)} batches, {done} records, maxrss {resource.getrusage(resource.RUSAGE_SELF).ru_maxrss // 1024} MB", flush=True)
     if nulls:
         # Nodes without a short_form cannot be selected by id; the old passes carried them with id=iri.
         # There are normally none; load them the old way if there are.
