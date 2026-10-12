@@ -90,9 +90,9 @@ def load_batch(match, ids, facets_only, label):
     if not docs:
         return 0
     if facets_only:
-        solr().add(docs, fieldUpdates={'facets_annotation': 'set'}, commitWithin=args.commit_within)
+        solr().add(docs, fieldUpdates={'facets_annotation': 'set'}, commitWithin=str(args.commit_within))
     else:
-        solr().add(docs, commitWithin=args.commit_within)
+        solr().add(docs, commitWithin=str(args.commit_within))
     return len(docs)
 
 
@@ -107,7 +107,12 @@ def run_pass(name, match, facets_only):
     with ThreadPoolExecutor(max_workers=args.workers) as pool:
         futures = [pool.submit(load_batch, match, b, facets_only, name) for b in batches]
         for n, fut in enumerate(as_completed(futures), 1):
-            done += fut.result()          # a Solr error propagates and fails the step
+            try:
+                done += fut.result()      # a Solr error propagates and fails the step
+            except Exception:
+                for f in futures:
+                    f.cancel()            # do not keep loading (and holding failed batches in memory) after an error
+                raise
             if n % 25 == 0 or n == len(futures):
                 print(f"pass {name}: {n}/{len(futures)} batches, {done} records, maxrss {resource.getrusage(resource.RUSAGE_SELF).ru_maxrss // 1024} MB", flush=True)
     if nulls:
@@ -125,7 +130,7 @@ def run_pass(name, match, facets_only):
             docs = results_2_dict_list(q)[0]['flat']
             if not docs:
                 break
-            solr().add(docs, commitWithin=args.commit_within, **({'fieldUpdates': {'facets_annotation': 'set'}} if facets_only else {}))
+            solr().add(docs, commitWithin=str(args.commit_within), **({'fieldUpdates': {'facets_annotation': 'set'}} if facets_only else {}))
             s += args.batch
     solr().commit()                        # pass boundary: the facet updates need the documents they update
     print(f"pass {name}: committed, {done} records", flush=True)
