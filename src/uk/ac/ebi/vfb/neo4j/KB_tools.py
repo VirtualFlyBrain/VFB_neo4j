@@ -193,6 +193,16 @@ class iri_generator(kb_writer):
         self.id_name = {}
         self.base = base
         self.lookup = set()
+        # Existing ids are loaded on first use (generate), not here: there are ~1M
+        # VFB_ individuals, and many users of KB_pattern_writer never mint an id.
+        self._loaded = False
+
+    def _load_existing(self):
+        """Load the existing ids matching this generator's pattern (once)."""
+        if self._loaded:
+            return True
+        self._loaded = True
+        idp, acc_length = self.idp, self.acc_length
         self.statements.append("MATCH (i:Individual) "
                                "WHERE i.short_form =~ '%s_[0-9a-z]{%d}' "  # Note POSIX regex rqd
                                "RETURN i.short_form as short_form, "
@@ -219,6 +229,7 @@ class iri_generator(kb_writer):
         self._configure(idp='VFBc', acc_length=8, base=map_iri('vfb'))
 
     def generate(self, start, label=''):
+        self._load_existing()
         acc = self._get_new_accession(start)
         short_form = self._gen_short_form(acc)
         if self.idp == 'VFB':
@@ -252,6 +263,7 @@ class iri_generator(kb_writer):
             return {'iri': iri, 'short_form': short_form}
 
     def _get_new_accession(self, start):
+        self._load_existing()
         if self.use_base36:
             i = base36.loads(start)
         else:
