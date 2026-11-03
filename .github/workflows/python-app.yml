@@ -69,12 +69,6 @@ jobs:
       run: |
         echo -e "PDB log"
         docker logs pdb 
-    - name: Run KB_tools_test
-      timeout-minutes: 30
-      run: |
-        export PYTHONPATH=$PYTHONPATH":/"$(pwd)/VFB_connect/src
-        cd src
-        python -u -m uk.ac.ebi.vfb.neo4j.test.KB_tools_test 
     - name: Run neo_tools_tests
       timeout-minutes: 30
       run: |
@@ -110,3 +104,10 @@ jobs:
       run: python .github/ci/pdb_fixture.py check http://localhost:7475 neo4j test
     
     
+    # Last, and verbose: this suite takes close to (or over) 30 min on the full KB, so it must not hide the faster steps.
+    - name: Run KB_tools_test
+      timeout-minutes: 30
+      run: |
+        export PYTHONPATH=$PYTHONPATH":/"$(pwd)/VFB_connect/src
+        cd src
+        python -u -m uk.ac.ebi.vfb.neo4j.test.KB_tools_test -v 
