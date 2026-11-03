@@ -24,7 +24,7 @@ jobs:
     - name: Start databases
       run: |
         docker run -d --name db -p 7474:7474 -p 7687:7687 --env=NEO4J_AUTH=neo4j/test --env=NEOREADONLY=false --env=NEO4J_dbms_read__only=false --env=NEO4J_dbms_memory_heap_maxSize=1G --volume=$(pwd)/src/:/import/ virtualflybrain/vfb-prod:kb-v4-2
-        docker run -d --name pdb -p 7475:7474 -p 7688:7687 --env=NEO4J_AUTH=neo4j/test --env=NEOREADONLY=false --env=NEO4J_dbms_read__only=false --env=NEO4J_dbms_memory_heap_maxSize=1G --env=NEO4J_HEAP_MEMORY=2560 --volume=$(pwd)/src/:/import/ virtualflybrain/docker-vfb-neo4j-productiondb
+        docker run -d --name pdb -p 7475:7474 -p 7688:7687 --env=NEO4J_AUTH=neo4j/test --env=NEO4J_dbms_read__only=false --env=NEO4J_dbms_memory_heap_max__size=1G --volume=$(pwd)/src/:/import/ --entrypoint /startup/docker-entrypoint.sh virtualflybrain/docker-vfb-neo4j-productiondb:pdb-k8s neo4j
         sleep 60s
     - name: Install dependencies
       run: |
@@ -52,15 +52,13 @@ jobs:
         Test || :
         sleep 30
         curl -sSf -u neo4j:test "$LANDING_PAGE"
-    - name: PDB checks
-      timeout-minutes: 960
+    - name: PDB start and seed (small fixture)
+      timeout-minutes: 15
       run: |
-        echo -e "PDB check:"
-        export LANDING_PAGE="http://localhost:7475/browser/"  
-        Test () { export http_status=$(curl -s -i -u neo4j:test $LANDING_PAGE | grep HTTP/1.1 | awk {'print $2'}); echo "Returned status \"$http_status\""; if [ "$http_status" != "200" ]; then echo "Waiting for docker to finish building..."; iterations=$((iterations+1)); if [ "$iterations" != "200" ]; then sleep 1; Test; fi; else echo "$(date) - connected successfully"; fi; }
-        Test || :
-        sleep 30
-        curl -sSf -u neo4j:test "$LANDING_PAGE"
+        # The PDB container starts empty (stock Neo4j entrypoint) instead of downloading the 13.7 GB production dump;
+        # .github/ci/pdb_seed.cypher gives the tools under test the few nodes they need.
+        python .github/ci/pdb_fixture.py wait http://localhost:7475 neo4j test
+        python .github/ci/pdb_fixture.py seed http://localhost:7475 neo4j test
     - name: KB startup log
       if: always()
       run: |
@@ -102,5 +100,7 @@ jobs:
         export PYTHONPATH=$PYTHONPATH":/"$(pwd)/VFB_connect/src
         cd src
         python -m uk.ac.ebi.vfb.neo4j.flybase2neo.add_refs_for_anat http://localhost:7475 neo4j test
+    - name: Check add_refs_for_anat wrote what the fixture implies
+      run: python .github/ci/pdb_fixture.py check http://localhost:7475 neo4j test
     
     
