@@ -50,6 +50,11 @@ def main():
             "unannotated class left alone":
                 ("MATCH (c:Class {short_form:'FBbt_00000001'})-[r:has_reference]->(:pub) RETURN count(r)", lambda v: v == 0),
         }
+        print("has_reference edges written:")
+        for row in tx(endpoint, usr, pwd, [
+                "MATCH (c:Class)-[r:has_reference]->(p:pub) "
+                "RETURN c.short_form, r.typ, r.scope, p.short_form ORDER BY c.short_form, r.typ, p.short_form"])[0]:
+            print("  ", row)
         failed = False
         for name, (q, ok) in checks.items():
             rows = tx(endpoint, usr, pwd, [q])[0]
