@@ -45,10 +45,10 @@ def main():
                 ("MATCH (c:Class {short_form:'FBbt_00005106'}) RETURN size(c.description)", lambda v: v >= 1),
             "pub nodes written":
                 ("MATCH (p:pub) RETURN count(p)", lambda v: v >= 3),
-            "class -> pub reference edges written":
-                ("MATCH (:Class)-[r]->(:pub) RETURN count(r)", lambda v: v >= 4),
+            "class -> pub has_reference edges written":
+                ("MATCH (:Class)-[r:has_reference]->(:pub) RETURN count(r)", lambda v: v >= 4),
             "unannotated class left alone":
-                ("MATCH (c:Class {short_form:'FBbt_00000001'})-[r]->(:pub) RETURN count(r)", lambda v: v == 0),
+                ("MATCH (c:Class {short_form:'FBbt_00000001'})-[r:has_reference]->(:pub) RETURN count(r)", lambda v: v == 0),
         }
         failed = False
         for name, (q, ok) in checks.items():
