@@ -2,6 +2,7 @@
 import psycopg2
 from psycopg2 import OperationalError
 from ..KB_tools import KB_pattern_writer, node_importer, kb_owl_edge_writer
+from ..SQL_tools import get_fb_conn  # noqa: F401  (also imported from here by other modules)
 import pandas as pd
 import time
 from operator import itemgetter
@@ -35,10 +36,6 @@ def dict_cursor(cursor):
     return l
 
 
-def get_fb_conn():
-    return psycopg2.connect(dbname='flybase',
-                            host='chado.flybase.org',
-                            user='flybase')
 
 
 def dict_list_2_dict(key, dict_list, pfunc, sort = True):
