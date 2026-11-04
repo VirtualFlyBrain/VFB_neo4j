@@ -198,32 +198,40 @@ class iri_generator(kb_writer):
         self._loaded = False
 
     def _load_existing(self):
-        """Load the existing ids matching this generator's pattern (once)."""
+        """Load the existing ids matching this generator's pattern, once.
+
+        Ids are taken from :Individual nodes and from :IdReservation nodes (ids handed out but not yet loaded, see
+        reserve_ids), so a reserved id is never minted again. Raises if the query fails: minting against an empty
+        lookup would reuse existing ids, and the MERGE on iri would then write onto existing individuals.
+        Only a successful load is remembered, so a later call retries a failed one."""
         if self._loaded:
             return True
-        self._loaded = True
         idp, acc_length = self.idp, self.acc_length
-        self.statements.append("MATCH (i:Individual) "
-                               "WHERE i.short_form =~ '%s_[0-9a-z]{%d}' "  # Note POSIX regex rqd
-                               "RETURN i.short_form as short_form, "
-                               "i.label as label" % (idp, acc_length))
-        r = self.commit()
-        if r:
-            results = results_2_dict_list(r)
-            for res in results:
-                self.id_name[res['short_form']] = res['label']
-                acc = res['short_form'].split('_')[1]
-                if not self.use_base36:
-                    try:
-                        self.lookup.add(int(acc))
-                    except:
-                        self.lookup.add(base36.loads(acc))
-                else:
+        pattern = "'%s_[0-9a-z]{%d}'" % (idp, acc_length)  # Note POSIX regex rqd
+        q = ("MATCH (i:Individual) WHERE i.short_form =~ %s "
+             "RETURN i.short_form as short_form, i.label as label "
+             "UNION "
+             "MATCH (i:IdReservation) WHERE i.short_form =~ %s "
+             "RETURN i.short_form as short_form, i.label as label" % (pattern, pattern))
+        r = self.nc.commit_list([q])
+        if not isinstance(r, list) or not r or not all(isinstance(x, dict) and 'data' in x for x in r):
+            raise RuntimeError("Could not load existing %s_ ids from %s; not minting ids against an empty lookup"
+                               % (idp, self.endpoint))
+        results = results_2_dict_list(r)
+        for res in results:
+            self.id_name[res['short_form']] = res['label']
+            acc = res['short_form'].split('_')[1]
+            if not self.use_base36:
+                try:
+                    self.lookup.add(int(acc))
+                except ValueError:
                     self.lookup.add(base36.loads(acc))
-            return True
-        else:
-            warnings.warn("No existing ids match the pattern %s_%s" % (idp, 'n'*acc_length))
-            return False
+            else:
+                self.lookup.add(base36.loads(acc))
+        if not results:
+            warnings.warn("No existing ids match the pattern %s_%s" % (idp, 'n' * acc_length))
+        self._loaded = True
+        return True
 
     def set_channel_config(self):
         self._configure(idp='VFBc', acc_length=8, base=map_iri('vfb'))
@@ -1117,6 +1125,47 @@ class KB_pattern_writer(object):
         
         return updated_anat_id_dict
 
+    def reserve_image_ids(self, start, count, reserved_for):
+        """Hand out `count` new anatomy ids (VFB_xxxxxxxx) whose channel id (VFBc_xxxxxxxx) is also free, starting at
+        `start`, and reserve both in the KB as :IdReservation nodes so no other generator mints them before they are
+        loaded. Returns the list of VFB_ short_forms. Raises if the reservation cannot be written.
+        The reservation nodes carry `block`, so the pipeline drops them (collectdata deletes :Entity nodes with a
+        block) if one is ever left in the KB; release_ids removes them once the images are loaded."""
+        anat, chan = self.anat_iri_gen, self.channel_iri_gen
+        anat._load_existing()
+        chan._load_existing()
+        out, acc = [], start
+        while len(out) < count:
+            acc = anat._get_new_accession(acc)  # next accession free for VFB_ (now marked used in anat.lookup)
+            n = base36.loads(acc) if chan.use_base36 else int(acc)
+            if n in chan.lookup:                # its VFBc_ is taken: skip this accession
+                continue
+            chan.lookup.add(n)
+            out.append(anat._gen_short_form(acc))
+        if not out:
+            return out
+        ids = out + [sf.replace('VFB_', 'VFBc_', 1) for sf in out]
+        q = ("UNWIND $ids AS id MERGE (r:IdReservation {short_form: id}) "
+             "ON CREATE SET r.reserved_for = $reserved_for, r.reserved_at = toString(datetime()), "
+             "r.block = ['ID reservation'] "
+             "RETURN count(r)")
+        r = self.ni.nc.commit_list([{'statement': q, 'parameters': {'ids': ids, 'reserved_for': reserved_for}}])
+        if r is False:
+            raise RuntimeError("Could not reserve ids %s..%s in %s" % (out[0], out[-1], self.ni.endpoint))
+        for sf in out:
+            anat.id_name[sf] = reserved_for
+            chan.id_name[sf.replace('VFB_', 'VFBc_', 1)] = reserved_for
+        return out
+
+    def release_ids(self, short_forms):
+        """Remove the :IdReservation nodes for these anatomy ids and their channel ids (after they are loaded)."""
+        ids = list(short_forms) + [sf.replace('VFB_', 'VFBc_', 1) for sf in short_forms]
+        if not ids:
+            return True
+        r = self.ni.nc.commit_list([{'statement': "MATCH (r:IdReservation) WHERE r.short_form IN $ids DELETE r",
+                                     'parameters': {'ids': ids}}])
+        return r is not False
+
     def add_anatomy_image_set(self,
                               dataset,
                               imaging_type,
@@ -1223,6 +1272,15 @@ class KB_pattern_writer(object):
             anat_id = self.anat_iri_gen.generate(start)
             channel_id = self.channel_iri_gen.generate(start)
             logging.debug(f"Generated new anat_id: {anat_id}, channel_id: {channel_id}")
+            # Backstop: a freshly minted id must not exist in the KB (the MERGE on iri would write onto it)
+            self.ec.roll_new_entity_check(labels=['Individual'], match_on='short_form',
+                                          query=anat_id['short_form'])
+            self.ec.roll_new_entity_check(labels=['Individual'], match_on='short_form',
+                                          query=channel_id['short_form'])
+            if not self.ec.check(hard_fail=hard_fail):
+                warnings.warn("Load fail: generated id already in the KB.")
+                logging.debug("Load fail: generated id already in the KB.")
+                return False
         else:
             anat_id = self.update_anat_id(anat_id)
             channel_id = self.update_channel_id(anat_id)
