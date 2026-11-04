@@ -143,8 +143,7 @@ class FeatureMover(FB2Neo):
                     "SET n.iri = 'http://flybase.org/reports/' + line.short_form " \
                     "SET n:Feature SET n.self_xref = ['FlyBase']"
 
-        if commit:
-            self.commit_via_csv(statement, proc_names)
+        self.commit_via_csv(statement, proc_names, commit=commit)  # commit=False: buffered on self.ni
         self.addTypes2Neo(fbids=fbids, commit=commit)
         return feats
 
@@ -223,9 +222,7 @@ class FeatureMover(FB2Neo):
         statement = "MATCH (p:Class { short_form: line.parent })" \
                     ",(c:Class { short_form: line.child }) " \
                     "MERGE (p)<-[:SUBCLASSOF]-(c)"
-        if commit:
-            self.commit_via_csv(statement,
-                                feature_classifications)
+        self.commit_via_csv(statement, feature_classifications, commit=commit)
 
     def abberationType(self, abbs):
         """abbs = a list of abberation fbids
@@ -363,7 +360,7 @@ class FeatureMover(FB2Neo):
 
         if not feature_objects:
             if add_features:
-                features = self.add_features(features)
+                features = self.add_features(features, commit=commit)
             else:
                 features = self.name_synonym_lookup(features)
 
@@ -425,7 +422,7 @@ class FeatureMover(FB2Neo):
         for s in splits:
             if add_feats:
                 if add_feature_details:
-                    feats = self.add_features([s.ad, s.dbd])
+                    feats = self.add_features([s.ad, s.dbd], commit=commit)
                 else:
                     feats = self.name_synonym_lookup([s.ad, s.dbd])
                     for k, v in feats.items():

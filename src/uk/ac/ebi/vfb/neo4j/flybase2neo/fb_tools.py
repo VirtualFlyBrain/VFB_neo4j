@@ -79,7 +79,7 @@ class FB2Neo(object):
     def __init__(self, endpoint, usr, pwd, file_path=''):
         """Specify Neo4J server endpoint, username and password"""
         self._init(endpoint, usr, pwd)
-        self.file_path = file_path  # A path for temp csv files  # This really should be pushed up to neo4J connect (via KB tools)
+        self.file_path = file_path  # Unused since commit_via_csv stopped writing csv files; kept so callers still work
 
     def _init(self, endpoint, usr, pwd):
         self.conn = get_fb_conn()
@@ -108,13 +108,26 @@ class FB2Neo(object):
                 time.sleep(delay)
                 self.conn = get_fb_conn()  # Re-establish the connection
 
-    def commit_via_csv(self, statement, dict_list):
-        df = pd.DataFrame.from_records(dict_list)
-        df.to_csv(self.file_path + "tmp.csv", sep='\t')
-        self.nc.commit_csv("file:///" + "tmp.csv",
-                           statement=statement,
-                           sep="\t")
-        # add something to delete csv here.
+    def commit_via_csv(self, statement, dict_list, commit=True, batch_size=1000):
+        """Runs `statement` once per dict in dict_list, with each dict available as `line` (e.g. `line.short_form`).
+
+        The name is historical: the rows are sent as a Cypher parameter (UNWIND $rows AS line ...), not written to a
+        csv for LOAD CSV, so the client and Neo4j no longer need to share an import directory (VFB_neo4j#314).
+        commit=True: send now, and raise if Neo4j rejects it (a failed load must not look like a success).
+        commit=False: append to self.ni.statements for the caller to send with self.ni.commit().
+        """
+        rows = list(dict_list)
+        if not rows:
+            return True
+        unwound = "UNWIND $rows AS line " + statement
+        statements = [{'statement': unwound, 'parameters': {'rows': rows[i:i + batch_size]}}
+                      for i in range(0, len(rows), batch_size)]
+        if not commit:
+            self.ni.statements.extend(statements)
+            return True
+        if self.nc.commit_list(statements) is False:
+            raise RuntimeError("Loading %d rows failed: %s" % (len(rows), statement[:120]))
+        return True
 
     def close(self):
         self.conn.close()  # Investigate implementing using with statement.  Then method not required.
