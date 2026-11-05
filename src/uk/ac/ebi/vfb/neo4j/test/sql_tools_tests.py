@@ -9,9 +9,25 @@ from uk.ac.ebi.vfb.neo4j import SQL_tools
 
 class TestGetFbConn(unittest.TestCase):
 
-    def test_default_is_flybase(self):
+    def test_default_is_vfb_then_flybase(self):
         with mock.patch.dict(os.environ, {}, clear=True):
-            self.assertEqual(['chado.flybase.org'], SQL_tools.fb_chado_hosts())
+            self.assertEqual(['chado.flybase.virtualflybrain.org:443', 'chado.flybase.org'], SQL_tools.fb_chado_hosts())
+
+    def test_port_443_uses_direct_ssl(self):
+        a = SQL_tools._conn_args('chado.flybase.virtualflybrain.org:443')
+        self.assertEqual(('chado.flybase.virtualflybrain.org', 443, 'require', 'direct'),
+                         (a['host'], a['port'], a['sslmode'], a['sslnegotiation']))
+        self.assertNotIn('sslmode', SQL_tools._conn_args('chado.flybase.org'))
+
+    def test_old_libpq_falls_back(self):
+        # libpq < 17 rejects sslnegotiation with a ProgrammingError, not an OperationalError
+        def connect(**kw):
+            if 'sslnegotiation' in kw:
+                raise psycopg2.ProgrammingError('invalid dsn: invalid connection option "sslnegotiation"')
+            return 'conn'
+        with mock.patch.dict(os.environ, {}, clear=True), \
+                mock.patch.object(SQL_tools.psycopg2, 'connect', side_effect=connect):
+            self.assertEqual('conn', SQL_tools.get_fb_conn())
 
     def test_falls_back_in_order(self):
         calls = []
