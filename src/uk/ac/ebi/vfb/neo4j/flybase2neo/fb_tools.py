@@ -35,10 +35,7 @@ def dict_cursor(cursor):
     return l
 
 
-def get_fb_conn():
-    return psycopg2.connect(dbname='flybase',
-                            host='chado.flybase.org',
-                            user='flybase')
+from ..SQL_tools import get_fb_conn  # FB_CHADO_HOST picks the server (VFB's own copy, then FlyBase's)
 
 
 def dict_list_2_dict(key, dict_list, pfunc, sort = True):
