@@ -16,11 +16,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python 3.10
-      uses: actions/setup-python@v2
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
       with:
-        python-version: "3.7"
+        python-version: "3.11"   # as the pipeline (python:3.11-slim); GitHub no longer provides 3.7
     - name: Start databases
       run: |
         docker run -d --name db -p 7474:7474 -p 7687:7687 --env=NEO4J_AUTH=neo4j/test --env=NEOREADONLY=false --env=NEO4J_dbms_read__only=false --env=NEO4J_dbms_memory_heap_maxSize=1G --volume=$(pwd)/src/:/import/ virtualflybrain/vfb-prod:kb-v4-2
@@ -71,6 +71,10 @@ jobs:
       run: |
         echo -e "PDB log"
         docker logs pdb 
+    - name: Run offline tests
+      run: |
+        cd src
+        python -m unittest uk.ac.ebi.vfb.neo4j.test.unwind_batching_tests uk.ac.ebi.vfb.neo4j.flybase2neo.test.commit_via_csv_tests
     - name: Run KB_tools_test
       run: |
         export PYTHONPATH=$PYTHONPATH":/"$(pwd)/VFB_connect/src
