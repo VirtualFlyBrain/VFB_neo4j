@@ -186,8 +186,17 @@ feps_chunked = chunks(feps, 2000)
 # directly into triple-store integration via dipper.
 
 
+def lap(label, _t=[None]):
+    """Print the time since the previous lap: where each chunk's minutes go (Chado lookups vs Neo4j writes)."""
+    now = datetime.datetime.now()
+    if _t[0] is not None and label:
+        print(f"  [{now.strftime('%H:%M:%S')}] {label}: {(now - _t[0]).total_seconds():.1f}s")
+    _t[0] = now
+
+
 for fep_c in feps_chunked:
     print(f"Processing chunk of {len(fep_c)} records...")
+    lap(None)
 
     # Using SQLITE for tracking/lookup. Loading via DataFrame
 
@@ -218,18 +227,22 @@ for fep_c in feps_chunked:
         print("No alleles found for current chunk. Skipping...")
         continue
 
+    lap("allele lookup")
     alleles = fm.add_features(allele_ids)
     print(f"Added {len(alleles)} alleles to the graph.")
+    lap("add alleles")
 
     # Only add pubs where allele is present
     q = engine.execute("SELECT fbrf from feature_expression WHERE al IS NOT NULL")
     pubs = [i[0] for i in q.fetchall()]
     print(f"Found {len(pubs)} publications to move.")
     pm.move(pubs)
+    lap("move pubs")
 
     # Add genes linked to alleles (these don't need to be in the table)
     fm.add_feature_relations(fm.allele2Gene(alleles))
     print("Added gene relations for alleles.")
+    lap("allele genes")
 
     # Find transgenes, add them to table and link them to alleles
     al2tg = fm.allele2transgene(allele_ids)
@@ -240,6 +253,7 @@ for fep_c in feps_chunked:
         allele_ids.append(t[0])
     transgenes = fm.add_feature_relations(al2tg)  # Dict tg_id: feature object
     print(f"Added {len(al2tg)} transgenes and linked them to alleles.")
+    lap("transgenes")
 
     # Find and process splits
     splits = proc_splits(engine)
@@ -250,6 +264,7 @@ for fep_c in feps_chunked:
     print(f"Found {len(hemidrivers)} hemidrivers to add to graph.")
     fm.add_features(hemidrivers)
     fm.gen_split_ep_feat(splits)
+    lap("splits and hemidrivers")
 
     # Add regular expression patterns
     q = engine.execute("SELECT tg FROM feature_expression WHERE comment IS NULL AND tg is NOT NULL")
@@ -263,6 +278,7 @@ for fep_c in feps_chunked:
                 engine.execute("UPDATE feature_expression SET ep = '%s'"
                                "WHERE tg = '%s'" % (e[0], e[2]))
             print(f"Generated {len(eps.edges)} expression patterns.")
+    lap("expression patterns")
 
     # Write expressions to the graph
     q = engine.execute("SELECT fbrf, ep, fbex FROM feature_expression "
@@ -289,8 +305,11 @@ for fep_c in feps_chunked:
     print ("Start commit:")
     print("Committing expressions to the graph...")
     print (now.strftime("%Y-%m-%d %H:%M:%S"))
+    lap("collect expressions")
     exp_write.commit()
+    now = datetime.datetime.now()
     print(f"Finished committing expressions at {now.strftime('%Y-%m-%d %H:%M:%S')}.")
     print ("Finished commit:")
     print (now.strftime("%Y-%m-%d %H:%M:%S"))
+    lap("commit expressions")
     exp_write = None

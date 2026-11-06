@@ -1,6 +1,6 @@
 from .fb_tools import FB2Neo, dict_list_2_dict
 from ...curie_tools import map_iri
-from ..KB_tools import get_sf
+from ..KB_tools import get_sf, unwind_enabled, unwind_rows
 import uuid
 from warnings import warn
 
@@ -24,6 +24,7 @@ class ExpressionWriter(FB2Neo):
         self._init(endpoint, usr, pwd)
         self.FBex_lookup = {}
         self.statements = []
+        self.link_rows = []  # VFB_NEO4J_UNWIND=1: link_ep2anat rows, sent as UNWIND batches by commit()
 
     def get_expression(self, FBex_list=None, limit=0):
         """Given a list of FBex IDs, generates a lookup for TAP statements, keyed on FBex.
@@ -190,6 +191,9 @@ class ExpressionWriter(FB2Neo):
     def link_ep2anat(self, a, ep, ad, atype):
         # Need batch checking anatomy labels?
         # Giving up on usual pattern for addition...
+        if unwind_enabled():
+            self.link_rows.append({'ep': ep, 'atype': atype, 'a': a, 'ad': dict(ad)})
+            return
         edge_prop_clauses = []
         for k,v in ad.items():
             edge_prop_clauses.append(self.ew._add_textual_attribute('r', k, v))
@@ -250,8 +254,31 @@ class ExpressionWriter(FB2Neo):
 
         # Or - could leave out for now and worry about it once in OWL.
 
+    # link_ep2anat's two literal statements as one parameterised batch: the same MATCH, the same edge (overlaps for
+    # gross anatomy, part_of when the type is a Cell; iris exactly as before) and the same annotation properties.
+    LINK_EP2ANAT_UNWIND = (
+        "UNWIND $rows AS row "
+        "MATCH (ep:Class { short_form: row.ep }), (t:Class { short_form: row.atype }), "
+        "(a:Individual { short_form: row.a }) "
+        "FOREACH (_ IN CASE WHEN 'Cell' IN labels(t) THEN [] ELSE [1] END | "
+        "MERGE (ep)<-[r:overlaps { short_form: 'RO_0002131', type: 'Related', "
+        "iri: 'http://purl.obolibrary.org/RO_0002131'}]-(a) SET r += row.ad) "
+        "FOREACH (_ IN CASE WHEN 'Cell' IN labels(t) THEN [1] ELSE [] END | "
+        "MERGE (ep)<-[r:part_of { short_form: 'BFO_0000050', type: 'Related', "
+        "iri: 'http://purl.obolibrary.org/BFO_0000050'}]-(a) SET r += row.ad) "
+        "RETURN count(*) AS linked")
+
     def commit(self):
         self.ni.commit() # Add new nodes
         self.ew.commit() # Wire up new nodes
-        self.nc.commit_list(self.statements) # Make annotation links
+        if self.statements:
+            self.nc.commit_list(self.statements) # Make annotation links
+        # one transaction per batch, so a bad row costs its batch, not every link in the chunk
+        size = unwind_rows()
+        for i in range(0, len(self.link_rows), size):
+            if self.nc.commit_list([{'statement': self.LINK_EP2ANAT_UNWIND,
+                                     'parameters': {'rows': self.link_rows[i:i + size]}}]) is False:
+                warn("Linking %d expression patterns to anatomy failed (batch starting %s)"
+                     % (len(self.link_rows[i:i + size]), self.link_rows[i]['ep']))
         self.statements = []
+        self.link_rows = []

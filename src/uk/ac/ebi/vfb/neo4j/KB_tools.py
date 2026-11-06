@@ -142,6 +142,33 @@ class kb_writer (object):
     def commit(self, verbose=False, chunk_length=5000):
         return self._commit(verbose, chunk_length)
 
+    def _queue_rows(self, statement, row, params=None):
+        """Add one row to a parameterised `UNWIND $rows AS row ...` statement. Consecutive calls with the same
+        statement share a batch (up to unwind_rows() rows), so the statement list keeps the order of the calls."""
+        last = self.statements[-1] if self.statements else None
+        if isinstance(last, dict) and last.get('statement') == statement \
+                and len(last['parameters']['rows']) < unwind_rows():
+            last['parameters']['rows'].append(row)
+        else:
+            self.statements.append({'statement': statement, 'parameters': dict(params or {}, rows=[row])})
+
+    def _param_attributes(self, attribute_dict):
+        """attribute_dict as a parameter map holding what _set_attributes_from_dict's literal SETs stored: floats
+        through '%f' (6 dp), list items through escape_string + Python repr (backslashes stay doubled), other
+        strings as given. Unsupported types are skipped with the same warning."""
+        out = {}
+        for k, v in attribute_dict.items():
+            if type(v) == float:
+                out[k] = float('%f' % v)
+            elif type(v) == list:
+                out[k] = [self.escape_string(i) for i in v]
+            elif type(v) in (int, str, bool):
+                out[k] = v
+            else:
+                warnings.warn("Can't use a %s as an attribute value in Cypher. Key %s Value :%s"
+                              % (type(v), k, (str(v))))
+        return out
+
     def escape_string(self, strng:str):
         # backslashes need special escaping to be treated literally
         return re.sub(r'\\', r'\\\\', strng)
@@ -549,6 +576,9 @@ class kb_owl_edge_writer(kb_writer):
          Optionally add edge annotations specified as key value pairs in dict."""
 
         if edge_annotations is None: edge_annotations = {}
+        if unwind_enabled():
+            self._queue_named_edge(':Individual', 'INSTANCEOF', s, o, match_on, edge_annotations)
+            return
         out = "OPTIONAL MATCH (s:Individual {{ {match_on}:'{s}' }} ) " \
               "OPTIONAL MATCH (o:Class {{ {match_on}:'{o}' }} ) ".format(**locals())
         out += "FOREACH (a IN CASE WHEN s IS NOT NULL THEN [s] ELSE [] END | " \
@@ -581,6 +611,9 @@ class kb_owl_edge_writer(kb_writer):
             s = property identifying subject Individual ,
             o = property identifying object Class.
             match_on = property to match owl entities on; default = 'iri'"""
+        if unwind_enabled():
+            self._queue_named_edge(':Class', 'SUBCLASSOF', s, o, match_on, {})
+            return
         out = "OPTIONAL MATCH (s:Class {{ {match_on}:'{s}' }} ) " \
               "OPTIONAL MATCH (o:Class {{ {match_on}:'{o}' }} ) ".format(**locals())
         out += "FOREACH (a IN CASE WHEN s IS NOT NULL THEN [s] ELSE [] END | " \
@@ -589,6 +622,22 @@ class kb_owl_edge_writer(kb_writer):
         out += ")) RETURN { `%s`: count(s), `%s`: count(o) } as match_count" % (s, o)
         self.statements.append(out)
     
+    def _queue_named_edge(self, stype, etype, s, o, match_on, edge_annotations):
+        """add_named_type_ax / add_named_subClassOf_ax as a row of a parameterised UNWIND batch (VFB_NEO4J_UNWIND=1).
+        Without this, commit()'s chunk_length // unwind_rows() sent these one-per-row literals 5 per transaction."""
+        if match_on not in ['iri', 'label', 'short_form']:
+            raise Exception("Illegal match property '%s'. " % match_on)
+        q = "UNWIND $rows AS row " \
+            "OPTIONAL MATCH (s%s { %s: row.s }) " \
+            "OPTIONAL MATCH (o:Class { %s: row.o }) " \
+            "FOREACH (a IN CASE WHEN s IS NOT NULL THEN [s] ELSE [] END | " \
+            "FOREACH (b IN CASE WHEN o IS NOT NULL THEN [o] ELSE [] END | " \
+            "MERGE (a)-[e:%s]->(b) SET e += row.a " \
+            ")) WITH row, count(s) AS sc, count(o) AS oc " \
+            "RETURN { s: row.s, o: row.o, s_found: sc, o_found: oc } AS unwind_match_count" % (
+                stype, match_on, match_on, etype)
+        self._queue_rows(q, {'s': s, 'o': o, 'a': self._param_attributes(edge_annotations)})
+
     def commit(self, verbose=False, chunk_length=5000):
         """Check prroperties; construct triples for all properties present;
         commit all edge additions (triples and duples) and test success.
@@ -665,13 +714,29 @@ class node_importer(kb_writer):
         if attribute_dict is None: attribute_dict = {}
         short_form = re.split('[#/]', IRI)[-1]
         logging.debug(f"Adding node with labels: {labels}, IRI: {IRI}, short_form: {short_form}, attributes: {attribute_dict}, allow_duplicates: {allow_duplicates}")
-        statement = "MERGE (n:%s { iri: '%s' }) set n.short_form = '%s' set n:Entity " % (
-                    (':'.join(labels)),
-                     IRI, short_form)
+        # MERGE on the one label whose iri is unique (Class / Individual / Property) and SET the rest. MERGE on all of
+        # them misses a node that has the iri but not every label, tries to create a second one and fails the
+        # uniqueness constraint, which rolls back every statement in the same transaction (loadpdb2m 20261105: 101
+        # expression-pattern batches lost to 14 VFBexp_ nodes that were :Class without :Expression_pattern).
+        merge_label = next((l for l in ('Class', 'Individual', 'Property') if l in labels), labels[0])
+        extra = ''.join(':' + l for l in labels if l not in (merge_label, 'Entity'))
+        if unwind_enabled():
+            q = "UNWIND $rows AS row MERGE (n:%s { iri: row.iri }) SET n.short_form = row.short_form SET n:Entity%s " \
+                "SET n += row.a" % (merge_label, extra)
+            self._queue_rows(q, {'iri': IRI, 'short_form': short_form,
+                                 'a': self._param_attributes(attribute_dict)})
+            return
+        statement = "MERGE (n:%s { iri: '%s' }) set n.short_form = '%s' set n:Entity%s " % (
+                    merge_label, IRI, short_form, extra)
         statement += self._set_attributes_from_dict(var='n',
                                                     attribute_dict=attribute_dict)
         self.statements.append(statement)
         logging.debug(f"Generated statement: {statement}")
+
+    def commit(self, verbose=False, chunk_length=5000):
+        if unwind_enabled():
+            chunk_length = max(1, chunk_length // unwind_rows())  # add_node statements carry unwind_rows() rows each
+        return self._commit(verbose, chunk_length)
     
     def update_from_obograph(self, file_path = '', url = '', include_properties=False, commit=True):
         """Update property and class nodes from an OBOgraph file

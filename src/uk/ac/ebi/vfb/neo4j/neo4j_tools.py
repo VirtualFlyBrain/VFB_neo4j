@@ -7,6 +7,7 @@ import re
 import time
 from datetime import datetime, timedelta
 import math
+import threading
 #import token
 import argparse
 
@@ -66,6 +67,7 @@ class neo4j_connect():
         self.pwd = pwd
         self.commit = "/db/neo4j/tx/commit"
         self.headers = {'Content-type': 'application/json'}
+        self._local = threading.local()  # one keep-alive HTTP session per thread (requests.Session is not thread-safe)
         if not self.test_connection():
             print("Falling back to Neo4j v3 connection")
             self.commit = "/db/data/transaction/commit"
@@ -94,7 +96,7 @@ class neo4j_connect():
         attempt = 0
         while attempt < max_retries:
             try:
-                response = requests.post(
+                response = self._session().post(
                     url=self.base_uri + self.commit,
                     auth=(self.usr, self.pwd),
                     data=json.dumps(payload),
@@ -102,10 +104,13 @@ class neo4j_connect():
                 )
                 if self.rest_return_check(response):
                     return response.json()['results']
+                elif not self._retryable(response):
+                    # Neo4j ran the transaction and rejected it (syntax, constraint, type error): the same payload
+                    # fails the same way every time, so report it now rather than resending it.
+                    return False
                 else:
-                    # Non-200 (e.g. transient 415/502 from a gateway/proxy) -
-                    # retry with backoff like a ConnectionError, rather than
-                    # failing on the first bad response.
+                    # Non-200 (e.g. transient 415/502 from a gateway/proxy) or a Neo4j TransientError (deadlock,
+                    # lock timeout) - retry with backoff like a ConnectionError.
                     attempt += 1
                     if attempt >= max_retries:
                         print("Max retries reached after non-OK response. Operation failed.")
@@ -126,6 +131,24 @@ class neo4j_connect():
         return False
         
         
+    def _session(self):
+        s = getattr(self._local, 'session', None)
+        if s is None:
+            s = self._local.session = requests.Session()
+        return s
+
+    @staticmethod
+    def _retryable(response):
+        """A failed commit is worth resending only if it did not reach Neo4j cleanly (non-200) or Neo4j says the
+        failure is transient. ClientError / DatabaseError responses are deterministic."""
+        if response.status_code != 200:
+            return True
+        try:
+            errors = response.json().get('errors') or []
+        except ValueError:
+            return True
+        return any(str(e.get('code', '')).startswith('Neo.TransientError') for e in errors)
+
     def commit_list_in_chunks(self, statements, verbose=False, chunk_length=1000):
         """Commit a list of statements to neo4J DB via REST API, split into chunks.
         cypher_statments = list of cypher statements as strings
