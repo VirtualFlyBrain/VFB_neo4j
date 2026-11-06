@@ -181,6 +181,14 @@ class TestNodeImporter(unittest.TestCase):
         assert dc[0]['label'] == 'cluster'
 
     def test_update_from_obograph_obsoletes(self):
+        # Individuals typed to the two terms this test ontology obsoletes (MBON01 with term_replaced_by, MBON02 with
+        # consider only). The test used to rely on a KB snapshot that already had them; CI now starts empty.
+        for term, ind in (('FBbt_00100234', 'VFB_testmb01'), ('FBbt_00111012', 'VFB_testmb02')):
+            self.ni.nc.commit_list(["MERGE (c:Class:Entity { iri: 'http://purl.obolibrary.org/obo/%s' }) "
+                                    "SET c.short_form = '%s' "
+                                    "MERGE (i:Individual:Entity { iri: 'http://virtualflybrain.org/reports/%s' }) "
+                                    "SET i.short_form = '%s' "
+                                    "MERGE (i)-[:INSTANCEOF]->(c)" % (term, term, ind, ind)])
         p = get_file_path("uk/ac/ebi/vfb/neo4j/test/resources/fbbt-simple-obsoletes.json")
         self.ni.update_from_obograph(file_path=p, include_properties=True)
         self.ni.commit()
