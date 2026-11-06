@@ -1,5 +1,6 @@
 from .fb_tools import FB2Neo
 from ...curie_tools import map_iri
+from ..KB_tools import unwind_enabled
 import re
 
 class pubMover(FB2Neo):
@@ -46,8 +47,24 @@ class pubMover(FB2Neo):
                 "WHERE pub.uniquename IN ('%s')" % "', '".join(pub_list)
         return self.query_fb(query)
 
+    # db name -> pub property, as set_pub_xrefs_internal's literal statements (ISBN deliberately goes to PMID, as before)
+    XREF_PROPERTY = {'pubmed': 'PMID', 'PMCID': 'PMCID', 'ISBN': 'PMID', 'DOI': 'DOI'}
+
     def set_pub_xrefs_internal(self, pub_list):
         xrefs = self.get_pub_xrefs(pub_list)
+        if unwind_enabled():
+            rows = {}
+            for d in xrefs:
+                prop = self.XREF_PROPERTY.get(d['db_name'])
+                if prop:
+                    rows.setdefault(prop, []).append({'f': d['fbrf'], 'acc': d['acc']})
+            # one statement per property, in the order the literals ran, so a later row for the same pub still wins
+            statements = [{'statement': "UNWIND $rows AS row MATCH (p:pub) WHERE p.short_form = row.f "
+                                        "SET p.%s = [row.acc]" % prop, 'parameters': {'rows': r}}
+                          for prop, r in rows.items()]
+            if statements:
+                self.nc.commit_list(statements)
+            return
         statements = []
         for d in xrefs:
             if d['db_name'] == 'pubmed':

@@ -419,18 +419,27 @@ class FeatureMover(FB2Neo):
         """
 
         out = {}
+        # One Chado lookup for every hemidriver in the batch, not one per split (~1,500 round trips per loadpdb2m chunk)
+        lookup = {}
+        if not (add_feats and add_feature_details):
+            ids = sorted({f for sp in splits for f in (sp.ad, sp.dbd)})
+            lookup = (self.name_synonym_lookup(ids) or {}) if ids else {}
+        added = set()
         for s in splits:
             if add_feats:
                 if add_feature_details:
                     feats = self.add_features([s.ad, s.dbd], commit=commit)
                 else:
-                    feats = self.name_synonym_lookup([s.ad, s.dbd])
+                    feats = {k: lookup[k] for k in (s.ad, s.dbd) if k in lookup}
                     for k, v in feats.items():
+                        if k in added:
+                            continue
+                        added.add(k)
                         self.ni.add_node(labels=['Class', 'Feature'],
                                          IRI=map_iri('fb') + k,
                                          attribute_dict={'label': v.label})
             else:
-                feats = self.name_synonym_lookup([s.ad, s.dbd])
+                feats = {k: lookup[k] for k in (s.ad, s.dbd) if k in lookup}
 
 
             short_form = 'VFBexp_' + s.dbd + s.ad

@@ -190,15 +190,24 @@ class pubLink():
                             self.write_pub_link(d['short_form'], s, type=k)
 
     def commit(self):
-        # Remove duplicates from the node writer statements
-        self.node_writer.statements = list(set(self.node_writer.statements))
-        
-        # Remove duplicates from the edge writer statements
-        self.edge_witer.statements = list(set(self.edge_witer.statements))
+        # Remove duplicate literal statements (order-preserving); parameterised UNWIND batches (dicts) are kept as they are
+        self.node_writer.statements = _dedupe(self.node_writer.statements)
+        self.edge_witer.statements = _dedupe(self.edge_witer.statements)
         
         # Commit the unique statements
         self.node_writer.commit(chunk_length=1000, verbose=True)
         self.edge_witer.commit(chunk_length=1000, verbose=True)
+
+def _dedupe(statements):
+    seen = set()
+    out = []
+    for st in statements:
+        if isinstance(st, str):
+            if st in seen:
+                continue
+            seen.add(st)
+        out.append(st)
+    return out
 
 def __main__():
     pl = pubLink(endpoint=args.endpoint,
