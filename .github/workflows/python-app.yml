@@ -23,7 +23,9 @@ jobs:
         python-version: "3.11"   # as the pipeline (python:3.11-slim); GitHub no longer provides 3.7
     - name: Start databases
       run: |
-        docker run -d --name db -p 7474:7474 -p 7687:7687 --env=NEO4J_AUTH=neo4j/test --env=NEOREADONLY=false --env=NEO4J_dbms_read__only=false --env=NEO4J_dbms_memory_heap_maxSize=1G --volume=$(pwd)/src/:/import/ virtualflybrain/vfb-prod:kb-v4-2
+        # KB: an empty Neo4j 4.4; the tests create what they need. (vfb-prod:kb-v4-2 ships a ~1.8M-node KB snapshot,
+        # and the tests' full-graph scans and DETACH DELETE teardown ran out of heap and took 20+ min on it.)
+        docker run -d --name db -p 7474:7474 -p 7687:7687 --env=NEO4J_AUTH=neo4j/test --env=NEO4J_dbms_memory_heap_max__size=1G --volume=$(pwd)/src/:/import/ neo4j:4.4
         # PDB: an empty Neo4j 4.4 (the production PDB's version) seeded from .github/ci/pdb_seed.cypher in "PDB checks".
         # The productiondb image downloads and unpacks the 13 GB live PDB, which never finished on a runner.
         docker run -d --name pdb -p 7475:7474 -p 7688:7687 --env=NEO4J_AUTH=neo4j/test --env=NEO4J_dbms_memory_heap_max__size=1G --volume=$(pwd)/src/:/import/ --volume=$(pwd)/.github/ci/:/seed/ neo4j:4.4
