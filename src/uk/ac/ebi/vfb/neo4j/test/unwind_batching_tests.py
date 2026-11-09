@@ -118,3 +118,49 @@ class TestCommitRetryPolicy(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class TestXrefEdgePerAccession(unittest.TestCase):
+    """Several hasDbXref accessions to one Site are kept as separate edges: the accession is part of the MERGE,
+    so a later xref no longer overwrites an earlier one on the same (subject, Site) pair."""
+
+    def test_literal_merges_on_accession(self):
+        os.environ.pop('VFB_NEO4J_UNWIND', None)
+        ew = writer(kb_owl_edge_writer)
+        ew.properties['hasDbXref'] = {'match_on': 'short_form', 'label': 'hasDbXref', 'short_form': 'hasDbXref',
+                                      'iri': 'http://www.geneontology.org/formats/oboInOwl#hasDbXref', 'sl': ''}
+        ew.add_xref(s='VFBexp_1', xref='FlyLightSplit:SS01148', stype=':Class')
+        ew.add_xref(s='VFBexp_1', xref='FlyLightSplit:SS01149', stype=':Class')
+        ew._construct_triples()
+        self.assertEqual(2, len(ew.statements))
+        self.assertIn("MERGE (a)-[re:hasDbXref { accession: ['SS01148'] }]->(b)", ew.statements[0])
+        self.assertIn("MERGE (a)-[re:hasDbXref { accession: ['SS01149'] }]->(b)", ew.statements[1])
+        self.assertNotIn("SET re.accession", ew.statements[0])  # merged on, so not re-set
+
+    def test_unwind_merges_on_accession(self):
+        with mock.patch.dict(os.environ, {'VFB_NEO4J_UNWIND': '1'}):
+            ew = writer(kb_owl_edge_writer)
+            ew.properties['hasDbXref'] = {'match_on': 'short_form', 'label': 'hasDbXref', 'short_form': 'hasDbXref',
+                                          'iri': 'http://www.geneontology.org/formats/oboInOwl#hasDbXref', 'sl': ''}
+            ew.add_xref(s='VFBexp_1', xref='FlyLightSplit:SS01148', stype=':Class')
+            ew.add_xref(s='VFBexp_1', xref='FlyLightSplit:SS01149', stype=':Class')
+            ew._construct_triples()
+        self.assertEqual(1, len(ew.statements))
+        self.assertIn("MERGE (a)-[re:`hasDbXref` { `accession`: row.a.`accession` }]->(b)", ew.statements[0]['statement'])
+        self.assertEqual([['SS01148'], ['SS01149']],
+                         [r['a']['accession'] for r in ew.statements[0]['parameters']['rows']])
+
+    def test_other_annotation_edges_unchanged(self):
+        os.environ.pop('VFB_NEO4J_UNWIND', None)
+        ew = writer(kb_owl_edge_writer)
+        ew.properties['source'] = {'match_on': 'short_form', 'label': 'source', 'short_form': 'source', 'iri': 'x', 'sl': ''}
+        ew.add_annotation_axiom(s='VFB_1', r='source', o='Ito2013', stype=':Individual', match_on='short_form',
+                                edge_annotations={'comment': 'c'})
+        ew._construct_triples()
+        self.assertIn("MERGE (a)-[re:source]->(b) SET re.type = 'Annotation' ", ew.statements[0])
+        self.assertIn('SET re.comment = "c"', ew.statements[0])
+
+    def test_merge_on_requires_the_annotation(self):
+        ew = writer(kb_owl_edge_writer)
+        with self.assertRaises(Exception):
+            ew.add_annotation_axiom(s='a', r='hasDbXref', o='b', merge_on=('accession',))

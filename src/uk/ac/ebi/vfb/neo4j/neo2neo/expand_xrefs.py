@@ -67,8 +67,8 @@ for d in dc:
                                         "accession": [acc],
                                     },
                                     match_on='short_form',
-                                    safe_label_edge=True
-
+                                    safe_label_edge=True,
+                                    merge_on=('accession',)
                                     )
 
 ew.commit(chunk_length=1000)

@@ -151,6 +151,19 @@ class TestEdgeWriter(unittest.TestCase):
             assert r[0]['rel'] == 'has_license'
 
 
+
+    def test_add_xref_one_edge_per_accession(self):
+        # Several accessions to one Site are separate edges, and re-adding the same xref adds nothing.
+        self.edge_writer.nc.commit_list(["MERGE (s:Individual:Site { short_form: 'FlyLightSplit' })",
+                                         "MERGE (p:Property { short_form: 'hasDbXref', label: 'hasDbXref',"
+                                         " iri: 'http://www.geneontology.org/formats/oboInOwl#hasDbXref' })"])
+        for acc in ('SS01148', 'SS01149', 'SS01148'):
+            self.edge_writer.add_xref(s='Aya', xref='FlyLightSplit:' + acc, stype=':Individual')
+        self.edge_writer.commit()
+        q = self.edge_writer.nc.commit_list(["MATCH (:Individual { short_form: 'Aya' })"
+                                             "-[r:hasDbXref]->(:Site { short_form: 'FlyLightSplit' }) "
+                                             "RETURN r.accession[0] AS acc ORDER BY acc"])
+        assert [x['acc'] for x in results_2_dict_list(q)] == ['SS01148', 'SS01149']
         
     def tearDown(self):
          s = ["MATCH (n) DETACH DELETE n"]
