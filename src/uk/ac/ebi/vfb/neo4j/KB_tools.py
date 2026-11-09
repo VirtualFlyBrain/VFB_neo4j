@@ -382,13 +382,36 @@ class kb_owl_edge_writer(kb_writer):
             self.log.append(m)
             warnings.warn(m)
 
+    def _merge_props_literal(self, props):
+        """Cypher map body ('k: v, ...') for edge properties that take part in a MERGE; '' if none.
+        Values are rendered as _set_attributes_from_dict stores them, so the MERGE matches what SET wrote."""
+        parts = []
+        for k, v in props.items():
+            if type(v) == bool:
+                parts.append("%s: %s" % (k, str(v).lower()))
+            elif type(v) in (int, float):
+                parts.append("%s: %s" % (k, v))
+            elif type(v) == str:
+                parts.append('%s: "%s"' % (k, self.escape_string(v)))
+            elif type(v) == list:
+                parts.append('%s: %s' % (k, str([self.escape_string(i) for i in v])))
+            else:
+                raise Exception("Can't MERGE on a %s value for key %s" % (type(v), k))
+        return ', '.join(parts)
+
     def _add_triple(self, s, r, o, rtype, stype, otype,
-                    edge_annotations=None, match_on="iri", safe_label_edge=True):
+                    edge_annotations=None, match_on="iri", safe_label_edge=True, merge_on=()):
         # Private method to set up data structures required for checking properties
         # prior to constructing cypher specifying triples for addition.
+        # merge_on: edge annotation keys that form part of the MERGE pattern, so edges that differ
+        # in those values are kept as separate edges instead of the later one overwriting the first.
 
         if edge_annotations is None:
             edge_annotations = {}
+        merge_on = tuple(merge_on)
+        missing = [k for k in merge_on if k not in edge_annotations]
+        if missing:
+            raise Exception("merge_on keys %s missing from edge_annotations" % missing)
         if match_on not in ['iri', 'label', 'short_form']:
             raise Exception("Illegal match property '%s'. " \
                             "Allowed match properties are 'iri', 'label', 'short_form'" % match_on)
@@ -421,13 +444,16 @@ class kb_owl_edge_writer(kb_writer):
             out += "OPTIONAL MATCH (o%s { %s:'%s' }) " % (t['otype'], t['match_on'], t['o'])
             out += "FOREACH (a IN CASE WHEN s IS NOT NULL THEN [s] ELSE [] END | " \
                    "FOREACH (b IN CASE WHEN o IS NOT NULL THEN [o] ELSE [] END | "
+            merge_on = t['merge_on']
+            merge_props = self._merge_props_literal({k: t['edge_annotations'][k] for k in merge_on})
             if t['safe_label_edge']:
-                out += "MERGE (a)-[re:%s]->(b) SET re.type = '%s' " % (rel, t['rtype'])  # Might need work?
+                out += "MERGE (a)-[re:%s%s]->(b) SET re.type = '%s' " % (
+                    rel, ' { %s }' % merge_props if merge_props else '', t['rtype'])  # Might need work?
             else:
-                out += "MERGE (a)-[re:%s { %s: '%s' }]->(b) " % (t['rtype'],
-                                                                t['match_on'],
-                                                                rel)
-            out += self._set_attributes_from_dict('re', t['edge_annotations'])
+                out += "MERGE (a)-[re:%s { %s: '%s'%s }]->(b) " % (t['rtype'], t['match_on'], rel,
+                                                                  ', ' + merge_props if merge_props else '')
+            out += self._set_attributes_from_dict('re', {k: v for k, v in t['edge_annotations'].items()
+                                                         if k not in merge_on})
 
             # For each of label, iri, short_form; Check if available; Check if used in match
             # (and therefore in edge merge) or if edge is typed as safe label.
@@ -460,7 +486,8 @@ class kb_owl_edge_writer(kb_writer):
                     rel = rel_map['short_form']
             else:
                 rel = rel_map[t['match_on']]
-            key = (t['r'], t['stype'], t['otype'], t['match_on'], t['safe_label_edge'], t['rtype'], rel)
+            merge_on = tuple(t['merge_on'])
+            key = (t['r'], t['stype'], t['otype'], t['match_on'], t['safe_label_edge'], t['rtype'], rel, merge_on)
             ann = {k: v for k, v in t['edge_annotations'].items() if type(v) in (int, float, str, list, bool)}
             for k in set(t['edge_annotations']) - set(ann):  # as _set_attributes_from_dict: skip, don't null
                 warnings.warn("Can't use a %s as an attribute value in Cypher. Key %s Value :%s"
@@ -474,7 +501,7 @@ class kb_owl_edge_writer(kb_writer):
                     ann[k] = [self.escape_string(i) for i in v]
             groups.setdefault(key, []).append({'s': t['s'], 'o': t['o'], 'a': ann})
         size = unwind_rows()
-        for (r, stype, otype, match_on, safe, rtype, rel), rows in groups.items():
+        for (r, stype, otype, match_on, safe, rtype, rel, merge_on), rows in groups.items():
             rel_map = self.properties[r]
             q = "UNWIND $rows AS row " \
                 "OPTIONAL MATCH (s%s { %s: row.s }) " \
@@ -482,11 +509,13 @@ class kb_owl_edge_writer(kb_writer):
             q += "FOREACH (a IN CASE WHEN s IS NOT NULL THEN [s] ELSE [] END | " \
                  "FOREACH (b IN CASE WHEN o IS NOT NULL THEN [o] ELSE [] END | "
             params = {}
+            merge_props = ''.join(', `%s`: row.a.`%s`' % (k, k) for k in merge_on)
             if safe:
-                q += "MERGE (a)-[re:`%s`]->(b) SET re.type = $rtype " % rel
+                q += "MERGE (a)-[re:`%s`%s]->(b) SET re.type = $rtype " % (
+                    rel, ' { %s }' % merge_props[2:] if merge_props else '')
                 params['rtype'] = rtype
             else:
-                q += "MERGE (a)-[re:`%s` { `%s`: $rel }]->(b) " % (rtype, match_on)
+                q += "MERGE (a)-[re:`%s` { `%s`: $rel%s }]->(b) " % (rtype, match_on, merge_props)
                 params['rel'] = rel
             q += "SET re += row.a "
             for prop in ('label', 'short_form', 'iri'):
@@ -506,7 +535,8 @@ class kb_owl_edge_writer(kb_writer):
         self._add_triple(s, r, o, rtype, stype, otype,
                          edge_annotations, match_on, safe_label_edge=safe_label_edge)
 
-    def add_annotation_axiom(self, s, r, o, stype='', otype=':Individual', edge_annotations=None, match_on="iri", safe_label_edge=True):
+    def add_annotation_axiom(self, s, r, o, stype='', otype=':Individual', edge_annotations=None, match_on="iri",
+                             safe_label_edge=True, merge_on=()):
         """Link an OWL entity to an Individual via an annotation axiom.
         s = property identifying subject entity ,
         r = property identifying relation (AnnotationProperty) ,
@@ -514,12 +544,14 @@ class kb_owl_edge_writer(kb_writer):
         match_on = property to match individuals/Property on; default = 'iri'
         Optionally add edge annotations specified as key value pairs in dict.
         Optionally specify edge type as safe_label (default = False => edge type: Annotation)
+        merge_on: edge_annotations keys to include in the edge MERGE, so one (s, r, o) can carry
+        several edges that differ in those values (e.g. several hasDbXref accessions to one Site).
        """
         if edge_annotations is None:
             edge_annotations = {}
         rtype = 'Annotation'
         self._add_triple(s, r, o, rtype, stype, otype,
-                         edge_annotations, match_on, safe_label_edge=safe_label_edge)
+                         edge_annotations, match_on, safe_label_edge=safe_label_edge, merge_on=merge_on)
 
     def add_fact(self, s, r, o, edge_annotations=None,
                  match_on="iri", safe_label_edge=True):
@@ -549,7 +581,8 @@ class kb_owl_edge_writer(kb_writer):
                                   stype=stype,
                                   edge_annotations={'accession': [x[1]]},
                                   match_on='short_form',
-                                  safe_label_edge=True)
+                                  safe_label_edge=True,
+                                  merge_on=('accession',))
 
                 
     def add_anon_type_ax(self, s, r, o, edge_annotations=None,
@@ -1388,7 +1421,8 @@ class KB_pattern_writer(object):
                                              otype=':Individual',
                                              match_on='short_form',
                                              edge_annotations={'accession': [acc]},
-                                             safe_label_edge=True)
+                                             safe_label_edge=True,
+                                             merge_on=('accession',))
         if orcid:
             logging.debug(f"Adding contributor orcid: {orcid} to anat_id: {anat_id['short_form']}")
             self.ew.add_annotation_axiom(s=anat_id['short_form'],
