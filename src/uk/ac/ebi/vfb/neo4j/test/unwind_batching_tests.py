@@ -150,6 +150,20 @@ class TestXrefEdgePerAccession(unittest.TestCase):
         self.assertEqual([['SS01148'], ['SS01149']],
                          [r['a']['accession'] for r in ew.statements[0]['parameters']['rows']])
 
+    def test_accession_may_contain_colons(self):
+        """Only the first ':' separates Site and accession: NeuronBridge accessions are '<dataset>:<body>'."""
+        os.environ.pop('VFB_NEO4J_UNWIND', None)
+        ew = writer(kb_owl_edge_writer)
+        ew.properties['hasDbXref'] = {'match_on': 'short_form', 'label': 'hasDbXref', 'short_form': 'hasDbXref',
+                                      'iri': 'http://www.geneontology.org/formats/oboInOwl#hasDbXref', 'sl': ''}
+        ew.add_xref(s='VFB_1', xref='neuronbridge:male-cns:166793', stype=':Individual')
+        ew._construct_triples()
+        self.assertIn("MERGE (a)-[re:hasDbXref { accession: ['male-cns:166793'] }]->(b)", ew.statements[0])
+        self.assertIn("short_form:'neuronbridge'", ew.statements[0].replace('"', "'"))
+        for bad in ('neuronbridge', 'neuronbridge:', ':166793'):
+            with self.assertRaises(ValueError):
+                ew.add_xref(s='VFB_1', xref=bad)
+
     def test_other_annotation_edges_unchanged(self):
         os.environ.pop('VFB_NEO4J_UNWIND', None)
         ew = writer(kb_owl_edge_writer)
