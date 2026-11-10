@@ -571,9 +571,11 @@ class kb_owl_edge_writer(kb_writer):
                                safe_label_edge=safe_label_edge)
 
     def add_xref(self, s, xref, stype=''):
-        """Add an xref axiom"""
-        # Add regex test for xref
-        x = xref.split(':')
+        """Add an xref axiom. xref = '<Site short_form>:<accession>'; only the first ':' separates them, so an
+        accession may itself contain ':' (e.g. neuronbridge:male-cns:166793)."""
+        x = xref.split(':', 1)
+        if len(x) != 2 or not x[0] or not x[1]:
+            raise ValueError("xref must be '<site>:<accession>': %r" % xref)
         self.add_annotation_axiom(s=s,
                                   r='hasDbXref',
                                   o=x[0],
