@@ -79,6 +79,23 @@ class TestReserveImageIds(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             pw.reserve_image_ids('100000', 1, 'r')
 
+    def test_ids_below_the_high_water_mark_are_not_reused(self):
+        # 100000..100001 were issued and later deleted from the KB, so no individual or reservation holds them
+        pw = self.make_writer([], [])
+        hw = [{'columns': ['last'], 'data': [{'row': ['00100001']}]}]
+        pw.ni.nc.commit_list.side_effect = [hw, [{}]]
+        ids = pw.reserve_image_ids('100000', 2, 'r')
+        self.assertEqual(['VFB_00100002', 'VFB_00100003'], ids)
+        (statements,), _ = pw.ni.nc.commit_list.call_args
+        self.assertEqual({'key': '100000', 'last': '00100003'}, statements[1]['parameters'])
+        self.assertIn('IdHighWater', statements[1]['statement'])
+
+    def test_unreadable_high_water_mark_raises(self):
+        pw = self.make_writer([], [])
+        pw.ni.nc.commit_list.side_effect = [False]
+        with self.assertRaises(RuntimeError):
+            pw.reserve_image_ids('100000', 1, 'r')
+
     def test_release_removes_anat_and_channel(self):
         pw = self.make_writer([], [])
         self.assertTrue(pw.release_ids(['VFB_00100002']))

@@ -1234,7 +1234,21 @@ class KB_pattern_writer(object):
         anat, chan = self.anat_iri_gen, self.channel_iri_gen
         anat._load_existing()
         chan._load_existing()
+        # High-water mark: an id that was handed out and later deleted from the KB (a record removed, a load rolled
+        # back) is no longer in the lookup, so starting at `start` would hand it out again, onto different content.
+        # The last accession ever issued for this start is kept in an :IdHighWater node and new ids begin after it.
+        hw_key = str(start)
+        r = self.ni.nc.commit_list([{'statement': "MATCH (h:IdHighWater {key: $key}) RETURN h.last AS last",
+                                     'parameters': {'key': hw_key}}])
+        if r is False:
+            raise RuntimeError("Could not read the id high-water mark in %s" % self.ni.endpoint)
+        last = [d['last'] for d in results_2_dict_list(r) if d.get('last') is not None]
         out, acc = [], start
+        if last:
+            n_last = base36.loads(last[0]) if anat.use_base36 else int(last[0])
+            n_start = base36.loads(start) if anat.use_base36 else int(start)
+            if n_last + 1 > n_start:
+                acc = base36.dumps(n_last + 1) if anat.use_base36 else n_last + 1
         while len(out) < count:
             acc = anat._get_new_accession(acc)  # next accession free for VFB_ (now marked used in anat.lookup)
             n = base36.loads(acc) if chan.use_base36 else int(acc)
@@ -1249,7 +1263,11 @@ class KB_pattern_writer(object):
              "ON CREATE SET r.reserved_for = $reserved_for, r.reserved_at = toString(datetime()), "
              "r.block = ['ID reservation'] "
              "RETURN count(r)")
-        r = self.ni.nc.commit_list([{'statement': q, 'parameters': {'ids': ids, 'reserved_for': reserved_for}}])
+        hw = ("MERGE (h:IdHighWater {key: $key}) SET h.last = $last, h.updated = toString(datetime()), "
+              "h.block = ['ID high-water mark'] RETURN count(h)")
+        last_acc = out[-1].split('_', 1)[1]
+        r = self.ni.nc.commit_list([{'statement': q, 'parameters': {'ids': ids, 'reserved_for': reserved_for}},
+                                    {'statement': hw, 'parameters': {'key': hw_key, 'last': last_acc}}])
         if r is False:
             raise RuntimeError("Could not reserve ids %s..%s in %s" % (out[0], out[-1], self.ni.endpoint))
         for sf in out:
